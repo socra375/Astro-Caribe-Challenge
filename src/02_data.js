@@ -13,7 +13,8 @@ const DATA = (function () {
       moonD: 'Región del cráter Shackleton, polo sur lunar. Sin atmósfera, luz solar casi rasante, mensajes con ~1,3 s de retraso.',
       marsD: 'Atmósfera tenue, polvo, días de 24 h 39 min y mensajes con 3 a 22 minutos de retraso.',
       go: '¡Despegar!', back: 'Volver', close: 'Cerrar', confirm: 'Confirmar', cancel: 'Cancelar', yes: 'Sí', no: 'No', on: 'Activado', off: 'Desactivado',
-      o2: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
+      o2: 'Aire', o2A: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', radA: 'Radiación', food: 'Comida', foodA: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos', life: 'Soporte vital',
+      modeT: 'Modalidad', modeJ: 'Explorador Junior', modeJage: '7 a 12 años', modeJd: 'Aprende lo básico de vivir en el espacio explorando, probando y siguiendo misiones guiadas.', modeA: 'Ingeniero de Misión', modeAage: '13 años en adelante', modeAd: 'Entiende problemas de ingeniería espacial con simulaciones, datos y decisiones técnicas.', challenge: 'Reto', chStd: 'Estándar', chStdD: 'Recursos equilibrados y eventos ambientales.', chHard: 'Exigente', chHardD: 'Recursos justos y eventos más complejos.', good: 'Bien', careful: 'Cuidado', urgent: '¡Urgente!', more: 'Más información', diagT: 'Diagnóstico', diagDo: 'Diagnosticar', diagAsk: '¿Cuál es la causa más probable?', diagOk: 'Diagnóstico correcto: reparación desbloqueada.', diagBad: 'No encaja con los datos. Pierdes 1 hora; vuelve a mirar los valores.',
       ok: 'Normal', warn: 'Advertencia', crit: 'Crítico', info: 'Información',
       interact: 'Interactuar', repair: 'Reparar', investigate: 'Investigar', manage: 'Administrar', collect: 'Recoger muestras', play: 'Ejecutar minijuego', rest: 'Descansar', explore: 'Explorar',
       paused: 'Pausa', resume: 'Reanudar', mainMenu: 'Menú principal', save: 'Guardar', saved: 'Partida guardada', endRun: 'Terminar y ver informe',
@@ -46,7 +47,8 @@ const DATA = (function () {
       moonD: 'Shackleton crater region, lunar south pole. No air, low-angle sunlight, messages delayed ~1.3 s.',
       marsD: 'Thin air, dust, 24 h 39 min days and messages delayed 3 to 22 minutes.',
       go: 'Launch!', back: 'Back', close: 'Close', confirm: 'Confirm', cancel: 'Cancel', yes: 'Yes', no: 'No', on: 'On', off: 'Off',
-      o2: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
+      o2: 'Air', o2A: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', radA: 'Radiation', food: 'Food', foodA: 'Food supply', well: 'Wellbeing', mat: 'Materials', waste: 'Waste', life: 'Life support',
+      modeT: 'Mode', modeJ: 'Junior Explorer', modeJage: 'Ages 7 to 12', modeJd: 'Learn the basics of living in space by exploring, experimenting and following guided missions.', modeA: 'Mission Engineer', modeAage: 'Ages 13 and up', modeAd: 'Understand space engineering problems through simulations, data and technical decisions.', challenge: 'Challenge', chStd: 'Standard', chStdD: 'Balanced resources and environmental events.', chHard: 'Demanding', chHardD: 'Tight resources and more complex events.', good: 'Good', careful: 'Careful', urgent: 'Urgent!', more: 'More information', diagT: 'Diagnosis', diagDo: 'Diagnose', diagAsk: 'What is the most likely cause?', diagOk: 'Correct diagnosis: repair unlocked.', diagBad: 'That does not fit the data. You lose 1 hour; look at the values again.',
       ok: 'Normal', warn: 'Warning', crit: 'Critical', info: 'Info',
       interact: 'Interact', repair: 'Repair', investigate: 'Investigate', manage: 'Manage', collect: 'Collect samples', play: 'Play mini-game', rest: 'Rest', explore: 'Explore',
       paused: 'Paused', resume: 'Resume', mainMenu: 'Main menu', save: 'Save', saved: 'Game saved', endRun: 'End and see report',
@@ -386,8 +388,20 @@ const DATA = (function () {
 
 /* ---------- i18n helpers ---------- */
 let LANG = 'es';
-const _ = (k, p) => { let s = (DATA.U[LANG] && DATA.U[LANG][k]) || DATA.U.es[k] || k; if (p) for (const x in p) s = s.replace('{' + x + '}', p[x]); return s; };
-const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o[LANG] != null ? o[LANG] : o.es);
+/** Modalidad: 'junior' (Explorador Junior) o 'adv' (Ingeniero de Misión). Los textos con variante técnica llevan esA/enA. */
+let MODE = 'junior';
+const _ = (k, p) => {
+  const U = DATA.U[LANG] || {};
+  let s = (MODE === 'adv' && (U[k + 'A'] != null)) ? U[k + 'A'] : U[k] != null ? U[k] : DATA.U.es[k] != null ? DATA.U.es[k] : k;
+  if (p) for (const x in p) s = s.replace('{' + x + '}', p[x]);
+  return s;
+};
+const tr = (o) => {
+  if (o == null) return '';
+  if (typeof o === 'string') return o;
+  if (MODE === 'adv') { const a = o[LANG + 'A']; if (a != null) return a; }
+  return o[LANG] != null ? o[LANG] : o.es;
+};
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 const fmt = (v, d) => (Number.isFinite(v) ? v.toLocaleString(LANG === 'es' ? 'es-DO' : 'en-US', { maximumFractionDigits: d == null ? 1 : d, minimumFractionDigits: 0 }) : '—');
 

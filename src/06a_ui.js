@@ -8,7 +8,7 @@ const Game = (function () {
   const SIMH_PER_S = 0.4; // G: 1 s real = 0,4 h simuladas a velocidad x1 (1 día ≈ 60 s)
   let S = null, running = false, paused = false, speed = 1, stack = [], lastN = 0, dpr = 1, hudT = 0, saveT = 0, isTouch = false, mgRun = null;
   let donkiLive = null, onlineTried = false;
-  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', tutDone: false }, Store.get('settings', {}));
+  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', mode: 'junior', tutDone: false }, Store.get('settings', {}));
   const stats = Object.assign({ runs: 0, wins: 0, missions: 0, repairs: 0, harvest: 0, quizOk: 0 }, Store.get('stats', {}));
   const ach = Store.get('ach', {});
 
@@ -21,22 +21,26 @@ const Game = (function () {
       if (k === 'class') e.className = v; else if (k === 'html') e.innerHTML = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
       else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v); else e.setAttribute(k, v === true ? '' : v);
     }
-    for (const c of kids.flat(5)) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(String(c))); }
+    for (const c of kids.flat(5)) {
+      if (c == null || c === false) continue;
+      if (c.nodeType) e.append(c); else for (const n of Icons.decor(c)) e.append(n.nodeType ? n : document.createTextNode(n));
+    }
     return e;
   }
   const btn = (label, fn, cls, extra) => h('button', Object.assign({ class: 'btn ' + (cls || ''), type: 'button', onclick: (e) => { Sfx.play('click'); fn(e); } }, extra || {}), label);
   const bar = (f, col) => h('div', { class: 'pbar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(f * 100) }, h('i', { style: { width: Math.round(clampN(f, 0, 1) * 100) + '%', background: col || '' } }));
   const tag = (txt, sev) => h('span', { class: 'tag ' + (sev || '') }, txt);
   const SEVI = { crit: '⛔', warn: '⚠', info: 'ℹ', ok: '✔' };
+  const recentToast = {};
 
   /* ---------- Ajustes ---------- */
   function applySettings() {
-    LANG = settings.lang; document.documentElement.lang = LANG;
+    LANG = settings.lang; document.documentElement.lang = LANG; MODE = S ? S.mode : settings.mode;
     Sfx.setVol(settings.vol); Sfx.setMuted(settings.muted);
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    $('#bMute').textContent = settings.muted ? '🔇' : '🔊';
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMenu'), '☰');
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -65,7 +69,9 @@ const Game = (function () {
 
   /* ---------- Toasts ---------- */
   function toast(title, body, sev, onClick) {
-    const box = $('#toasts');
+    const box = $('#toasts'), key = title + '|' + (body || ''), now = performance.now();
+    if (recentToast[key] && now - recentToast[key] < 20000) return; // sin avisos repetidos
+    recentToast[key] = now;
     const t = h('div', { class: 'toast ' + (sev || 'info'), role: sev === 'crit' ? 'alert' : 'status' }, h('b', null, (SEVI[sev] || 'ℹ') + ' ' + title), body ? h('span', { class: 'small' }, body) : null);
     if (onClick) { t.style.cursor = 'pointer'; t.addEventListener('click', onClick); t.title = _('why'); }
     box.prepend(t);
@@ -118,44 +124,83 @@ const Game = (function () {
   function unlock(k) { if (ach[k]) return; ach[k] = Date.now(); Store.set('ach', ach); toast('🏅 ' + tr(DATA.ACH[k]), '', 'ok'); }
 
   /* ---------- HUD ---------- */
-  const METERS = [
-    { k: 'o2', i: '🫁', f: () => S.d.o2, v: () => fmt(S.r.o2.v) + ' kg', st: () => Sim.status(S, 'o2') },
-    { k: 'water', i: '💧', f: () => S.d.water, v: () => fmt(S.r.water.v, 0) + ' L', st: () => Sim.status(S, 'water') },
-    { k: 'power', i: '🔋', f: () => S.d.power, v: () => (S.d.net >= 0 ? '+' : '') + fmt(S.d.net) + ' kW', st: () => Sim.status(S, 'power') },
-    { k: 'rad', i: '🛡️', f: () => S.d.rad, v: () => fmt(S.d.dose) + ' mSv', st: () => { const a = Sim.status(S, 'rad'), b = Sim.status(S, 'dose'); return a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' || (S.mods && S.mods.spe > 0) ? 'warn' : 'ok'; } },
-    { k: 'food', i: '🥗', f: () => S.d.food, v: () => fmt(S.r.food.v) + ' kg', st: () => Sim.status(S, 'food') },
-    { k: 'well', i: '😊', f: () => S.d.well, v: () => Math.round(S.r.well.v) + ' %', st: () => Sim.status(S, 'well') }
-  ];
+  /* Junior: 4 indicadores simples (barra + palabra). Ingeniero: 5 indicadores con valores, unidades y tendencia. */
+  const radSt = () => { const a = Sim.status(S, 'rad'), b = Sim.status(S, 'dose'); return a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' || (S.mods && S.mods.spe > 0) ? 'warn' : 'ok'; };
+  const M_ALL = {
+    o2: { i: '🫁', f: () => S.d.o2, v: () => fmt(S.r.o2.v) + ' kg · ' + fmt(S.sys.o2.conc) + ' %', st: () => Sim.status(S, 'o2'), h: 0 },
+    water: { i: '💧', f: () => S.d.water, v: () => fmt(S.r.water.v, 0) + ' L', st: () => Sim.status(S, 'water'), h: 1 },
+    power: { i: '🔋', f: () => S.d.power, v: () => fmt(S.r.power.v, 0) + ' kWh · ' + (S.d.net >= 0 ? '+' : '') + fmt(S.d.net) + ' kW', st: () => Sim.status(S, 'power'), h: 2 },
+    rad: { i: '🛡️', f: () => S.d.rad, v: () => fmt(S.d.dose) + '/' + S.limit + ' mSv', st: radSt, h: 4, inv: true },
+    food: { i: '🥗', f: () => S.d.food, v: () => fmt(S.r.food.v) + ' kg', st: () => Sim.status(S, 'food'), h: 3 },
+    well: { i: '😊', f: () => S.d.well, v: () => Math.round(S.r.well.v) + ' %', st: () => Sim.status(S, 'well'), h: 5 }
+  };
+  const worstSt = (a, b) => (a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' ? 'warn' : 'ok');
+  const stWord = (st) => (st === 'ok' ? _('good') : st === 'warn' ? _('careful') : _('urgent'));
+  function trend(idx, inv) {
+    const hh = S.hist || []; if (hh.length < 7) return '→';
+    const d = hh[hh.length - 1][idx] - hh[hh.length - 7][idx]; if (Math.abs(d) < 0.006) return '→';
+    return (d > 0) !== !!inv ? '↑' : '↓';
+  }
   function buildHud() {
     const m = $('#meters'); m.innerHTML = '';
-    for (const x of METERS) {
-      const el = h('button', { class: 'meter', id: 'm_' + x.k, type: 'button', onclick: () => openCmd('resources') },
-        h('div', { class: 'lbl' }, h('span', null, x.i + ' ' + _(x.k)), h('span', { class: 'pct' }, '')), h('div', { class: 'bar' }, h('i')), h('div', { class: 'st' }, ''));
-      m.append(el);
+    const open = () => openCmd('resources');
+    if (MODE === 'junior') {
+      for (const k of ['o2', 'water', 'power', 'food']) m.append(h('button', { class: 'meter', id: 'm_' + k, type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, M_ALL[k].i + ' ' + _(k)), h('span', { class: 'pct sev-word' }, '')), h('div', { class: 'bar' }, h('i'))));
+      m.append(h('button', { class: 'meter hidden', id: 'm_storm', type: 'button', onclick: () => openConsole({ id: 'shield' }) }, h('div', { class: 'lbl' }, h('span', null, '🛡️ ' + (LANG === 'es' ? 'Tormenta solar: ¡al refugio!' : 'Solar storm: go to the shelter!')))));
+    } else {
+      m.append(h('button', { class: 'meter', id: 'm_life', type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, '🫁 ' + _('life')), h('span', { class: 'pct' }, '')),
+        h('div', { class: 'sub' }, h('div', { class: 'bar' }, h('i', { id: 'b_o2' })), h('div', { class: 'bar' }, h('i', { id: 'b_water' }))), h('div', { class: 'st' }, '')));
+      for (const k of ['power', 'rad', 'food', 'well']) m.append(h('button', { class: 'meter', id: 'm_' + k, type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, M_ALL[k].i + ' ' + _(k === 'rad' ? 'radA' : k)), h('span', { class: 'pct' }, '')), h('div', { class: 'bar' }, h('i')), h('div', { class: 'st' }, '')));
     }
+  }
+  function paintMeter(el, st, f, pctTxt, valTxt, aria) {
+    el.className = 'meter ' + (st === 'ok' ? '' : st);
+    const pe = el.querySelector('.pct'); if (pe) Icons.setText(pe, pctTxt);
+    const bi = el.querySelector('.bar i'); if (bi) bi.style.width = clampN(f, 0, 1) * 100 + '%';
+    const se = el.querySelector('.st'); if (se) se.textContent = valTxt || '';
+    el.setAttribute('aria-label', aria);
   }
   function updateHud() {
     if (!S) return;
-    for (const x of METERS) {
-      const el = $('#m_' + x.k); if (!el) continue;
-      const st = x.st(), f = clampN(x.f(), 0, 1);
-      el.className = 'meter ' + (st === 'ok' ? '' : st);
-      el.querySelector('.pct').textContent = (st !== 'ok' ? SEVI[st] + ' ' : '') + Math.round(f * 100) + '%';
-      el.querySelector('i').style.width = f * 100 + '%';
-      el.querySelector('.st').textContent = x.v();
-      el.setAttribute('aria-label', _(x.k) + ' ' + Math.round(f * 100) + '% ' + _(st));
+    if (MODE === 'junior') {
+      for (const k of ['o2', 'water', 'power', 'food']) {
+        const el = $('#m_' + k); if (!el) continue;
+        const st = M_ALL[k].st(), f = clampN(M_ALL[k].f(), 0, 1);
+        paintMeter(el, st, f, (st !== 'ok' ? SEVI[st] + ' ' : '') + stWord(st), '', _(k) + ' ' + Math.round(f * 100) + '% ' + stWord(st));
+      }
+      const storm = $('#m_storm'); if (storm) storm.classList.toggle('hidden', !(S.mods && S.mods.spe > 0));
+    } else {
+      const lf = $('#m_life');
+      if (lf) {
+        const st = worstSt(M_ALL.o2.st(), M_ALL.water.st());
+        lf.className = 'meter ' + (st === 'ok' ? '' : st);
+        $('#b_o2').style.width = clampN(S.d.o2, 0, 1) * 100 + '%'; $('#b_water').style.width = clampN(S.d.water, 0, 1) * 100 + '%';
+        Icons.setText(lf.querySelector('.pct'), (st !== 'ok' ? SEVI[st] + ' ' : '') + 'O₂ ' + Math.round(S.d.o2 * 100) + ' · H₂O ' + Math.round(S.d.water * 100));
+        lf.querySelector('.st').textContent = fmt(S.r.o2.v) + ' kg · ' + fmt(S.r.water.v, 0) + ' L · ' + fmt(S.sys.o2.conc) + '% O₂ ' + trend(0) + trend(1);
+        lf.setAttribute('aria-label', _('life') + ' O2 ' + Math.round(S.d.o2 * 100) + '% H2O ' + Math.round(S.d.water * 100) + '% ' + _(st));
+      }
+      for (const k of ['power', 'rad', 'food', 'well']) {
+        const el = $('#m_' + k); if (!el) continue;
+        const x = M_ALL[k], st = x.st(), f = clampN(x.f(), 0, 1);
+        paintMeter(el, st, f, (st !== 'ok' ? SEVI[st] + ' ' : '') + Math.round(f * 100) + '%', x.v() + ' ' + trend(x.h, x.inv), _(k === 'rad' ? 'radA' : k) + ' ' + Math.round(f * 100) + '% ' + _(st));
+      }
     }
     const hh = Math.floor(S.d.hour), mm = Math.floor((S.d.hour - hh) * 60);
-    $('#clock').textContent = (S.scen === 'mars' ? '🔴 ' : '🌙 ') + _('day') + ' ' + S.d.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    Icons.setText($('#clock'), (S.scen === 'mars' ? '🔴 ' : '🌙 ') + _('day') + ' ' + S.d.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'));
     const act = Sim.activeInc(S).filter((i) => S.t >= i.from);
     const warnSoon = S.inc.filter((i) => !i.res && S.t < i.from).length;
-    $('#bAlerts').textContent = (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon);
+    Icons.setText($('#bAlerts'), (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon));
     $('#bSpeed').textContent = 'x' + speed;
-    $('#bPause').textContent = paused ? '▶' : '❚❚';
-    // pista
+    Icons.setText($('#bPause'), paused ? '▶' : '⏸');
     const hint = $('#hint');
     const hi = settings.hints ? nextHint() : null;
-    if (hi) { hint.textContent = '🧭 ' + hi.t; hint.classList.remove('hidden'); } else hint.classList.add('hidden');
+    if (hi) { Icons.setText(hint, hi.t); hint.classList.remove('hidden'); } else hint.classList.add('hidden');
+    // En pantallas estrechas el HUD puede ocupar dos filas: minimapa y pista se colocan debajo de él
+    const narrow = innerWidth <= 600, hb = $('#hud').getBoundingClientRect().bottom + 6;
+    $('#mini').style.top = narrow ? hb + 'px' : ''; hint.style.top = narrow ? hb + 'px' : '';
   }
 
   /* ---------- Pistas y objetivo de la flecha ---------- */
@@ -276,13 +321,13 @@ const Game = (function () {
     const lockRoom = !near && running && !modalOpen() ? World.lockedNear() : null;
     if (lockRoom) {
       const es = LANG === 'es', cs = Sim.campStatus(S);
-      $('#actBtn').textContent = '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : '');
+      Icons.setText($('#actBtn'), '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : ''));
       p.classList.remove('hidden'); return;
     }
     if (near) {
       const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
       const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
-      $('#actBtn').textContent = (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name;
+      Icons.setText($('#actBtn'), (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name);
       p.classList.remove('hidden');
     } else p.classList.add('hidden');
   }
@@ -303,14 +348,16 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = Sim.migrate(r.S); speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; lastRoom = null;
+    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
     beginPlay();
     return true;
   }
   function newRun(scen, diff, opts) {
+    opts = opts || {};
+    const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, seed, skipCamp: !!(opts && opts.skipCamp) }); speed = 1; lastN = 0; radio.q = []; radio.cur = null; lastRoom = null; for (const k in resState) delete resState[k];
-    settings.scen = scen; settings.diff = diff; if (diff === 'explorer') settings.hints = true; Store.set('settings', settings);
+    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp }); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
+    settings.scen = scen; settings.mode = S.mode; settings.diff = S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = S.mode === 'junior'; Store.set('settings', settings);
     World.init(scen); stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
@@ -335,7 +382,7 @@ const Game = (function () {
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
-        has ? btn('▶ ' + _('cont'), () => loadRun() || mainMenu()) : null,
+        has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
@@ -344,18 +391,24 @@ const Game = (function () {
     showScreen(body);
   }
   function setupScreen() {
-    let sc = settings.scen, df = settings.diff;
+    let md = settings.mode || 'junior', sc = settings.scen, ch = settings.diff === 'commander' ? 'commander' : 'engineer';
     const wrap = h('div');
     const render = () => {
       wrap.innerHTML = '';
-      const choice = (sel, v, title, desc, set) => h('button', { class: 'choice', type: 'button', 'aria-pressed': sel === v ? 'true' : 'false', onclick: () => { set(v); Sfx.play('click'); render(); } }, h('b', null, title), h('div', { class: 'small muted' }, desc));
-      wrap.append(
+      const prevMode = MODE; MODE = md; // los textos de esta pantalla se muestran en el nivel elegido
+      const card = (pressed, title, meta, desc, fn, ico) => h('button', { class: 'choice', type: 'button', 'aria-pressed': pressed ? 'true' : 'false', onclick: () => { fn(); Sfx.play('click'); render(); } },
+        h('div', { class: 'row', style: { gap: '6px' } }, ico ? Icons.el(ico) : null, h('b', null, title)), meta ? h('div', { class: 'small', style: { color: 'var(--accent)' } }, meta) : null, h('div', { class: 'small muted' }, desc));
+      wrap.append(...[
+        h('h3', null, _('modeT')),
+        h('div', { class: 'mt' },
+          card(md === 'junior', DATA.U[LANG].modeJ, DATA.U[LANG].modeJage, DATA.U[LANG].modeJd, () => (md = 'junior'), 'leaf'),
+          card(md === 'adv', DATA.U[LANG].modeA, DATA.U[LANG].modeAage, DATA.U[LANG].modeAd, () => (md = 'adv'), 'chart')),
         h('h3', null, _('scen')),
-        h('div', { class: 'grid2' }, choice(sc, 'moon', '🌙 ' + _('moon'), _('moonD'), (v) => (sc = v)), choice(sc, 'mars', '🔴 ' + _('mars'), _('marsD'), (v) => (sc = v))),
-        h('h3', null, _('diff')),
-        h('div', { class: 'grid2' }, ['explorer', 'engineer', 'commander'].map((d) => choice(df, d, _(d), _(d + 'D'), (v) => (df = v)))),
-        h('p', { class: 'small muted' }, LANG === 'es' ? 'Los sitios son escenarios educativos: no significa que sean lugares aprobados para una base humana.' : 'Sites are educational scenarios: they are not approved locations for a human base.'),
-        h('div', { class: 'row', style: { marginTop: '12px' } }, btn('🚀 ' + _('go'), () => newRun(sc, df), 'primary'), btn(_('back'), mainMenu)));
+        h('div', { class: 'mt' }, card(sc === 'moon', _('moon'), '', _('moonD'), () => (sc = 'moon'), 'moon'), card(sc === 'mars', _('mars'), '', _('marsD'), () => (sc = 'mars'), 'dot')),
+        md === 'adv' ? h('div', null, h('h3', null, _('challenge')), h('div', { class: 'mt' }, card(ch === 'engineer', _('chStd'), '', _('chStdD'), () => (ch = 'engineer')), card(ch === 'commander', _('chHard'), '', _('chHardD'), () => (ch = 'commander')))) : null,
+        h('p', { class: 'small muted' }, LANG === 'es' ? 'Mismo mapa, misiones y ciencia en las dos modalidades. Cambian la profundidad, las explicaciones y las herramientas. Los sitios son escenarios educativos, no lugares aprobados para una base.' : 'Same map, missions and science in both modes. Depth, explanations and tools change. Sites are educational scenarios, not approved base locations.'),
+        h('div', { class: 'row', style: { marginTop: '12px' } }, btn(_('go'), () => { MODE = prevMode; newRun(sc, ch, { mode: md }); }, 'primary'), btn(_('back'), () => { MODE = prevMode; mainMenu(); }))].filter(Boolean));
+      MODE = prevMode;
     };
     render();
     showScreen(h('div', { class: 'panel' }, h('h2', null, _('start')), wrap));

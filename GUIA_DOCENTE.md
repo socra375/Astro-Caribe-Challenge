@@ -2,9 +2,14 @@
 
 Tres lecciones de **20 minutos** para estudiantes de 7 a 12 años. Funcionan en ordenador, tablet o móvil, con o sin Internet (abre `index.html`).
 
+**Elegir modalidad**
+- **Explorador Junior (7 a 12 años):** indicadores simples, lenguaje cotidiano, minijuegos con más tiempo y fallos presentados poco a poco. Es la opción para primaria.
+- **Ingeniero de Misión (13 años en adelante):** valores con unidades, diagnóstico de fallos antes de reparar, eventos encadenados, prioridades eléctricas, gráficos de tendencia y preguntas de razonamiento. Es la opción para secundaria y bachillerato.
+- Los dos modos enseñan los mismos principios con la misma simulación, así que puede haber una clase mixta y comparar: ¿qué decisión tomó cada grupo y por qué?
+
 **Preparación (5 min antes de la clase)**
 - Abre el juego y comprueba que suena (o deja el silencio activado).
-- Para estudiantes de 7 a 9 años, usa el nivel **Explorador** y deja activadas las **Ayudas en pantalla**. A partir de 10 años puedes usar **Ingeniero**.
+- Para estudiantes de 7 a 12 años usa **Explorador Junior** con las **Ayudas en pantalla** activadas. A partir de 13 años usa **Ingeniero de Misión**.
 - Si hay pocos dispositivos, trabaja en parejas: una persona conduce y la otra es la "ingeniera de datos" que lee los indicadores y el panel de consecuencias en voz alta.
 - La velocidad x4 (botón arriba a la derecha) acelera la espera de cosechas y mensajes.
 
@@ -102,6 +107,13 @@ Debate rápido: "¿Una tecnología espacial resuelve automáticamente un problem
 El estudiante explica qué es un protocolo de emergencia, por qué la autonomía es necesaria cuando la ayuda tarda y relaciona al menos una decisión del juego con un ODS, nombrando una limitación para aplicarla.
 
 ---
+
+## Adaptaciones por modalidad
+| Lección | Explorador Junior | Ingeniero de Misión |
+|---|---|---|
+| 1 | Describir con palabras qué pasa con el aire y el agua al cambiar el modo del reciclador | Calcular la pérdida de agua (consumo × (1 − eficiencia)) y justificar el modo elegido con la tabla de consecuencias |
+| 2 | Comparar dos plantas y decir qué necesita cada una | Relacionar luz, consumo eléctrico y crecimiento con los datos de la ficha y los gráficos |
+| 3 | Explicar por qué hay que prepararse antes de una tormenta | Diagnosticar una cadena de fallos (polvo → desgaste → batería) y proponer qué cargas recortar |
 
 ## Evaluación sugerida (sin calificar solo por ganar)
 El informe final del juego ya separa resultados, gestión de recursos, aprendizaje y aplicaciones en la Tierra. Recomendamos evaluar:

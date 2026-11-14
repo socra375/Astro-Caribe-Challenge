@@ -52,6 +52,7 @@ const SelfTest = (function () {
     if (S.m[1].st === 'active' && S.m[1].var) Sim.decide(S, 'recmode', { v: 'max' });
     if (S.t - (mem.rep || -99) > 3) {
       const inc = Sim.activeInc(S).find((i) => i.fix && S.t >= i.from);
+      if (inc && S.adv && Sim.DIAG_OK[inc.type] != null && !inc.diag) Sim.diagnose(S, inc.id, Sim.DIAG_OK[inc.type]);
       if (inc) { mem.rep = S.t; Sim.mini(S, inc.fix === 'o2' ? 'o2' : inc.fix === 'gh' ? 'gh' : 'wiring', { ok: true, score: 0.8, inc: inc.id }); }
     }
     if (S.m[5].st === 'active' || S.sys.shield.cap < S.N) { Sim.decide(S, 'shield', {}); Sim.decide(S, 'shelter', {}); }
@@ -70,8 +71,9 @@ const SelfTest = (function () {
   }
   function runOne(seed, policy, opts) {
     const scen = opts.scen || (seed % 2 ? 'mars' : 'moon');
-    const diff = opts.diff || ['explorer', 'engineer', 'commander'][seed % 3];
-    const S = Sim.create({ scen, diff, seed: 1000 + seed * 7919 });
+    const mode = opts.mode || (Math.floor(seed / 2) % 2 ? 'adv' : 'junior');
+    const diff = mode === 'junior' ? 'explorer' : (seed % 3 === 2 ? 'commander' : 'engineer');
+    const S = Sim.create({ scen, diff, mode, seed: 1000 + seed * 7919 });
     const errs = [], mem = {};
     const maxH = opts.maxH || 24 * 30;
     let consecutive = 0, maxConsec = 0;
@@ -92,7 +94,7 @@ const SelfTest = (function () {
     if (S.ended && S.ended.reason === 'o2' && S.r.o2.v > 0) errs.push('final por O2 incoherente');
     // Recuperación: tras resolver incidentes, ninguno de los resueltos debe seguir afectando
     const resolved = S.inc.filter((i) => i.res).length;
-    return { seed, scen, diff, policy, ended: S.ended, hours: Math.round(S.t), errs, done: [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done').length,
+    return { seed, scen, diff, mode, policy, ended: S.ended, hours: Math.round(S.t), errs, done: [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done').length,
       incidents: S.inc.length, resolved, maxConsec };
   }
   function run(n, opts) {
@@ -107,6 +109,7 @@ const SelfTest = (function () {
       passiveAbort: out.filter((r) => r.policy === 'passive' && r.ended && r.ended.kind === 'abort').length,
       passiveRuns: out.filter((r) => r.policy === 'passive').length,
       endReasons: out.reduce((a, r) => { const k = r.policy + ':' + (r.ended ? r.ended.reason : 'none'); a[k] = (a[k] || 0) + 1; return a; }, {}),
+      byMode: ['junior', 'adv'].reduce((o, m) => { const rs = smartRuns.filter((r) => r.mode === m); o[m] = { runs: rs.length, victories: rs.filter((r) => r.ended && r.ended.kind === 'victory').length }; return o; }, {}),
       totalIncidents: out.reduce((a, r) => a + r.incidents, 0), maxConsecutiveIncidentsH: Math.max(...out.map((r) => r.maxConsec))
     };
     return { summary, fails, out };

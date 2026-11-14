@@ -84,8 +84,8 @@
       const room = inc.room || 'hall', cons = ND.INC_CONSOLE[ty] || (inc.sys === 'reactor' || inc.sys === 'solar' ? 'reactor' : inc.sys === 'shield' ? 'shield' : inc.sys === 'o2' ? 'o2' : null);
       let loc = roomLoc(room, inc.sys), tgt = consoleTarget(cons, room);
       if (ty === 'crop_fail') { const sick = Sim.plantsList(S).filter((x) => x.p.pest); if (sick.length) { loc = tr(DATA.ROOMS.gh) + ' · ' + (es ? 'jardineras ' : 'planters ') + [...new Set(sick.map((x) => x.bi + 1))].join(', '); tgt = World.plantPos(sick[0].bi, sick[0].k); } }
-      call({ key: 'inc' + (inc.id || ty), sev: e.sev, who: ND.INC_NPC[ty], title: (k === 'esc' ? (es ? '¡Empeoró! ' : 'Getting worse! ') : (e.sev === 'crit' ? (es ? '¡Atención! ' : 'Attention! ') : '')) + tr(T.t),
-        desc: tr(T.what) + (p.lead ? ' ' + (es ? 'Llegará en ' : 'Arrives in ') + fmt(p.lead) + ' h.' : ''), loc, act: tr(T.act), cons: tr(ND.CONSEQ[ty]), target: tgt, console: cons, why: ty });
+      call({ key: 'inc' + (inc.id || ty), sev: e.sev, who: ND.INC_NPC[ty], title: (k === 'esc' ? (es ? 'Empeoró: ' : 'Getting worse: ') : (e.sev === 'crit' && !isAdv() ? (es ? '¡Atención! ' : 'Attention! ') : '')) + tr(T.t),
+        desc: tr(T.what) + (p.lead ? ' ' + (es ? 'Llegará en ' : 'Arrives in ') + fmt(p.lead) + (es ? ' horas.' : ' hours.') : '') + (isAdv() && techLine(ty, inc) ? ' · ' + techLine(ty, inc) : ''), loc, act: tr(T.act), cons: tr(ND.CONSEQ[ty]), target: tgt, console: cons, why: ty });
       return true;
     }
     if (k.startsWith('res.')) {
@@ -122,7 +122,8 @@
 
   /* ---------- Conversaciones de bienvenida ---------- */
   function talk(room, replay) {
-    const lines = ND.TALK[room]; if (!lines) return;
+    const lines = (ND.TALK[room] || []).slice(); if (!lines.length) return;
+    if (isAdv()) lines.push({ es: 'Datos ahora mismo: ' + talkData(room), en: 'Live data: ' + talkData(room) });
     const who = speaker(ND.GUIDE[room] === 'commander' ? 'commander' : ND.GUIDE[room]);
     let i = 0;
     const s = push(h('div'), { sticky: true });
@@ -139,6 +140,19 @@
     };
     function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
+  }
+  function talkData(room) {
+    const f = (v, d) => fmt(v, d == null ? 1 : d), pw = S.pw, es = LANG === 'es';
+    const m = {
+      bridge: () => (es ? 'O₂ ' : 'O₂ ') + f(S.r.o2.v) + ' kg, H₂O ' + f(S.r.water.v, 0) + ' L, ' + (es ? 'batería ' : 'battery ') + f(S.r.power.v, 0) + ' kWh, ' + (es ? 'alimentos ' : 'food ') + f(S.r.food.v) + ' kg.',
+      life: () => (es ? 'Temperatura ' : 'Temperature ') + f(S.sys.thermal.T) + ' °C, ' + (es ? 'presión ' : 'pressure ') + f(S.sys.press.P) + ' kPa, O₂ ' + f(S.sys.o2.conc) + ' %, ' + (es ? 'moral ' : 'morale ') + Math.round(S.morale) + ' %.',
+      reactor: () => (es ? 'Generación ' : 'Generation ') + f(pw.gen) + ' kW (' + (es ? 'solar ' : 'solar ') + f(pw.sol) + ' + ' + (es ? 'reactor ' : 'reactor ') + f(pw.rea) + '), ' + (es ? 'demanda ' : 'demand ') + f(pw.demand) + ' kW.',
+      water: () => (es ? 'Reciclaje efectivo ' : 'Effective recycling ') + Math.round(S.d.rec * 100) + ' %, ' + (es ? 'O₂ producido ' : 'O₂ produced ') + f(S.r.o2.prod, 2) + ' kg/h, ' + (es ? 'agua ' : 'water ') + f(S.r.water.prod - S.r.water.cons) + ' L/h.',
+      gh: () => (es ? 'Plantas ' : 'Plants ') + Sim.plantsList(S).length + '/18, ' + (es ? 'nutrientes ' : 'nutrients ') + f(S.r.nutr.v) + ' L, ' + (es ? 'LED ' : 'LED ') + f(S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? Sim.P.LIGHT_KW_PER_BED * b.light : 0), 0)) + ' kW.',
+      lab: () => (es ? 'Muestras sin analizar ' : 'Unanalyzed samples ') + S.samples + ', ' + (es ? 'ciencia ' : 'science ') + S.science + ' pts.',
+      rad: () => (es ? 'Blindaje nivel ' : 'Shield level ') + S.sys.shield.lvl + ' (' + Math.round(S.d.rad * 100) + ' %), ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ', ' + (es ? 'dosis ' : 'dose ') + f(S.d.dose, 2) + '/' + S.limit + ' mSv.'
+    };
+    return (m[room] || (() => ''))();
   }
   function talksPanel() {
     const es = LANG === 'es';
@@ -192,7 +206,7 @@
       h('p', null, (es ? 'Esta operación la realiza: ' : 'This operation is done by: ') + need.map((r) => tr(Chars.ROLES[r].name)).join(es ? ' o ' : ' or ') + '.'),
       h('p', { class: 'small muted' }, (es ? 'Llevas el traje de ' : 'You are wearing the ') + tr(Chars.ROLES[S.playerRole].name) + (es ? '. Cámbialo en el vestuario 🧥 del puente de mando.' : ' suit. Change it at the 🧥 wardrobe on the bridge.')),
       h('div', { class: 'row' }, btn('📍 ' + (es ? 'Marcar el vestuario' : 'Mark the wardrobe'), () => { World.setMarker(World.consolePos('wardrobe'), 'wardrobe'); pop(); }, 'primary'),
-        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id }); }, 'danger')),
+        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); repairFlow(i); }, 'danger')),
         storm ? btn('🚨 ' + (es ? 'Activar protocolo de refugio (emergencia)' : 'Turn on shelter protocol (emergency)'), () => { pop(); confirmDecision('proto', { v: true }, es ? 'Protocolo de refugio' : 'Shelter protocol'); }, 'danger') : null)), { narrow: true }));
   }
 

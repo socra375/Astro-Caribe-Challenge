@@ -248,8 +248,8 @@ const MG = (function () {
         c.fillStyle = '#e8ebf2'; rr(c, -14, -10, 28, 20, 5); c.fill(); c.fillStyle = '#222'; c.fillRect(-12, -13, 8, 4); c.fillRect(4, -13, 8, 4); c.fillRect(-12, 9, 8, 4); c.fillRect(4, 9, 8, 4); c.fillStyle = '#38d6ff'; c.fillRect(6, -5, 8, 10);
         c.restore();
         c.fillStyle = 'rgba(5,8,20,.8)'; rr(c, 8, 8, 300, 30, 8); c.fill();
-        txt(c, '🔋 ' + Math.round(g.batt) + ' %  ◆ ' + g.got + '/' + g.target + '  ⚠ ' + g.dmg, 16, 29, 15, g.batt < 25 ? '#ff6b6b' : '#eef3ff', 'left');
-        if (g.lost) txt(c, LANG === 'es' ? '📡 Señal perdida: telemetría reducida' : '📡 Signal lost: reduced telemetry', GW / 2, 60, 16, '#ffc24a');
+        txt(c, (LANG === 'es' ? 'Batería ' : 'Battery ') + Math.round(g.batt) + ' %  ·  ' + (LANG === 'es' ? 'Muestras ' : 'Samples ') + g.got + '/' + g.target + '  ·  ' + (LANG === 'es' ? 'Golpes ' : 'Hits ') + g.dmg, 16, 29, 15, g.batt < 25 ? '#ff6b6b' : '#eef3ff', 'left');
+        if (g.lost) txt(c, LANG === 'es' ? 'Señal perdida: sensores reducidos' : 'Signal lost: reduced sensors', GW / 2, 60, 16, '#ffc24a');
         if (g.got >= g.target) txt(c, LANG === 'es' ? '¡Vuelve a la base!' : 'Return to base!', GW / 2, GH - 86, 18, '#5fe39a');
       },
       pointer(g, type, x, y) { g.px = x; g.py = y; if (type === 'down') g.pdown = true; if (type === 'up') g.pdown = false; },
@@ -290,7 +290,7 @@ const MG = (function () {
         c.fillStyle = '#6b4226'; c.fillRect(px - 50, py, 100, 40);
         c.strokeStyle = g.hp > 50 ? '#3ddc84' : '#b59a3a'; c.lineWidth = 6; c.beginPath(); c.moveTo(px, py); c.lineTo(px, py - hh); c.stroke();
         c.fillStyle = g.hp > 50 ? '#3ddc84' : '#b59a3a'; for (let k = 1; k < 5; k++) { if (hh > k * 30) { c.beginPath(); c.ellipse(px + (k % 2 ? 18 : -18), py - k * 30, 18, 8, k % 2 ? -0.4 : 0.4, 0, 7); c.fill(); } }
-        txt(c, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(g.hp) + ' %  · 💧 ' + g.water, px, 30, 15, g.hp >= g.need ? '#5fe39a' : '#ffc24a');
+        txt(c, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(g.hp) + ' %  ·  ' + (LANG === 'es' ? 'Agua usada ' : 'Water used ') + g.water, px, 30, 15, g.hp >= g.need ? '#5fe39a' : '#ffc24a');
       },
       key(g, k, down) { if (!down) return; const m = { q: [0, 1], a: [0, -1], w: [1, 1], s: [1, -1], e: [2, 1], d: [2, -1] }[k.toLowerCase()]; if (m) defs.gh.adj(g, m[0], m[1]); },
       controls(g) {
