@@ -101,9 +101,11 @@ const Game = (function () {
     for (const e of S.log) {
       if (e.n <= lastN) continue;
       lastN = e.n;
-      const [t, b, ty] = logText(e);
-      toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
-      Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
+      if (!logToRadio(e)) {
+        const [t, b, ty] = logText(e);
+        toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
+        Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
+      }
       if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
       if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
@@ -167,6 +169,18 @@ const Game = (function () {
     if (S.d.power < 0.2 && !S.emergency) return { t: es ? 'Batería baja: ve a «Reactor y energía» y ahorra energía.' : 'Low battery: go to "Reactor & power" and save energy.', p: World.consolePos('reactor') };
     const inc = Sim.activeInc(S).filter((i) => i.fix && S.t >= i.from).sort((a, b) => (b.sev === 'crit') - (a.sev === 'crit'))[0];
     if (inc) { const cid = { water: inc.type === 'sensor_drift' ? 'o2' : 'water', life: 'med', bridge: 'comms', gh: 'gh', reactor: 'reactor', rad: 'shield', lab: 'lab' }[inc.room]; return { t: (es ? 'Repara «' : 'Repair "') + tr(DATA.EVT[inc.type].t) + (es ? '» en ' : '" in ') + room(inc.room), p: World.consolePos(cid) }; }
+    const cs = Sim.campStatus(S);
+    if (cs) {
+      const k = cs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '';
+        let p = null;
+        if (tg.startsWith('room:')) p = World.roomCenter(tg.slice(5));
+        else if (tg.startsWith('plant')) { const parts = tg.split(':'); p = parts.length > 1 ? World.plantPos(+parts[1], +parts[2]) : World.plantPos(1, 1); }
+        else p = World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[cs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
@@ -223,6 +237,7 @@ const Game = (function () {
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mgRun && mgRun.g && !mgRun.g.done && mgRun.tick) mgRun.tick(dt);
+    if (running && S) tickRadio(dt);
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
@@ -236,7 +251,7 @@ const Game = (function () {
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
       World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
-      hudT += dt; if (hudT > 0.25) { hudT = 0; updateHud(); updatePrompt(); }
+      hudT += dt; if (hudT > 0.25) { hudT = 0; updateHud(); updatePrompt(); watchResources(); checkRoomVisit(); }
     } else if (!running) drawMenuBg(now / 1000);
     requestAnimationFrame(frame);
   }
@@ -258,13 +273,24 @@ const Game = (function () {
   function updatePrompt() {
     near = running && !modalOpen() ? World.nearest() : null;
     const p = $('#prompt');
+    const lockRoom = !near && running && !modalOpen() ? World.lockedNear() : null;
+    if (lockRoom) {
+      const es = LANG === 'es', cs = Sim.campStatus(S);
+      $('#actBtn').textContent = '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : '');
+      p.classList.remove('hidden'); return;
+    }
     if (near) {
-      const name = near.id === 'sample' ? _('collect') : consoleName(near.id);
+      const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
+      const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
       $('#actBtn').textContent = (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name;
       p.classList.remove('hidden');
     } else p.classList.add('hidden');
   }
-  function interact() { if (!running || modalOpen() || !near) return; Sfx.play('click'); openConsole(near); }
+  function interact() {
+    if (!running || modalOpen()) return;
+    if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
+    Sfx.play('click'); openConsole(near);
+  }
   function togglePause() { paused = !paused; updateHud(); if (paused) pauseMenu(); }
   function toggleMute() { settings.muted = !settings.muted; applySettings(); }
 
@@ -277,18 +303,17 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = r.S; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); lastN = S.logN || 0;
+    S = Sim.migrate(r.S); speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; lastRoom = null;
     beginPlay();
     return true;
   }
-  function newRun(scen, diff) {
+  function newRun(scen, diff, opts) {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, seed }); speed = 1; lastN = 0;
+    S = Sim.create({ scen, diff, seed, skipCamp: !!(opts && opts.skipCamp) }); speed = 1; lastN = 0; radio.q = []; radio.cur = null; lastRoom = null; for (const k in resState) delete resState[k];
     settings.scen = scen; settings.diff = diff; if (diff === 'explorer') settings.hints = true; Store.set('settings', settings);
     World.init(scen); stats.runs++; Store.set('stats', stats);
     beginPlay();
-    if (!settings.tutDone) tutorial();
-    else toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
+    toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
   }
   function beginPlay() {
     clearLayer(); running = true; paused = false;
@@ -296,7 +321,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); saveRun();
   }
-  function stopPlay() { running = false; $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
@@ -353,7 +378,7 @@ const Game = (function () {
     push(panel('⏸ ' + _('paused'), h('div', { class: 'menu-grid' },
       btn('▶ ' + _('resume'), () => { pop(); }, 'primary', { autofocus: true }),
       btn('💾 ' + _('save'), () => { saveRun(); toast(_('saved'), '', 'ok'); }),
-      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel),
+      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel),
       btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }),
       btn('🏠 ' + _('mainMenu'), () => { saveRun(); mainMenu(); }))), { onclose: () => { paused = false; updateHud(); } });
   }

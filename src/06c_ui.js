@@ -309,6 +309,7 @@
     $('#bMenu').addEventListener('click', () => pauseMenu());
     $('#bAlerts').addEventListener('click', () => openCmd('log'));
     $('#actBtn').addEventListener('click', () => interact());
+    cv.addEventListener('pointerdown', (e) => { if (!running || modalOpen() || !S) return; const pk = World.pick(e.clientX, e.clientY, dpr); if (pk) { Sfx.play('click'); openConsole(pk); } });
     document.addEventListener('pointerdown', () => Sfx.init(), { once: true });
     if (/[?&]selftest\b/.test(location.search)) { mainMenu(); selfTestPanel(); }
     else if (/[?&]sheet\b/.test(location.search)) sheetPanel();
@@ -317,6 +318,6 @@
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

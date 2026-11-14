@@ -22,6 +22,7 @@ button,input,select{font:inherit;color:inherit}
 a{color:var(--accent)}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 #app{position:fixed;inset:0}
+#layer{position:absolute;inset:0;z-index:20;pointer-events:none}#layer>*{pointer-events:auto}
 #game{position:absolute;inset:0;width:100%;height:100%;display:block;background:#02040c}
 .hidden{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -125,6 +126,11 @@ th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical
   #joy{left:16px;bottom:24px}
   .panel{padding:12px}
 }
+#radio{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;width:min(680px,calc(100vw - 16px));display:flex;gap:10px;align-items:flex-start;background:rgba(10,16,36,.96);border:2px solid var(--info);border-radius:14px;padding:10px;box-shadow:var(--shadow);z-index:5;animation:slidein .25s}
+#radio.crit{border-color:var(--danger)} #radio.warn{border-color:var(--warning)} #radio.ok{border-color:var(--success)}
+.radio-title{font-weight:800;font-size:16px}
+.talk .bubble{background:var(--surface-2);border:1px solid var(--border-input);border-radius:14px;padding:12px;font-size:17px;line-height:1.45}
+@media (max-width:600px){#radio{bottom:186px;padding:8px;gap:8px;font-size:13px}#radio .r-desc,#radio .r-cons,#radio .muted{display:none}#radio canvas{width:44px!important;height:44px!important}.radio-title{font-size:14px}#radio .btn.sm{min-height:34px;padding:4px 8px;font-size:12px}}
 html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
 </style>
@@ -145,6 +151,7 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
   </div>
   <div id="toasts" aria-live="polite"></div>
   <div id="hint" class="hidden"></div>
+  <div id="radio" class="hidden" role="status" aria-live="polite"></div>
   <div id="prompt" class="hidden"><button class="btn primary" id="actBtn"></button></div>
   <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button class="btn primary" id="btnE" aria-label="Interactuar">E</button></div>
   <canvas id="mini" class="hidden" width="380" height="300" aria-hidden="true"></canvas>
@@ -166,7 +173,7 @@ const DATA = (function () {
       moonD: 'Región del cráter Shackleton, polo sur lunar. Sin atmósfera, luz solar casi rasante, mensajes con ~1,3 s de retraso.',
       marsD: 'Atmósfera tenue, polvo, días de 24 h 39 min y mensajes con 3 a 22 minutos de retraso.',
       go: '¡Despegar!', back: 'Volver', close: 'Cerrar', confirm: 'Confirmar', cancel: 'Cancelar', yes: 'Sí', no: 'No', on: 'Activado', off: 'Desactivado',
-      o2: 'Oxígeno', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
+      o2: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
       ok: 'Normal', warn: 'Advertencia', crit: 'Crítico', info: 'Información',
       interact: 'Interactuar', repair: 'Reparar', investigate: 'Investigar', manage: 'Administrar', collect: 'Recoger muestras', play: 'Ejecutar minijuego', rest: 'Descansar', explore: 'Explorar',
       paused: 'Pausa', resume: 'Reanudar', mainMenu: 'Menú principal', save: 'Guardar', saved: 'Partida guardada', endRun: 'Terminar y ver informe',
@@ -190,7 +197,7 @@ const DATA = (function () {
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
       helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
-      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
+      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
       start: 'Start mission', cont: 'Continue', manual: 'Learning manual', earthConn: 'Earth Connection', sources: 'Science sources',
@@ -199,7 +206,7 @@ const DATA = (function () {
       moonD: 'Shackleton crater region, lunar south pole. No air, low-angle sunlight, messages delayed ~1.3 s.',
       marsD: 'Thin air, dust, 24 h 39 min days and messages delayed 3 to 22 minutes.',
       go: 'Launch!', back: 'Back', close: 'Close', confirm: 'Confirm', cancel: 'Cancel', yes: 'Yes', no: 'No', on: 'On', off: 'Off',
-      o2: 'Oxygen', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
+      o2: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
       ok: 'Normal', warn: 'Warning', crit: 'Critical', info: 'Info',
       interact: 'Interact', repair: 'Repair', investigate: 'Investigate', manage: 'Manage', collect: 'Collect samples', play: 'Play mini-game', rest: 'Rest', explore: 'Explore',
       paused: 'Paused', resume: 'Resume', mainMenu: 'Main menu', save: 'Save', saved: 'Game saved', endRun: 'End and see report',
@@ -223,7 +230,7 @@ const DATA = (function () {
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
       helpMove: 'Move with WASD or arrows · E to interact · P pause', helpTouch: 'Use the joystick to move and the E button to interact',
-      busy: 'A mission is already active. Finish or abandon it first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
+      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };
 
@@ -234,7 +241,7 @@ const DATA = (function () {
     hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
-    commander: { es: 'Comandante (tú)', en: 'Commander (you)', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },
+    commander: { es: 'Comandante Vega', en: 'Commander Vega', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },
     engineer: { es: 'Ingeniera Ana', en: 'Engineer Ana', b: { es: 'Repara incidentes sola poco a poco y acelera obras un 30 %.', en: 'Slowly repairs incidents on her own and speeds up building jobs 30%.' } },
     scientist: { es: 'Científico Leo', en: 'Scientist Leo', b: { es: 'Analiza muestras un 50 % más rápido.', en: 'Analyzes samples 50% faster.' } },
     medic: { es: 'Médica Sofía', en: 'Medic Sofía', b: { es: 'Sube la moral de la tripulación (+6 puntos de objetivo).', en: 'Raises crew morale (+6 target points).' } },
@@ -589,6 +596,147 @@ const Sfx = (function () {
   return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); (P[k] || P.click)(); },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();
+/* =====================================================================
+   NPC — Guías, conversaciones, campaña de familiarización, contenido de
+   las llamadas de alerta y fichas botánicas (es/en).
+   ===================================================================== */
+const NPCDATA = (function () {
+  const PEOPLE = {
+    control: { name: { es: 'Control de Misión', en: 'Mission Control' }, spec: { es: 'Centro de control en la Tierra', en: 'Earth control center' } },
+    commander: { name: { es: 'Comandante Vega', en: 'Commander Vega' }, spec: { es: 'Comandante · objetivos y navegación', en: 'Commander · goals and navigation' } },
+    engineer: { name: { es: 'Ana', en: 'Ana' }, spec: { es: 'Ingeniera · energía, reactor y rover', en: 'Engineer · power, reactor and rover' } },
+    scientist: { name: { es: 'Leo', en: 'Leo' }, spec: { es: 'Científico · laboratorio y radiación', en: 'Scientist · lab and radiation' } },
+    medic: { name: { es: 'Sofía', en: 'Sofía' }, spec: { es: 'Médica · soporte vital y bienestar', en: 'Medic · life support and wellbeing' } },
+    agri: { name: { es: 'Teo', en: 'Teo' }, spec: { es: 'Agrónomo · invernadero y cultivos', en: 'Agronomist · greenhouse and crops' } }
+  };
+  // Guía de cada sección (si el jugador lleva ese traje, habla Control de Misión)
+  const GUIDE = { bridge: 'commander', life: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer' };
+
+  // 5 pasos: presentarse · para qué sirve · sistemas · misión · cómo interactuar
+  const TALK = {
+    bridge: [
+      { es: '¡Bienvenida, bienvenido a bordo! Te hablo desde el puente de mando: aquí se toman las decisiones de la base.', en: 'Welcome aboard! I am speaking from the command bridge: this is where base decisions are made.' },
+      { es: 'Arriba tienes el HUD: oxígeno, agua, energía, protección, alimentos y bienestar. Verde es bien, ámbar ⚠ es atención y rojo ⛔ es urgente.', en: 'At the top is the HUD: oxygen, water, energy, protection, food and wellbeing. Green is fine, amber ⚠ needs attention, red ⛔ is urgent.' },
+      { es: 'Aquí están la consola de mando 🖥️ (misiones y recursos), las comunicaciones 📡, la Conexión con la Tierra 🌎 y el vestuario 🧥 para cambiar de especialista.', en: 'Here are the command console 🖥️ (missions and resources), communications 📡, Earth Connection 🌎 and the wardrobe 🧥 to switch specialists.' },
+      { es: 'Tu primera misión es «Activación de la colonia»: conocer el puente, el módulo de vida y el reactor. El minimapa y la flecha amarilla te guían.', en: 'Your first mission is "Colony activation": get to know the bridge, the habitation module and the reactor. The minimap and the yellow arrow guide you.' },
+      { es: 'Acércate a una consola brillante y pulsa E (o el botón grande). Empieza por la consola de mando y abre la pestaña Recursos.', en: 'Walk up to a glowing console and press E (or the big button). Start with the command console and open the Resources tab.' }
+    ],
+    life: [
+      { es: 'Hola, soy Sofía, la médica. Este es el módulo de vida, donde la tripulación duerme, come y se recupera.', en: 'Hi, I am Sofía, the medic. This is the habitation module, where the crew sleeps, eats and recovers.' },
+      { es: 'Aquí cuidamos el bienestar: descanso y moral. Una tripulación cansada comete más errores.', en: 'Here we look after wellbeing: rest and morale. A tired crew makes more mistakes.' },
+      { es: 'Tienes las cabinas 🛏️ para descansar, la enfermería 🩺 con el estado de cada tripulante y la sala de bienestar 🎲.', en: 'You have the bunks 🛏️ to rest, the medical bay 🩺 with each crew member\'s status, and the wellbeing corner 🎲.' },
+      { es: 'Para la misión, revisa a la tripulación en la enfermería: dosis de radiación, moral y temperatura.', en: 'For the mission, check the crew at the medical bay: radiation dose, morale and temperature.' },
+      { es: 'Usa E junto a la enfermería. Descansar hace pasar el tiempo: mira antes el panel de consecuencias.', en: 'Press E next to the medical bay. Resting makes time pass: check the consequences panel first.' }
+    ],
+    reactor: [
+      { es: '¡Hola! Soy Ana, la ingeniera. Esto es el reactor y la sala de energía.', en: 'Hi! I am Ana, the engineer. This is the reactor and power room.' },
+      { es: 'Sin energía no hay oxígeno, ni agua limpia, ni calefacción. Aquí se genera y se reparte toda la electricidad.', en: 'Without power there is no oxygen, clean water or heating. All electricity is generated and shared here.' },
+      { es: 'Tenemos el reactor ⚛️, las baterías, los paneles solares ☀️ y el balance energético ⚖️. Si algo se desgasta, hay que repararlo.', en: 'We have the reactor ⚛️, batteries, solar panels ☀️ and the energy balance ⚖️. Worn parts need repair.' },
+      { es: 'Para terminar la activación, ajusta la energía: cambia la potencia del reactor o juega al minijuego de paneles o de balance.', en: 'To finish activation, adjust power: change reactor output or play the solar panel or balance mini-game.' },
+      { es: 'Pulsa E en el panel de energía. Antes de confirmar, el panel de consecuencias te dirá qué sube y qué baja.', en: 'Press E at the power panel. Before you confirm, the consequences panel tells you what goes up and down.' }
+    ],
+    water: [
+      { es: 'Te habla Sofía otra vez. Esta es la sala de reciclaje de agua y oxígeno: el corazón del soporte vital.', en: 'Sofía again. This is the water and oxygen recycling room: the heart of life support.' },
+      { es: 'Aquí el agua usada se limpia para volver a beberla, y el generador separa el agua en oxígeno e hidrógeno.', en: 'Used water is cleaned here to drink again, and the generator splits water into oxygen and hydrogen.' },
+      { es: 'Sistemas: el reciclador 💧, el generador de oxígeno 🫧 y los tanques. Para 1 kg de oxígeno hacen falta 1,125 L de agua.', en: 'Systems: the recycler 💧, the oxygen generator 🫧 and the tanks. 1 kg of oxygen needs 1.125 L of water.' },
+      { es: 'Misión «Recuperación del ciclo de agua»: la bomba del reciclador falló. Repárala, calibra el oxígeno y mantén el agua estable 6 horas.', en: 'Mission "Water cycle recovery": the recycler pump failed. Repair it, calibrate oxygen and keep water stable for 6 hours.' },
+      { es: 'Usa E en el panel de reciclaje y pulsa «Reparar». La consola de oxígeno abre el minijuego de calibración.', en: 'Press E at the recycling panel and tap "Repair". The oxygen console opens the calibration mini-game.' }
+    ],
+    gh: [
+      { es: '¡Hola! Soy Teo, el agrónomo. Bienvenida, bienvenido al invernadero.', en: 'Hi! I am Teo, the agronomist. Welcome to the greenhouse.' },
+      { es: 'Aquí cultivamos comida fresca. Las plantas también nos alegran el día, como pasó con las zinnias de la estación espacial.', en: 'We grow fresh food here. Plants also lift our spirits, as the space station zinnias did.' },
+      { es: 'Cada jardinera tiene luz LED, riego por tubos, un sensor de humedad 🟢 y tres plantas. Cada planta necesita agua, luz y nutrientes.', en: 'Each planter has LED light, drip tubes, a moisture sensor 🟢 and three plants. Each plant needs water, light and nutrients.' },
+      { es: 'Misión «Primer cultivo»: siembra 3 semillas, riega una planta, añade nutrientes y cosecha la lechuga que está casi lista.', en: 'Mission "First crop": plant 3 seeds, water a plant, add nutrients and harvest the lettuce that is almost ready.' },
+      { es: 'Acércate a una planta y pulsa E (o tócala). Se abrirá su ficha con sus datos y las acciones posibles.', en: 'Walk up to a plant and press E (or tap it). Its card opens with its data and possible actions.' }
+    ],
+    lab: [
+      { es: 'Hola, soy Leo, el científico. Este es el laboratorio.', en: 'Hi, I am Leo, the scientist. This is the lab.' },
+      { es: 'Aquí estudiamos muestras del suelo y del ambiente para entender dónde estamos y qué riesgos hay.', en: 'We study soil and environment samples here to understand where we are and what risks exist.' },
+      { es: 'Tenemos el análisis de muestras 🔬, el espectrómetro 🌈 y el registro de investigaciones 📚.', en: 'We have sample analysis 🔬, the spectrometer 🌈 and the research log 📚.' },
+      { es: 'Misión «Exploración científica»: analiza una de las muestras del aterrizaje, usa el espectrómetro y consulta el registro.', en: 'Mission "Science exploration": analyze one of the landing samples, use the spectrometer and check the log.' },
+      { es: 'Pulsa E en cada consola. El análisis tarda unas horas: puedes hacer otras cosas mientras tanto.', en: 'Press E at each console. Analysis takes a few hours: you can do other things meanwhile.' }
+    ],
+    rad: [
+      { es: 'Soy Ana de nuevo: también piloto el rover. Esta es la bahía del rover y el refugio contra la radiación.', en: 'Ana again: I also drive the rover. This is the rover bay and the radiation shelter.' },
+      { es: 'Desde aquí salimos a explorar y aquí nos protegemos cuando el Sol lanza tormentas de partículas.', en: 'We head out to explore from here, and we take cover here when the Sun throws particle storms.' },
+      { es: 'Sistemas: el blindaje 🛡️, el refugio con rayas amarillas, el rover 🚙, el extractor de hielo 🧊 y la esclusa 🚪.', en: 'Systems: shielding 🛡️, the yellow-striped shelter, the rover 🚙, the ice extractor 🧊 and the airlock 🚪.' },
+      { es: '¡Has terminado la familiarización! Ya puedes elegir las misiones avanzadas en la consola de mando.', en: 'You finished the familiarization! You can now pick advanced missions at the command console.' },
+      { es: 'Desde ahora cada sección pide su especialista. Cambia de traje en el vestuario del puente. En emergencias, cualquiera puede reparar.', en: 'From now on each section needs its specialist. Change suits at the bridge wardrobe. In emergencies, anyone can repair.' }
+    ]
+  };
+
+  const CAMP = {
+    c1: { t: { es: 'Activación de la colonia', en: 'Colony activation' }, b: { es: 'Conoce el puente, el módulo de vida y el reactor, y pon en marcha la energía.', en: 'Get to know the bridge, habitation module and reactor, and get power going.' } },
+    c2: { t: { es: 'Recuperación del ciclo de agua', en: 'Water cycle recovery' }, b: { es: 'Repara el reciclador, calibra el oxígeno y estabiliza el agua.', en: 'Repair the recycler, calibrate oxygen and stabilize water.' } },
+    c3: { t: { es: 'Primer cultivo', en: 'First crop' }, b: { es: 'Aprende a sembrar, cuidar y cosechar plantas.', en: 'Learn to plant, tend and harvest crops.' } },
+    c4: { t: { es: 'Exploración científica', en: 'Science exploration' }, b: { es: 'Analiza muestras y comprende las condiciones del entorno.', en: 'Analyze samples and understand the environment.' } }
+  };
+  const KEY = {
+    talk_bridge: { es: 'Escucha a tu guía en el puente', en: 'Listen to your guide on the bridge' },
+    cmd_resources: { es: 'Abre la pestaña Recursos de la consola de mando', en: 'Open the Resources tab of the command console' },
+    talk_life: { es: 'Visita el módulo de vida', en: 'Visit the habitation module' },
+    med_open: { es: 'Revisa a la tripulación en la enfermería', en: 'Check the crew at the medical bay' },
+    talk_reactor: { es: 'Visita el reactor', en: 'Visit the reactor' },
+    power_action: { es: 'Ajusta la energía (reactor, modo emergencia o minijuego solar/balance)', en: 'Adjust power (reactor, emergency mode or solar/balance mini-game)' },
+    talk_water: { es: 'Visita la sala de agua y oxígeno', en: 'Visit the water and oxygen room' },
+    rec_fixed: { es: 'Repara la bomba del reciclador', en: 'Repair the recycler pump' },
+    o2_cal: { es: 'Calibra el oxígeno (minijuego)', en: 'Calibrate oxygen (mini-game)' },
+    water_hold: { es: 'Mantén reciclaje ≥ 78 % y agua ≥ 30 % durante 6 h', en: 'Keep recycling ≥ 78% and water ≥ 30% for 6 h' },
+    talk_gh: { es: 'Visita el invernadero', en: 'Visit the greenhouse' },
+    plant3: { es: 'Siembra 3 semillas', en: 'Plant 3 seeds' },
+    water1: { es: 'Riega una planta', en: 'Water a plant' },
+    feed1: { es: 'Añade nutrientes a una planta', en: 'Add nutrients to a plant' },
+    harvest1: { es: 'Cosecha una planta madura (jardinera 1)', en: 'Harvest a mature plant (planter 1)' },
+    talk_lab: { es: 'Visita el laboratorio', en: 'Visit the lab' },
+    analyze1: { es: 'Analiza una muestra', en: 'Analyze a sample' },
+    spec_open: { es: 'Usa el espectrómetro', en: 'Use the spectrometer' },
+    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' }
+  };
+  // Dónde guiar al jugador para cada objetivo (consola o sala)
+  const KEYTARGET = { talk_bridge: 'room:bridge', cmd_resources: 'cmd', talk_life: 'room:life', med_open: 'med', talk_reactor: 'room:reactor', power_action: 'reactor',
+    talk_water: 'room:water', rec_fixed: 'water', o2_cal: 'o2', water_hold: 'water', talk_gh: 'room:gh', plant3: 'plant', water1: 'plant', feed1: 'plant', harvest1: 'plant:0:0',
+    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log' };
+
+  // Quién informa de cada incidente
+  const INC_NPC = { solar_storm: 'scientist', power_drop: 'engineer', dust_storm: 'engineer', water_fail: 'engineer', pressure_leak: 'medic', comms_blackout: 'commander',
+    crop_fail: 'agri', thermal_fail: 'engineer', wear: 'engineer', sensor_drift: 'medic' };
+  const INC_CONSOLE = { solar_storm: 'shield', power_drop: 'reactor', dust_storm: 'reactor', water_fail: 'water', pressure_leak: 'med', comms_blackout: 'comms', crop_fail: 'gh', thermal_fail: 'med', sensor_drift: 'o2' };
+  const CONSEQ = {
+    solar_storm: { es: 'La tripulación recibiría mucha más radiación y la misión podría abortarse.', en: 'The crew would get much more radiation and the mission could be aborted.' },
+    power_drop: { es: 'La batería se vaciará y se apagarán sistemas, empezando por el invernadero.', en: 'The battery will drain and systems will shut down, starting with the greenhouse.' },
+    dust_storm: { es: 'Los paneles casi no producirán y la batería bajará durante días.', en: 'Panels will barely produce and the battery will drop for days.' },
+    water_fail: { es: 'Perderemos agua cada hora; sin agua tampoco hay oxígeno.', en: 'We will lose water every hour; without water there is no oxygen either.' },
+    pressure_leak: { es: 'Se escapa aire y oxígeno; si la presión baja mucho, habrá que evacuar.', en: 'Air and oxygen escape; if pressure drops too far, we must evacuate.' },
+    comms_blackout: { es: 'No recibiremos avisos ni ayuda de la Tierra hasta repararla.', en: 'We will get no warnings or help from Earth until it is fixed.' },
+    crop_fail: { es: 'La plaga se extenderá y perderemos plantas y comida.', en: 'The pest will spread and we will lose plants and food.' },
+    thermal_fail: { es: 'La base se enfriará: baja el bienestar y las plantas crecen peor.', en: 'The base will cool down: wellbeing drops and plants grow worse.' },
+    wear: { es: 'El equipo rendirá menos y puede averiarse del todo.', en: 'The equipment will perform worse and may fail completely.' },
+    sensor_drift: { es: 'El oxígeno real puede salir del rango seguro sin que el sensor lo note.', en: 'Real oxygen may leave the safe range without the sensor noticing.' }
+  };
+  // Alertas por recursos
+  const RES = {
+    o2: { npc: 'medic', console: 'water', d: { es: 'Las reservas de oxígeno están bajas', en: 'Oxygen reserves are low' }, a: { es: 'Revisa el generador de O₂ y el agua disponible; repara fugas.', en: 'Check the O₂ generator and available water; fix leaks.' }, c: { es: 'Sin oxígeno habrá que evacuar la base.', en: 'Without oxygen the base must be evacuated.' } },
+    water: { npc: 'medic', console: 'water', d: { es: 'El agua del tanque está bajando', en: 'Tank water is dropping' }, a: { es: 'Sube el reciclaje, reduce el riego o activa el extractor de hielo.', en: 'Raise recycling, reduce irrigation or turn on the ice extractor.' }, c: { es: 'Sin agua no hay bebida ni oxígeno.', en: 'Without water there is no drinking water or oxygen.' } },
+    power: { npc: 'engineer', console: 'reactor', d: { es: 'La batería está baja', en: 'The battery is low' }, a: { es: 'Baja las luces LED, sube el reactor u orienta los paneles.', en: 'Dim the LEDs, raise the reactor or aim the panels.' }, c: { es: 'Se apagarán sistemas y, al final, el soporte vital.', en: 'Systems will shut down and, finally, life support.' } },
+    food: { npc: 'agri', console: 'gh', d: { es: 'Quedan pocos alimentos', en: 'Food is running low' }, a: { es: 'Cosecha lo que esté maduro y siembra más.', en: 'Harvest what is ripe and plant more.' }, c: { es: 'Sin comida la misión tendrá que terminar.', en: 'Without food the mission will have to end.' } },
+    well: { npc: 'medic', console: 'med', d: { es: 'La tripulación está cansada y desanimada', en: 'The crew is tired and low on morale' }, a: { es: 'Resuelve las alertas, descansa y cuida la temperatura.', en: 'Resolve alerts, rest and keep the temperature right.' }, c: { es: 'Control de Misión podría ordenar el regreso.', en: 'Mission Control could order a return home.' } },
+    dose: { npc: 'scientist', console: 'shield', d: { es: 'La dosis de radiación acumulada es alta', en: 'Accumulated radiation dose is high' }, a: { es: 'Refuerza el blindaje y usa el refugio en las tormentas.', en: 'Reinforce shielding and use the shelter during storms.' }, c: { es: 'Si supera el límite del modelo, la misión se aborta.', en: 'If it passes the model limit, the mission is aborted.' } }
+  };
+  const RES_ROOM = { o2: 'water', water: 'water', power: 'reactor', food: 'gh', well: 'life', dose: 'rad' };
+
+  // Fichas botánicas (dato real con fuente + necesidades)
+  const PLANT = {
+    romaine: { needs: { es: 'Luz media-alta, riego constante sin encharcar y nutrientes moderados. Prefiere temperaturas frescas (~20 °C).', en: 'Medium-high light, steady moisture without waterlogging, moderate nutrients. Likes cool temperatures (~20 °C).' }, fact: { es: 'En 2015 los astronautas de la ISS comieron por primera vez lechuga romana roja cultivada en el espacio (sistema Veggie de NASA).', en: 'In 2015 ISS astronauts first ate red romaine lettuce grown in space (NASA Veggie system).' } },
+    mizuna: { needs: { es: 'Crece rápido con luz media. Sus hojas finas y dentadas pierden agua deprisa: vigila la humedad.', en: 'Grows fast with medium light. Its thin, toothed leaves lose water quickly: watch moisture.' }, fact: { es: 'La mizuna, una mostaza japonesa, fue uno de los cultivos de hoja del sistema Veggie de la ISS.', en: 'Mizuna, a Japanese mustard green, was one of the leafy crops in the ISS Veggie system.' } },
+    radish: { needs: { es: 'Necesita buena luz y humedad regular; la raíz engorda en las últimas etapas. Exceso de agua = raíces que se pudren.', en: 'Needs good light and regular moisture; the root swells in the last stages. Too much water = rotting roots.' }, fact: { es: 'En 2020 se cultivaron rábanos en el Advanced Plant Habitat de la ISS (experimento Plant Habitat-02).', en: 'In 2020 radishes were grown in the ISS Advanced Plant Habitat (Plant Habitat-02 experiment).' } },
+    chili: { needs: { es: 'Mucha luz, calor (~24 °C) y muchos nutrientes. Podar ayuda a que dé frutos.', en: 'Lots of light, warmth (~24 °C) and plenty of nutrients. Pruning helps it fruit.' }, fact: { es: 'En 2021 la tripulación de la ISS cultivó y probó chiles «Española Improved» (experimento Plant Habitat-04).', en: 'In 2021 the ISS crew grew and tasted "Española Improved" chiles (Plant Habitat-04 experiment).' } },
+    zinnia: { needs: { es: 'Luz alta y humedad controlada: el exceso de agua la enferma. No es comestible, pero mejora la moral.', en: 'High light and controlled moisture: too much water makes it sick. Not edible, but it boosts morale.' }, fact: { es: 'En 2016 floreció una zinnia en la ISS; antes hubo que salvarla de hongos causados por exceso de humedad.', en: 'In 2016 a zinnia bloomed on the ISS; it first had to be saved from mold caused by excess humidity.' } }
+  };
+  const ACCESS = { cmd: ['commander'], comms: ['commander'], med: ['medic'], gh: ['agri'], plant: ['agri'], reactor: ['engineer'], solar: ['engineer'], balance: ['engineer'],
+    water: ['engineer', 'medic'], o2: ['medic', 'engineer'], shield: ['scientist', 'engineer'], rover: ['engineer'], isru: ['engineer'], lab: ['scientist'], spec: ['scientist'], log: ['scientist'] };
+
+  return { PEOPLE, GUIDE, TALK, CAMP, KEY, KEYTARGET, INC_NPC, INC_CONSOLE, CONSEQ, RES, RES_ROOM, PLANT, ACCESS };
+})();
 /*SIM-START*/
 /* =====================================================================
    SIM — Motor de simulación independiente de la interfaz.
@@ -639,11 +787,25 @@ const Sim = (function () {
     engineer: { cons: 1.0, ev: 1.0, maxInc: 2, dose: 80, lead: 5, startPct: 0.75, shelter: 4, repair: 1.0, grace: 1.0, mat: 36, budget: 14, samples: 4 },
     commander: { cons: 1.1, ev: 1.6, maxInc: 3, dose: 60, lead: 3, startPct: 0.62, shelter: 3, repair: 0.85, grace: 0.7, mat: 26, budget: 12, samples: 5 }
   };
+  // Especies cultivadas realmente en la ISS (Veggie / Advanced Plant Habitat). Parámetros de juego (G).
+  // y = kg de alimento por planta · light = luz necesaria (0-1) · nutr = demanda relativa · T = temperatura óptima (°C)
   const CROPS = {
-    micro: { y: 1.3, light: 0.5, water: 0.45, T: 21 },
-    lettuce: { y: 2.1, light: 0.7, water: 0.7, T: 20 },
-    radish: { y: 2.7, light: 0.8, water: 0.8, T: 19 }
+    romaine: { y: 0.7, light: 0.65, nutr: 1.0, T: 20, seeds: 1, mor: 0, prune: false },
+    mizuna: { y: 0.55, light: 0.55, nutr: 0.8, T: 19, seeds: 2, mor: 0, prune: true },
+    radish: { y: 0.9, light: 0.7, nutr: 0.9, T: 18, seeds: 1, mor: 0, prune: false },
+    chili: { y: 0.6, light: 0.85, nutr: 1.3, T: 24, seeds: 2, mor: 2, prune: true },
+    zinnia: { y: 0, light: 0.75, nutr: 1.0, T: 22, seeds: 2, mor: 5, prune: true }
   };
+  const SLOTS = 3;
+  const stageOf = (p) => (p.prog >= 1 ? 4 : p.prog >= 0.6 ? 3 : p.prog >= 0.3 ? 2 : p.prog >= 0.08 ? 1 : 0);
+  function newPlant(S, sp, prog) { return { sp, prog: prog || 0, hp: 100, moist: 60, nutr: 70, light: 0, pest: false, pestKnown: false, prune: 0, seed: Math.floor(rnd(S) * 1e6), inspected: false, age: (prog || 0) * 168 }; }
+  /* Campaña de familiarización: cada etapa desbloquea una sección al cumplir objetivos reales. */
+  const CAMP = [
+    { id: 'c1', unlock: 'water', keys: ['talk_bridge', 'cmd_resources', 'talk_life', 'med_open', 'talk_reactor', 'power_action'] },
+    { id: 'c2', unlock: 'gh', keys: ['talk_water', 'rec_fixed', 'o2_cal', 'water_hold'] },
+    { id: 'c3', unlock: 'lab', keys: ['talk_gh', 'plant3', 'water1', 'feed1', 'harvest1'] },
+    { id: 'c4', unlock: 'rad', keys: ['talk_lab', 'analyze1', 'spec_open', 'log_open'] }
+  ];
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
 
   /* ---------- Incidentes (plantillas) ---------- */
@@ -688,6 +850,7 @@ const Sim = (function () {
         water: R(200, df.startPct, 0.35, 0.15),
         power: R(P.BATT_KWH, df.startPct * 0.9, 0.3, 0.12),
         food: R(80, df.startPct, 0.3, 0.12),
+        nutr: R(30, 0.5, 0.2, 0.07),
         waste: R(40, 0.25, 0.75, 0.9),
         mat: R(120, df.mat / 120, 0.12, 0.05),
         rad: { v: 50, max: 100, warn: 45, crit: 30, cons: 0, prod: 0 },
@@ -717,7 +880,11 @@ const Sim = (function () {
         maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {} }
     };
     if (scen === 'mars') S.lightMin = Math.round(rr(S, 4, 20) * 10) / 10; // real: ~3 a ~22 min según posiciones orbitales
-    for (let i = 0; i < 6; i++) S.beds.push({ crop: i < 2 ? 'lettuce' : null, prog: i < 2 ? 0.35 : 0, hp: 100 });
+    for (let i = 0; i < 6; i++) S.beds.push({ light: 0.7, plants: [null, null, null] });
+    ['romaine', 'mizuna', 'romaine'].forEach((sp, k) => { S.beds[0].plants[k] = newPlant(S, sp, 0.35 + 0.05 * k); });
+    S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
+    S.playerRole = 'commander';
+    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, reactor: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0 };
     for (let i = 0; i < 5; i++) S.crew.push({ role: ROLES[i], zone: 'hab', dose: 0 });
     for (let i = 1; i <= 7; i++) S.m[i] = { st: 'idle', var: 0, stars: 0, hold: 0, t0: 0, att: 0, prog: 0, data: {} };
     derive(S);
@@ -730,6 +897,19 @@ const Sim = (function () {
     S.log.push({ n: S.logN, t: Math.round(S.t * 100) / 100, sev, k, p: p || {} });
     if (S.log.length > 250) S.log.splice(0, S.log.length - 250);
   }
+  function campDone() { return { i: CAMP.length, unlocked: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1 }, basicDone: true, hold: 0, inc: 0 }; }
+  /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
+  function migrate(S) {
+    if (!S.camp) S.camp = campDone();
+    if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
+    if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
+    if (!S.playerRole) S.playerRole = 'commander';
+    S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
+    return S;
+  }
+  function campFlag(S, key) { if (S.camp && !S.camp.basicDone) S.camp.f[key] = 1; }
+  function campCnt(S, key) { if (S.camp && !S.camp.basicDone) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
+  function plantsList(S) { const out = []; S.beds.forEach((b, bi) => b.plants.forEach((p, k) => { if (p) out.push({ p, bi, k }); })); return out; }
   const pct = (r) => (r.max > 0 ? r.v / r.max : 0);
   function status(S, key) {
     if (key === 'dose') { const f = S.st.maxDose / S.limit; return f >= 0.85 ? 'crit' : f >= 0.6 ? 'warn' : 'ok'; }
@@ -756,13 +936,14 @@ const Sim = (function () {
       until: null, prog: 0, fix: T.fix || null, res: false, data: o.data || {}, mission: o.mission || 0 };
     if (T.dur || o.dur) { const d = o.dur || rr(S, T.dur[0], T.dur[1]); inc.until = from + d; }
     if (type === 'wear') {
-      const sys = o.sys || ['reactor', 'solar', 'shield', 'o2'][Math.floor(rnd(S) * 4)];
+      const opts = ['reactor', 'solar', 'shield', 'o2'].filter((x) => !S.camp || S.camp.unlocked[SYS_ROOM[x]]);
+      const sys = o.sys || opts[Math.floor(rnd(S) * opts.length)] || 'reactor';
       inc.sys = sys; inc.room = SYS_ROOM[sys];
       S.sys[sys].h = clamp(S.sys[sys].h - (o.dmg || rr(S, 18, 30)), 5, 100);
     }
-    if (type === 'crop_fail') {
-      const planted = S.beds.map((b, i) => (b.crop ? i : -1)).filter((i) => i >= 0);
-      for (let k = 0; k < Math.min(2, planted.length); k++) { const b = S.beds[planted[Math.floor(rnd(S) * planted.length)]]; b.hp = clamp(b.hp - 40, 1, 100); }
+    if (type === 'crop_fail') { // plaga (pulgones/hongos): afecta a varias plantas; hay que identificarla y podar
+      const list = plantsList(S);
+      for (let k = 0; k < Math.min(3, list.length); k++) { const x = list[Math.floor(rnd(S) * list.length)]; x.p.pest = true; x.p.hp = clamp(x.p.hp - 15, 1, 100); }
     }
     if (type === 'sensor_drift') S.sys.o2.calib += 2.2;
     if (type === 'solar_storm') inc.data.rate = inc.data.rate || rr(S, 2.0, 2.8); // mSv/h sin blindaje (modelo G)
@@ -781,7 +962,7 @@ const Sim = (function () {
     if (inc.type === 'comms_blackout') S.sys.comms.h = Math.max(S.sys.comms.h, 95);
     if (inc.type === 'wear') S.sys[inc.sys].h = Math.max(S.sys[inc.sys].h, Math.min(100, S.sys[inc.sys].h + 45));
     if (inc.type === 'sensor_drift') S.sys.o2.calib = 0;
-    if (inc.type === 'crop_fail') S.beds.forEach((b) => { if (b.crop) b.hp = Math.max(b.hp, 60); });
+    if (inc.type === 'crop_fail') plantsList(S).forEach((x) => { x.p.pest = false; x.p.pestKnown = false; x.p.hp = Math.max(x.p.hp, 50); });
     log(S, 'ok', 'res.' + inc.type, { id: inc.id, how: how || 'auto' });
   }
   function repair(S, id, amount) {
@@ -813,9 +994,10 @@ const Sim = (function () {
     const df = DIFFS[S.diff];
     if (activeInc(S).length >= df.maxInc) return;
     if (S.t - S.lastEv < 10) return;
-    if (rnd(S) > 0.02 * df.ev * h) return;
-    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) &&
-      !(k === 'crop_fail' && !S.beds.some((b) => b.crop)));
+    if (rnd(S) > 0.02 * df.ev * h * (S.camp && !S.camp.basicDone ? 0.5 : 1)) return;
+    const open = (room) => !S.camp || !!S.camp.unlocked[room];
+    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) &&
+      !(k === 'crop_fail' && !plantsList(S).length));
     if (!pool.length) return;
     let tot = pool.reduce((a, k) => a + EV[k].w, 0), x = rnd(S) * tot, pick = pool[0];
     for (const k of pool) { x -= EV[k].w; if (x <= 0) { pick = k; break; } }
@@ -858,7 +1040,7 @@ const Sim = (function () {
     sy.o2.calib = clamp(sy.o2.calib + 0.02 * h, -5, 5);
 
     /* --- Cargas eléctricas (prioridad 1 = esencial) --- */
-    const planted = S.beds.filter((b) => b.crop).length;
+    const planted = plantsList(S).length;
     const loads = [
       { id: 'o2', p: 1, kw: P.O2GEN_KW * sy.o2.lvl },
       { id: 'rec', p: 1, kw: sy.rec.mode === 'max' ? P.REC_KW_MAX : P.REC_KW_ECO },
@@ -870,7 +1052,7 @@ const Sim = (function () {
       { id: 'rover', p: 3, kw: sy.rover.batt < 100 ? 1.0 : 0 },
       { id: 'isru', p: 3, kw: sy.isru.on ? P.ISRU_KW : 0 },
       { id: 'jobs', p: 3, kw: S.jobs.reduce((a, j) => a + (j.kw || 0), 0) },
-      { id: 'lights', p: 4, kw: P.LIGHT_KW_PER_BED * 6 * sy.gh.lights * S.cap.gh * (planted ? 1 : 0.2) },
+      { id: 'lights', p: 4, kw: S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? P.LIGHT_KW_PER_BED * b.light : 0), 0) * S.cap.gh },
       { id: 'pumps', p: 4, kw: 0.3 * sy.gh.irrig * (planted ? 1 : 0) }
     ];
     if (S.emergency) loads.forEach((l) => { if (l.p >= 3) l.kw = 0; });
@@ -913,8 +1095,10 @@ const Sim = (function () {
     const recEff = (sy.rec.mode === 'max' ? P.REC_EFF_MAX : P.REC_EFF_ECO) * lf.rec * (sy.rec.h / 100) * M.recMul;
     const waterOk = r.water.v > 0.05;
     let o2rate = P.O2GEN_MAX * sy.o2.lvl * lf.o2 * (sy.o2.h / 100) * (waterOk ? 1 : 0);
-    const irrigBase = 0.08 * sy.gh.irrig * (sy.gh.drip ? 0.55 : 1) * planted * (lf.pumps || 0);
-    const irrig = waterOk ? irrigBase : 0;
+    // Riego automático con sensores de humedad: repone hasta el 65 % (1 % de humedad ≈ 0,012 L; goteo ×0,55)
+    let irrigL = 0;
+    if (waterOk && (lf.pumps || 0) > 0) for (const b of S.beds) for (const pl of b.plants) if (pl && pl.moist < 65) { const add = Math.min(65 - pl.moist, sy.gh.irrig * 1.6 * h * lf.pumps); pl.moist += add; irrigL += add * 0.012 * (sy.gh.drip ? 0.55 : 1); }
+    const irrig = irrigL / h;
     const elec = P.O2_STOICH_WATER * o2rate;
     const isruL = sy.isru.on ? P.ISRU_LPH * (lf.isru || 0) * (sy.isru.h / 100) : 0;
     const recovered = W * recEff + irrig * 0.3 * recEff + isruL; // condensación del riego + hielo extraído
@@ -930,21 +1114,34 @@ const Sim = (function () {
     sy.o2.conc += (concT - sy.o2.conc) * Math.min(1, 0.2 * h);
     sy.o2.conc = clamp(sy.o2.conc, 10, 30);
 
-    /* --- Cultivos --- */
+    /* --- Cultivos (planta por planta) --- */
     const agri = bonus(S, 'agri') ? 1.15 : 1;
-    const lightSup = clamp(sy.gh.lights * S.cap.gh * (lf.lights || 0), 0, 1);
-    const waterSup = waterOk ? clamp(sy.gh.irrig * (lf.pumps || 0), 0, 1) : 0;
-    for (let i = 0; i < S.beds.length; i++) {
-      const b = S.beds[i];
-      if (!b.crop) continue;
-      const c = CROPS[b.crop];
-      const lF = Math.min(1, lightSup / c.light), wF = Math.min(1, waterSup / c.water);
-      const tF = clamp(1 - Math.abs(sy.thermal.T - c.T) / 9, 0, 1);
-      if (b.prog < 1) b.prog = clamp(b.prog + (h / P.CROP_CYCLE_H) * lF * wF * tF * agri * (0.4 + 0.6 * b.hp / 100), 0, 1);
-      const stress = lF < 0.3 || wF < 0.3 || tF < 0.3;
-      b.hp = clamp(b.hp + (stress ? -0.8 : 0.3) * h - (M.blight ? 0.25 * h : 0) - (b.prog >= 1 ? 0.05 * h : 0), 0, 100);
-      if (b.hp <= 0) { b.crop = null; b.prog = 0; b.hp = 100; log(S, 'warn', 'crop.dead', { bed: i + 1 }); S.st.mistakes.cropDead = (S.st.mistakes.cropDead || 0) + 1; }
-    }
+    let fert = 0;
+    S.beds.forEach((b, bi) => {
+      const light = clamp(b.light * S.cap.gh * (lf.lights == null ? 1 : lf.lights), 0, 1);
+      b.plants.forEach((pl, k) => {
+        if (!pl) return;
+        const c = CROPS[pl.sp], st = stageOf(pl);
+        pl.light = light;
+        pl.moist = clamp(pl.moist - (0.6 + 0.6 * light) * h * (sy.thermal.T > 26 ? 1.3 : 1), 0, 100);
+        const autoN = r.nutr.v > 0.2 ? 0.06 * sy.gh.irrig * (lf.pumps || 0) * h : 0; // fertirrigación lenta
+        fert += autoN * 0.01;
+        pl.nutr = clamp(pl.nutr - 0.2 * c.nutr * (0.5 + st * 0.25) * h + autoN, 0, 100);
+        const lF = Math.min(1, light / c.light);
+        const wF = pl.moist < 35 ? clamp((pl.moist - 10) / 25, 0, 1) : pl.moist > 75 ? clamp((100 - pl.moist) / 25, 0, 1) : 1;
+        const nF = clamp(pl.nutr / 40, 0.15, 1);
+        const tF = clamp(1 - Math.abs(sy.thermal.T - c.T) / 10, 0, 1);
+        const prF = pl.prune > 1 ? 0.8 : 1;
+        if (pl.prog < 1) pl.prog = clamp(pl.prog + (h / P.CROP_CYCLE_H) * lF * wF * nF * tF * agri * prF * (0.4 + 0.6 * pl.hp / 100), 0, 1);
+        pl.age += h;
+        if (c.prune && st >= 2) pl.prune = clamp(pl.prune + 0.012 * h * (pl.nutr > 50 ? 1.4 : 1), 0, 2);
+        let dh = 0.3;
+        if (pl.moist < 20) dh -= 1.4; if (pl.moist > 85) dh -= 0.9; if (lF < 0.4) dh -= 0.35; if (pl.nutr < 15) dh -= 0.6; if (pl.pest) dh -= 1.0; if (tF < 0.4) dh -= 0.5; if (pl.prog >= 1) dh -= 0.05;
+        pl.hp = clamp(pl.hp + dh * h, 0, 100);
+        if (pl.hp <= 0) { b.plants[k] = null; log(S, 'warn', 'crop.dead', { bed: bi + 1, sp: pl.sp }); S.st.mistakes.cropDead = (S.st.mistakes.cropDead || 0) + 1; }
+      });
+    });
+    r.nutr.v -= fert; r.nutr.cons = fert / h;
 
     /* --- Alimentos --- */
     const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons;
@@ -957,10 +1154,10 @@ const Sim = (function () {
     r.rad.v = eff * 100;
     const gcr = sc.gcr / 24;
     let cap = sy.shield.cap;
-    const player = S.crew[0];
+    const player = S.crew.find((c) => c.role === (S.playerRole || 'commander')) || S.crew[0];
     if (player.zone === 'shelter') { if (cap > 0) cap--; else player.zone = 'hab'; }
-    for (let i = 1; i < S.crew.length; i++) {
-      const c = S.crew[i];
+    for (const c of S.crew) {
+      if (c === player) continue;
       if (S.proto && cap > 0) { c.zone = 'shelter'; cap--; } else c.zone = 'hab';
     }
     let maxD = 0;
@@ -1016,6 +1213,7 @@ const Sim = (function () {
     commsStep(S, M);
 
     /* --- Misiones --- */
+    campStep(S, h);
     missionsStep(S, h);
 
     normalize(S);
@@ -1066,7 +1264,8 @@ const Sim = (function () {
     const sy = S.sys;
     if (j.kind === 'shield') { sy.shield.lvl = Math.min(3, sy.shield.lvl + 1); sy.shield.h = Math.max(sy.shield.h, 90); log(S, 'ok', 'job.shield', { lvl: sy.shield.lvl }); }
     if (j.kind === 'shelter') { sy.shield.cap = Math.min(5, sy.shield.cap + 1); log(S, 'ok', 'job.shelter', { cap: sy.shield.cap }); }
-    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'nutr') { S.r.nutr.v += 4; log(S, 'ok', 'job.nutr', {}); }
     if (j.kind === 'experiment') { S.science += 8; S.morale += 4; log(S, 'ok', 'job.experiment', {}); }
     if (j.kind === 'recycle') { S.r.mat.v += 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
     if (j.kind === 'maint') { sy[j.sys].h = Math.min(100, sy[j.sys].h + 35); log(S, 'ok', 'job.maint', { sys: j.sys }); }
@@ -1105,7 +1304,7 @@ const Sim = (function () {
     analyze: (S) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      S.samples--; S.jobs.push({ kind: 'analyze', h: 3, kw: 0 });
+      S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0 });
     },
     experiment: (S) => {
       if (S.jobs.some((j) => j.kind === 'experiment')) return 'busy';
@@ -1113,9 +1312,37 @@ const Sim = (function () {
       S.r.water.v -= 2; S.jobs.push({ kind: 'experiment', h: 5, kw: 0 });
     },
     plant: (S, p) => {
-      const b = S.beds[p.bed]; if (!b || b.crop || !CROPS[p.crop]) return 'busy';
-      if (S.r.water.v < 2) return 'nowater';
-      S.r.water.v -= 1.5; b.crop = p.crop; b.prog = 0; b.hp = 100;
+      const b = S.beds[p.bed]; if (!b || b.plants[p.slot] !== null || !CROPS[p.sp]) return 'busy';
+      if ((S.seeds[p.sp] || 0) < 1) return 'noseed';
+      if (S.r.water.v < 1) return 'nowater';
+      if (S.r.nutr.v < 0.2) return 'nonutr';
+      S.seeds[p.sp]--; S.r.water.v -= 0.5; S.r.nutr.v -= 0.2; b.plants[p.slot] = newPlant(S, p.sp, 0); campCnt(S, 'plant');
+    },
+    water: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      if (S.r.water.v < 0.5) return 'nowater';
+      S.r.water.v -= 0.3; pl.moist = clamp(pl.moist + 25, 0, 100); campCnt(S, 'water');
+    },
+    feed: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      const cost = S.playerRole === 'agri' ? 0.22 : 0.3;
+      if (S.r.nutr.v < cost) return 'nonutr';
+      S.r.nutr.v -= cost; pl.nutr = clamp(pl.nutr + 35, 0, 100); campCnt(S, 'feed');
+    },
+    bedlight: (S, p) => { const b = S.beds[p.bed]; if (!b) return 'err'; b.light = clamp(+p.v, 0, 1); },
+    inspect: (S, p) => { const pl = getP(S, p); if (!pl) return 'noplant'; pl.inspected = true; },
+    identify: (S, p) => { const pl = getP(S, p); if (!pl) return 'noplant'; pl.inspected = true; if (pl.pest) pl.pestKnown = true; },
+    prune: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      if (!(pl.prune > 0.6 || (pl.pest && pl.pestKnown) || (pl.hp < 70 && stageOf(pl) >= 2))) return 'noprune';
+      pl.prune = 0; if (pl.pestKnown) { pl.pest = false; pl.pestKnown = false; }
+      pl.hp = clamp(pl.hp + 8, 0, 100); S.r.waste.v += 0.1;
+      if (!plantsList(S).some((x) => x.p.pest)) { const inc = S.inc.find((i) => !i.res && i.type === 'crop_fail'); if (inc) resolveInc(S, inc, 'player'); }
+    },
+    mixnutr: (S) => {
+      if (S.jobs.some((j) => j.kind === 'nutr')) return 'busy';
+      if (S.r.waste.v < 2) return 'nowaste'; if (S.r.water.v < 3) return 'nowater';
+      S.r.waste.v -= 2; S.r.water.v -= 2; S.jobs.push({ kind: 'nutr', h: 2, kw: 0.8 });
     },
     eva: (S) => {
       if (S.r.o2.v < 0.5) return 'err';
@@ -1125,10 +1352,12 @@ const Sim = (function () {
     rec: (S) => { S.morale = clamp(S.morale + 9, 0, 100); step(S, 2); },
     wait: (S, p) => { step(S, clamp(+p.h || 1, 0.5, 24)); }
   };
+  function getP(S, p) { const b = S.beds[p && p.bed]; return b ? b.plants[p.slot] || null : null; }
   function decide(S, id, p) {
     const f = DEC[id]; if (!f) return { ok: false, err: 'unknown' };
     const err = f(S, p || {});
     if (err) return { ok: false, err };
+    if (id === 'reactor' || id === 'emergency') campFlag(S, 'power_action');
     normalize(S); derive(S);
     S.st.good['dec_' + id] = (S.st.good['dec_' + id] || 0) + 1;
     return { ok: true };
@@ -1154,20 +1383,27 @@ const Sim = (function () {
     return { ok: res.ok, err: res.err, now, a: snapshot(base), b: snapshot(alt), hours };
   }
 
-  function harvest(S, i) {
-    const b = S.beds[i]; if (!b || !b.crop || b.prog < 1) return 0;
-    const y = CROPS[b.crop].y * (b.hp / 100);
-    S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[b.crop] = (S.st.crops[b.crop] || 0) + 1;
-    const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[b.crop] = 1; }
-    b.crop = null; b.prog = 0; b.hp = 100;
+  /** Cosecha una planta madura. Devuelve { kg, sp, seeds } o null. */
+  function harvest(S, bed, slot) {
+    const b = S.beds[bed], pl = b && b.plants[slot];
+    if (!pl || pl.prog < 1) return null;
+    const c = CROPS[pl.sp], y = c.y * (pl.hp / 100) * (pl.prune > 1 ? 0.8 : 1);
+    S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[pl.sp] = (S.st.crops[pl.sp] || 0) + 1;
+    S.seeds[pl.sp] = (S.seeds[pl.sp] || 0) + c.seeds; S.morale = clamp(S.morale + c.mor, 0, 100); S.r.waste.v += 0.15;
+    const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[pl.sp] = 1; }
+    campCnt(S, 'harvest');
+    b.plants[slot] = null;
     normalize(S); derive(S);
-    log(S, 'ok', 'crop.harvest', { kg: Math.round(y * 100) / 100 });
-    return y;
+    log(S, 'ok', 'crop.harvest', { kg: Math.round(y * 100) / 100, sp: pl.sp });
+    return { kg: y, sp: pl.sp, seeds: c.seeds };
   }
 
   /* ---------- Minijuegos -> sistemas ---------- */
   function mini(S, kind, res) {
     const ok = !!res.ok, sc = clamp(fin(res.score, 0), 0, 1);
+    if (ok && (kind === 'solar' || kind === 'balance')) campFlag(S, 'power_action');
+    if (ok && kind === 'o2') campFlag(S, 'o2_cal');
+    if (res.inc && S.playerRole === 'engineer' && kind === 'wiring') res = Object.assign({}, res, { score: Math.min(1, sc + 0.15) });
     const sy = S.sys;
     if (ok) S.pts += Math.round(20 + 30 * sc);
     S.st[ok ? 'good' : 'mistakes']['mg_' + kind] = (S.st[ok ? 'good' : 'mistakes']['mg_' + kind] || 0) + 1;
@@ -1188,7 +1424,7 @@ const Sim = (function () {
         if (ok) sy.solar.dust *= 0.3;
         break;
       case 'gh':
-        S.beds.forEach((b) => { if (b.crop) b.hp = Math.min(100, b.hp + (ok ? 25 * sc + 5 : 3)); });
+        plantsList(S).forEach((x) => { x.p.hp = Math.min(100, x.p.hp + (ok ? 25 * sc + 5 : 3)); if (ok) x.p.moist = clamp(x.p.moist, 40, 70); });
         if (ok) { sy.gh.drip = true; if (res.inc) repair(S, res.inc, 100); }
         break;
       case 'rover': {
@@ -1234,9 +1470,52 @@ const Sim = (function () {
   }
 
   /* ---------- Misiones ---------- */
+  function campStart(S) {
+    const C = S.camp; C.cnt = {}; C.hold = 0;
+    const id = CAMP[C.i] && CAMP[C.i].id;
+    if (id === 'c2') { const inc = S.inc.find((i) => !i.res && i.type === 'water_fail') || addInc(S, 'water_fail', { sev: 'warn' }); C.inc = inc.id; }
+    if (id === 'c3') S.beds[0].plants.forEach((pl) => { if (pl) pl.prog = Math.max(pl.prog, 0.86); });
+    if (id === 'c4') { S.samples += 2; S.st.samplesTot += 2; }
+    if (id) log(S, 'info', 'camp.start', { id });
+  }
+  function campKeyDone(S, key) {
+    const C = S.camp, n = C.cnt;
+    switch (key) {
+      case 'rec_fixed': return !S.inc.some((i) => i.id === C.inc && !i.res);
+      case 'plant3': return (n.plant || 0) >= 3;
+      case 'water1': return (n.water || 0) >= 1;
+      case 'feed1': return (n.feed || 0) >= 1;
+      case 'harvest1': return (n.harvest || 0) >= 1;
+      case 'analyze1': return (n.analyze || 0) >= 1;
+      default: return !!C.f[key];
+    }
+  }
+  function campStatus(S) {
+    const C = S.camp; if (!C || C.basicDone) return null;
+    const D = CAMP[C.i]; return { id: D.id, unlock: D.unlock, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
+  }
+  function campStep(S, h) {
+    const C = S.camp; if (!C || C.basicDone) return;
+    const D = CAMP[C.i];
+    if (D.id === 'c2') { C.hold = S.d.rec >= 0.78 && S.d.water >= 0.3 && !S.inc.some((i) => i.id === C.inc && !i.res) ? C.hold + h : 0; if (C.hold >= 6) C.f.water_hold = 1; }
+    if (D.keys.every((k) => campKeyDone(S, k))) {
+      C.done[D.id] = 1; C.unlocked[D.unlock] = 1; S.pts += 80; S.morale = clamp(S.morale + 5, 0, 100);
+      log(S, 'ok', 'camp.done', { id: D.id, room: D.unlock });
+      C.i++;
+      if (C.i >= CAMP.length) { C.basicDone = true; log(S, 'ok', 'camp.basic', {}); }
+      else campStart(S);
+    }
+  }
+  function setPlayerRole(S, role) {
+    if (!ROLES.includes(role)) return false;
+    const old = S.crew.find((c) => c.role === S.playerRole); if (old) old.zone = 'hab';
+    S.playerRole = role; return true;
+  }
+
   const LIMIT = { 1: 72, 2: 72, 3: 999, 4: 999, 5: 120, 6: 336, 7: 999 };
   function startMission(S, id) {
     if (S.ended) return { ok: false, err: 'ended' };
+    if (S.camp && !S.camp.basicDone) return { ok: false, err: 'locked' };
     // La misión 6 (cultivo, 7 días) puede correr en paralelo con otra misión.
     if (id !== 6) for (let i = 1; i <= 7; i++) if (i !== 6 && S.m[i].st === 'active') return { ok: false, err: 'busy', id: i };
     if (S.m[id].st === 'active' || S.m[id].st === 'done') return { ok: false, err: 'state' };
@@ -1339,7 +1618,7 @@ const Sim = (function () {
     S.quiz[mid] = ok ? 1 : 0; S.st.quizTot++; if (ok) { S.st.quizOk++; S.pts += 30; }
   }
   function finishRun(S) { if (!S.ended) { S.ended = { kind: 'partial', reason: 'player', t: S.t }; log(S, 'info', 'end.player', {}); } }
-  function setPlayerZone(S, z) { S.crew[0].zone = z; }
+  function setPlayerZone(S, z) { const c = S.crew.find((x) => x.role === (S.playerRole || 'commander')) || S.crew[0]; c.zone = z; }
 
   function report(S) {
     const done = [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done');
@@ -1354,7 +1633,7 @@ const Sim = (function () {
     };
   }
 
-  return { P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -1377,12 +1656,35 @@ const SelfTest = (function () {
     if (S.sys.o2.conc < 10 || S.sys.o2.conc > 30) errs.push('conc O2 fuera de rango');
     if (S.samples < 0) errs.push('muestras negativas');
     for (const c of S.crew) if (c.dose < 0) errs.push('dosis negativa');
-    S.beds.forEach((b, i) => { if (b.prog < 0 || b.prog > 1 || b.hp < 0 || b.hp > 100) errs.push('cama ' + i + ' inválida'); });
+    S.beds.forEach((b, i) => b.plants.forEach((p) => { if (p && (p.prog < 0 || p.prog > 1 || p.hp < 0 || p.hp > 100 || p.moist < 0 || p.moist > 100 || p.nutr < 0 || p.nutr > 100)) errs.push('planta en cama ' + i + ' inválida'); }));
+    for (const k in S.seeds) if (S.seeds[k] < 0) errs.push('semillas negativas');
+    if (S.camp && S.camp.basicDone && Object.keys(S.camp.unlocked).length < 7) errs.push('campaña terminada sin todas las salas');
     if (S.morale < 0 || S.morale > 100) errs.push('moral fuera de rango');
   }
+  function garden(S) {
+    const pref = ['romaine', 'radish', 'mizuna', 'chili', 'zinnia'];
+    S.beds.forEach((b, bi) => b.plants.forEach((p, k) => {
+      if (p && p.prog >= 1) { Sim.harvest(S, bi, k); return; }
+      if (!p) { const sp = pref.find((x) => S.seeds[x] > 0 && x !== 'zinnia'); if (sp) Sim.decide(S, 'plant', { bed: bi, slot: k, sp }); return; }
+      if (p.moist < 35) Sim.decide(S, 'water', { bed: bi, slot: k });
+      if (p.nutr < 30) Sim.decide(S, 'feed', { bed: bi, slot: k });
+      if (p.pest) { Sim.decide(S, 'identify', { bed: bi, slot: k }); Sim.decide(S, 'prune', { bed: bi, slot: k }); }
+      if (p.prune > 0.8) Sim.decide(S, 'prune', { bed: bi, slot: k });
+    }));
+    if (S.r.nutr.v < 6) Sim.decide(S, 'mixnutr', {});
+  }
   function smart(S, h, mem) {
+    garden(S);
+    if (S.camp && !S.camp.basicDone) {
+      for (const k of ['talk_bridge', 'cmd_resources', 'talk_life', 'med_open', 'talk_reactor', 'talk_water', 'talk_gh', 'talk_lab', 'spec_open', 'log_open']) Sim.campFlag(S, k);
+      if (!mem.reac) { mem.reac = 1; Sim.decide(S, 'reactor', { v: 0.9 }); }
+      const st = Sim.campStatus(S);
+      if (st && st.id === 'c2' && !mem.o2c) { mem.o2c = 1; Sim.mini(S, 'o2', { ok: true, score: 0.8 }); }
+      if (S.samples > 0) Sim.decide(S, 'analyze', {});
+      if (st && st.id === 'c3' && !mem.fed) { const x = Sim.plantsList(S)[0]; if (x) { mem.fed = 1; Sim.decide(S, 'feed', { bed: x.bi, slot: x.k }); Sim.decide(S, 'water', { bed: x.bi, slot: x.k }); } }
+    }
     const order = [1, 2, 5, 3, 4, 7];
-    if (S.m[6].st !== 'active' && S.m[6].st !== 'done') Sim.startMission(S, 6);
+    if (S.camp && !S.camp.basicDone) { /* familiarización en curso */ } else if (S.m[6].st !== 'active' && S.m[6].st !== 'done') Sim.startMission(S, 6);
     const act = order.find((i) => S.m[i].st === 'active');
     if (!act) { const nxt = order.find((i) => S.m[i].st !== 'done'); if (nxt) Sim.startMission(S, nxt); }
     if (S.m[4].st === 'active') Sim.reportSite(S, 'x', 1);
@@ -1396,7 +1698,7 @@ const SelfTest = (function () {
     const storm = S.inc.some((i) => i.type === 'solar_storm' && !i.res);
     if (storm !== S.proto) Sim.decide(S, 'proto', { v: storm });
     Sim.setPlayerZone(S, storm ? 'shelter' : 'hab');
-    S.beds.forEach((b, i) => { if (b.crop && b.prog >= 1) Sim.harvest(S, i); if (!b.crop) Sim.decide(S, 'plant', { bed: i, crop: i % 2 ? 'radish' : 'lettuce' }); });
+
     if (S.d.power < 0.3 && !S.emergency) Sim.decide(S, 'emergency', { v: true });
     if (S.d.power > 0.6 && S.emergency) Sim.decide(S, 'emergency', { v: false });
     if (Math.abs(S.sys.o2.calib) > 1.5) Sim.mini(S, 'o2', { ok: true, score: 0.8 });
@@ -1896,6 +2198,195 @@ const Chars = (function () {
   return { ROLES, ORDER, draw, drawAccessory, HEIGHT: 64 };
 })();
 /* =====================================================================
+   FLORA — Plantas 2D originales dibujadas por código (sin imágenes).
+   Especies cultivadas en la ISS (NASA Veggie / Advanced Plant Habitat):
+   lechuga romana roja, mizuna, rábano, chile y zinnia.
+   Pivote: punto de siembra en el sustrato (0,0). Altura máxima ≈ 34 u.
+   Estado visual: estrés hídrico (marchitez), exceso de agua, poca luz
+   (tallo alargado y pálido), falta de nutrientes (clorosis), plagas.
+   ===================================================================== */
+const Flora = (function () {
+  const OL = 'rgba(12,20,10,.55)';
+  const SPECIES = {
+    romaine: { short: { es: 'Lechuga', en: 'Lettuce' }, name: { es: 'Lechuga romana', en: 'Romaine lettuce' }, leaf: '#5ea83f', edge: '#8a2a4a', vein: '#cfe8b0', seed: '#9a9a8a' },
+    mizuna: { short: { es: 'Mizuna', en: 'Mizuna' }, name: { es: 'Mizuna', en: 'Mizuna' }, leaf: '#8fd14f', edge: '#5fa83a', vein: '#cfe6a8', seed: '#7a5a3a' },
+    radish: { short: { es: 'Rábano', en: 'Radish' }, name: { es: 'Rábano', en: 'Radish' }, leaf: '#5fa83a', edge: '#3f7f2a', vein: '#d77aa0', seed: '#8a5a3a', root: '#d23c6a' },
+    chili: { short: { es: 'Chile', en: 'Chili' }, name: { es: 'Planta de chile', en: 'Chili pepper' }, leaf: '#3f7f34', edge: '#2f6328', vein: '#9fd07a', seed: '#e8d79a', fruit: '#d8302a', stem: '#5d7a3a' },
+    zinnia: { short: { es: 'Zinnia', en: 'Zinnia' }, name: { es: 'Zinnia', en: 'Zinnia' }, leaf: '#4a8f3c', edge: '#356e2c', vein: '#a8d88a', seed: '#8a7a5a', petals: ['#e0458c', '#ff8a2a', '#f2c230'] }
+  };
+  const STAGES = { es: ['Semilla', 'Brote', 'Planta joven', 'Desarrollo avanzado', 'Planta madura'], en: ['Seed', 'Sprout', 'Young plant', 'Advanced growth', 'Mature plant'] };
+  const stage = (prog) => (prog >= 1 ? 4 : prog >= 0.6 ? 3 : prog >= 0.3 ? 2 : prog >= 0.08 ? 1 : 0);
+
+  function rng(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function mix(a, b, t) {
+    t = Math.max(0, Math.min(1, t));
+    const p = (h) => [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
+    const A = p(a), B = p(b);
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  }
+
+  /* Hoja con distintos bordes. Base en (0,0) y punta en (0,-len) antes de rotar. */
+  function leaf(c, x, y, ang, len, wid, fill, edge, vein, type, r) {
+    c.save(); c.translate(x, y); c.rotate(ang);
+    c.beginPath(); c.moveTo(0, 0);
+    const N = type === 'serrated' ? 9 : type === 'lobed' ? 5 : 8;
+    const side = (sgn) => {
+      for (let i = 1; i <= N; i++) {
+        const t = i / N, yy = -len * t;
+        let w = wid * Math.sin(Math.PI * Math.pow(t, type === 'lance' ? 0.8 : 0.9)) * (type === 'lance' ? 0.75 : 1);
+        if (type === 'wavy') w *= 1 + 0.16 * Math.sin(i * 2.6 + (r || 0));
+        if (type === 'serrated') w *= i % 2 ? 1.25 : 0.45;
+        if (type === 'lobed') w *= (0.5 + 0.5 * t) * (i % 2 ? 1.2 : 0.55) + (i === N - 1 ? 0.5 : 0);
+        c.lineTo(sgn * w, yy);
+      }
+    };
+    side(1); c.lineTo(0, -len);
+    // regreso por el otro lado
+    for (let i = N; i >= 1; i--) {
+      const t = i / N, yy = -len * t;
+      let w = wid * Math.sin(Math.PI * Math.pow(t, type === 'lance' ? 0.8 : 0.9)) * (type === 'lance' ? 0.75 : 1);
+      if (type === 'wavy') w *= 1 + 0.16 * Math.sin(i * 2.6 + 1.3 + (r || 0));
+      if (type === 'serrated') w *= i % 2 ? 1.25 : 0.45;
+      if (type === 'lobed') w *= (0.5 + 0.5 * t) * (i % 2 ? 1.2 : 0.55) + (i === N - 1 ? 0.5 : 0);
+      c.lineTo(-w, yy);
+    }
+    c.closePath();
+    c.fillStyle = fill; c.fill();
+    c.lineWidth = 0.9; c.strokeStyle = edge; c.stroke();
+    c.strokeStyle = vein; c.lineWidth = 0.6; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -len * 0.9); c.stroke();
+    c.restore();
+  }
+  function stem(c, x1, y1, x2, y2, w, col) { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo((x1 + x2) / 2 + (x2 - x1) * 0.2, (y1 + y2) / 2, x2, y2); c.stroke(); }
+  function seedShape(c, sp, col, r) {
+    c.fillStyle = col; c.strokeStyle = OL; c.lineWidth = 0.6;
+    c.beginPath();
+    if (sp === 'romaine') c.ellipse(0, -0.8, 0.8, 2, 0.4 + r, 0, Math.PI * 2);
+    else if (sp === 'mizuna') c.arc(0, -0.8, 1, 0, Math.PI * 2);
+    else if (sp === 'radish') c.arc(0, -1.1, 1.5, 0, Math.PI * 2);
+    else if (sp === 'chili') c.ellipse(0, -0.9, 1.9, 1.2, r, 0, Math.PI * 2);
+    else { c.moveTo(-1.4, 0); c.lineTo(0, -3); c.lineTo(1.4, 0); c.closePath(); }
+    c.fill(); c.stroke();
+  }
+
+  /**
+   * Dibuja una planta. st: { prog, hp, moist, nutr, light, pest, seed, pestKnown }
+   */
+  function draw(c, sp, x, y, scale, st, t) {
+    const S = SPECIES[sp]; if (!S) return;
+    st = st || {};
+    const prog = st.prog || 0, sg = stage(prog), r = rng(st.seed || 1);
+    const vScale = 0.88 + r() * 0.24, tilt = (r() - 0.5) * 0.25, extra = r() < 0.5 ? 0 : 1, hueKey = r();
+    const dry = st.moist == null ? 0 : Math.max(0, (28 - st.moist) / 28);
+    const wet = st.moist == null ? 0 : Math.max(0, (st.moist - 82) / 18);
+    const dark = st.light == null ? 0 : Math.max(0, (0.45 - st.light) / 0.45);
+    const chlor = st.nutr == null ? 0 : Math.max(0, (25 - st.nutr) / 25);
+    const sick = st.hp == null ? 0 : Math.max(0, (55 - st.hp) / 55);
+    let col = S.leaf;
+    col = mix(col, '#a8c88a', dark * 0.55);
+    col = mix(col, '#d6d65a', chlor * 0.7);
+    col = mix(col, '#b59a3a', dry * 0.65 + sick * 0.3);
+    col = mix(col, '#2f5226', wet * 0.6);
+    const edge = mix(S.edge, '#6b5a2a', dry * 0.5 + sick * 0.4);
+    const droop = Math.min(1, dry * 1.2 + sick * 0.5);
+    const stretch = 1 + dark * 0.45;
+    const sway = t == null ? 0 : Math.sin(t * 1.3 + (st.seed || 0) % 7) * 0.03;
+    c.save(); c.translate(x, y); c.scale(scale * vScale, scale * vScale); c.rotate(tilt * 0.3 + sway);
+    // tierra húmeda alrededor
+    c.fillStyle = wet > 0 ? 'rgba(40,60,80,.55)' : st.moist > 40 ? 'rgba(20,12,6,.35)' : 'rgba(120,90,50,.25)';
+    c.beginPath(); c.ellipse(0, 0.5, 5 + sg * 1.3, 1.8, 0, 0, Math.PI * 2); c.fill();
+    if (wet > 0) { c.fillStyle = 'rgba(150,210,255,.6)'; for (const dx of [-4, 3, 6]) { c.beginPath(); c.ellipse(dx, 1, 1.6, 0.6, 0, 0, Math.PI * 2); c.fill(); } }
+    if (sg === 0) { seedShape(c, sp, S.seed, r()); c.restore(); return; }
+    const g = sg === 4 ? 1 : 0.15 + 0.85 * prog; // crecimiento continuo
+    if (sg === 1) { // brote con cotiledones
+      const h = (4 + 6 * (prog / 0.3)) * stretch;
+      stem(c, 0, 0, 0, -h, 1, mix('#b9d88a', col, 0.3));
+      const cotType = sp === 'radish' ? 'wavy' : 'oval';
+      const cw = sp === 'radish' ? 2.6 : 1.8, cl = sp === 'radish' ? 3.6 : 4.2;
+      leaf(c, 0, -h, -1.1 - droop * 0.6, cl, cw, col, edge, S.vein, cotType, 1);
+      leaf(c, 0, -h, 1.1 + droop * 0.6, cl, cw, col, edge, S.vein, cotType, 2);
+      if (sp === 'radish') { c.fillStyle = '#e2a3b8'; c.fillRect(-0.4, -h, 0.8, h); }
+      c.restore(); return;
+    }
+    if (sp === 'romaine' || sp === 'mizuna' || sp === 'radish') {
+      const n = (sp === 'mizuna' ? [0, 0, 7, 11, 15] : sp === 'radish' ? [0, 0, 4, 6, 7] : [0, 0, 4, 7, 10])[sg] + extra;
+      const L = (sp === 'romaine' ? 24 : sp === 'mizuna' ? 17 : 14) * g * stretch, W = (sp === 'romaine' ? 6.5 : sp === 'mizuna' ? 2.4 : 7.5) * g * (1 - dark * 0.3);
+      const spread = sp === 'mizuna' ? 1.75 : sp === 'radish' ? 1.05 : 0.55;
+      const type = sp === 'romaine' ? 'wavy' : sp === 'mizuna' ? 'serrated' : 'lobed';
+      // raíz del rábano visible (hombros rojos sobre el sustrato)
+      const order = [];
+      for (let i = 0; i < n; i++) order.push(i);
+      // hojas exteriores primero (detrás), interiores al final
+      order.sort((a, b) => Math.abs(b - (n - 1) / 2) - Math.abs(a - (n - 1) / 2));
+      for (const i of order) {
+        const f = n > 1 ? i / (n - 1) - 0.5 : 0;
+        let ang = f * spread * 2 + (r() - 0.5) * 0.18;
+        const outer = Math.abs(f) * 2;
+        ang += Math.sign(ang || 1) * droop * (0.6 + outer * 0.5);
+        const lenK = 1 - outer * 0.22 + (r() - 0.5) * 0.12;
+        let fc = col; if ((wet > 0 || chlor > 0) && outer > 0.6) fc = mix(col, '#d8cf5a', 0.5); // hojas viejas amarillean primero
+        if (sp === 'radish') stem(c, 0, 0, Math.sin(ang) * L * 0.35, -Math.cos(ang) * L * 0.35, 1, S.vein);
+        leaf(c, 0, 0, ang, L * lenK * (1 - droop * 0.2), W * (0.8 + r() * 0.3), fc, sp === 'romaine' ? mix(edge, S.edge, 0.4 + 0.4 * sg / 4) : edge, S.vein, type, i);
+      }
+      // raíz del rábano: los "hombros" rojos asoman sobre el sustrato al madurar
+      if (sp === 'radish' && sg >= 3) { const rw = 2.6 + sg * 0.9; c.fillStyle = S.root; c.beginPath(); c.ellipse(0, 0.6, rw, rw * 0.85, 0, Math.PI, Math.PI * 2); c.closePath(); c.fill(); c.strokeStyle = '#8a1f45'; c.lineWidth = 0.6; c.stroke(); c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-rw * 0.4, -rw * 0.4, rw * 0.22, rw * 0.15, -0.5, 0, Math.PI * 2); c.fill(); }
+    } else if (sp === 'chili') {
+      const H = (8 + 22 * g) * stretch;
+      stem(c, 0, 0, 0, -H, 1.6, S.stem);
+      const br = sg >= 3 ? [[-0.55, 0.55], [0.6, 0.62], [-0.4, 0.8]] : sg >= 2 ? [[-0.5, 0.6], [0.55, 0.7]] : [];
+      const tips = [[0, -H]];
+      for (const [a, at] of br) { const bx = Math.sin(a) * H * 0.45, by = -H * at - Math.cos(a) * H * 0.25; stem(c, 0, -H * at, bx, by, 1.1, S.stem); tips.push([bx, by]); }
+      const lpb = sg >= 3 ? 4 : 3;
+      tips.forEach(([tx, ty], ti) => {
+        for (let k = 0; k < lpb; k++) {
+          const a = (k % 2 ? 1 : -1) * (0.9 + r() * 0.5) + droop * (k % 2 ? 1 : -1) * 0.8;
+          leaf(c, tx * (0.6 + k * 0.12), ty * (0.6 + k * 0.12) + 2, a, 7 * (0.7 + g * 0.5), 2.6, col, edge, S.vein, 'lance', k + ti);
+        }
+      });
+      if (sg === 3) tips.forEach(([tx, ty]) => { for (const d of [-2, 2]) { c.fillStyle = '#ffffff'; c.beginPath(); c.arc(tx + d, ty + 1, 1.4, 0, Math.PI * 2); c.fill(); c.fillStyle = '#e8d070'; c.beginPath(); c.arc(tx + d, ty + 1, 0.5, 0, Math.PI * 2); c.fill(); } });
+      if (sg === 4) tips.forEach(([tx, ty], i) => { const fc = i % 3 === 2 ? '#3f9a34' : S.fruit; c.save(); c.translate(tx + (i % 2 ? 2.5 : -2.5), ty + 3); c.rotate(i % 2 ? 0.25 : -0.25); c.fillStyle = fc; c.beginPath(); c.moveTo(-1.3, 0); c.quadraticCurveTo(-1.6, 5, 0, 8); c.quadraticCurveTo(1.6, 5, 1.3, 0); c.closePath(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 0.5; c.stroke(); c.fillStyle = '#4c8a34'; c.fillRect(-0.9, -1, 1.8, 1.4); c.restore(); });
+    } else if (sp === 'zinnia') {
+      const H = (8 + 24 * g) * stretch;
+      const bend = droop * 6;
+      stem(c, 0, 0, bend, -H, 1.5, mix('#5a8f3a', col, 0.3));
+      const pairs = sg >= 3 ? 4 : sg >= 2 ? 3 : 2;
+      for (let k = 0; k < pairs; k++) {
+        const yy = -H * (0.18 + k * 0.2), xx = bend * (0.18 + k * 0.2);
+        for (const s2 of [-1, 1]) leaf(c, xx, yy, s2 * (1.15 + droop * 0.7) + (r() - 0.5) * 0.15, 8 * (0.7 + g * 0.4) * (1 - k * 0.08), 2.8, col, edge, S.vein, 'lance', k);
+      }
+      if (sg === 3) { c.fillStyle = '#5a8f3a'; c.beginPath(); c.ellipse(bend, -H - 2, 2.4, 3, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = S.petals[Math.floor(hueKey * 3)]; c.beginPath(); c.ellipse(bend, -H - 4, 1.4, 1.6, 0, 0, Math.PI * 2); c.fill(); }
+      if (sg === 4) {
+        const pc = S.petals[Math.floor(hueKey * 3)], fx = bend, fy = -H - 4;
+        for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + ring * 0.26, R = ring ? 4.2 : 6;
+          c.fillStyle = ring ? mix(pc, '#ffffff', 0.15) : pc; c.save(); c.translate(fx, fy); c.rotate(a); c.beginPath(); c.ellipse(0, -R * 0.55, 1.5, R * 0.55, 0, 0, Math.PI * 2); c.fill(); c.restore();
+        }
+        c.fillStyle = '#c99a2a'; c.beginPath(); c.arc(fx, fy, 2.2, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#7a4a1a'; c.beginPath(); c.arc(fx, fy, 1.1, 0, Math.PI * 2); c.fill();
+      }
+    }
+    // plaga: pequeños insectos/manchas sobre las hojas
+    if (st.pest) {
+      const n = st.pestKnown ? 7 : 4;
+      for (let i = 0; i < n; i++) { const px = (r() - 0.5) * 14, py = -3 - r() * 14 * g; c.fillStyle = st.pestKnown ? '#e8f06a' : '#2b2b22'; c.beginPath(); c.arc(px, py, 0.8, 0, Math.PI * 2); c.fill(); }
+    }
+    c.restore();
+  }
+
+  /** Rábano cosechado con raíz completa (para la ficha). */
+  function drawHarvested(c, sp, x, y, s) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    if (sp === 'radish') {
+      c.fillStyle = '#d23c6a'; c.beginPath(); c.ellipse(0, 6, 6, 7, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#8a1f45'; c.lineWidth = 0.8; c.stroke();
+      c.strokeStyle = '#f2d0dc'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0, 13); c.quadraticCurveTo(1, 17, 0, 21); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-2, 4, 1.5, 2.6, -0.4, 0, Math.PI * 2); c.fill();
+      for (const a of [-0.6, 0, 0.6]) leaf(c, 0, 0, a, 14, 4.5, '#5fa83a', '#3f7f2a', '#d77aa0', 'lobed', 1);
+    } else draw(c, sp, 0, 0, 1, { prog: 1, hp: 100, moist: 55, nutr: 70, light: 1, seed: 7 });
+    c.restore();
+  }
+
+  return { SPECIES, STAGES, stage, draw, drawHarvested };
+})();
+/* =====================================================================
    WORLD — mapa cenital original, colisiones, puertas, esclusa, bots,
    cámara, render Canvas 2D, partículas y minimapa.
    ===================================================================== */
@@ -1917,7 +2408,10 @@ const World = (function () {
   const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff' };
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [];
   let staticCv = null, scen = 'moon';
-  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0 };
+  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
+  let curS = null, marker = null;
+  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1 };
+  const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
   /* ---------- Construcción del mapa ---------- */
@@ -1933,21 +2427,22 @@ const World = (function () {
       if (near) grid[y][x] = WALL;
     }
     doors = [];
-    const D = (x, y, kind) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0 }); };
-    for (const x of [9, 29, 49]) { D(x, 12); D(x, 16); D(x, 29); D(x, 33); }
-    D(29, 45, 'inner'); D(29, 48, 'outer');
+    const D = (x, y, kind, rooms) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0, rooms }); };
+    const TOP = { 9: 'life', 29: 'bridge', 49: 'lab' }, MID = { 9: 'gh', 29: 'water', 49: 'reactor' };
+    for (const x of [9, 29, 49]) { D(x, 12, 'auto', [TOP[x]]); D(x, 16, 'auto', [MID[x]]); D(x, 29, 'auto', [MID[x], 'rad']); D(x, 33, 'auto', ['rad']); }
+    D(29, 45, 'inner', ['rad']); D(29, 48, 'outer', ['rad']);
     furn = []; consoles = [];
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
     const C = (id, room, x, y, verb, icon) => { consoles.push({ id, room, x, y, verb, icon }); F(x, y, 1, 1, 'console', { cid: id }); };
     // Puente
     F(28, 5, 4, 3, 'holo'); F(22, 2, 16, 1, 'window');
     C('cmd', 'bridge', 25, 3, 'manage', '🖥️'); C('comms', 'bridge', 30, 3, 'interact', '📡'); C('earth', 'bridge', 34, 3, 'investigate', '🌎');
-    F(23, 9, 2, 2, 'crate'); F(35, 9, 2, 2, 'crate');
+    F(23, 9, 2, 2, 'crate'); F(35, 8, 2, 3, 'lockers'); C('wardrobe', 'bridge', 34, 10, 'interact', '🧥');
     // Módulo de vida
     for (let i = 0; i < 3; i++) F(3 + i * 3, 3, 2, 3, 'bunk');
     C('bed', 'life', 4, 7, 'rest', '🛏️'); F(13, 3, 3, 2, 'medbed'); C('med', 'life', 16, 3, 'manage', '🩺'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
     // Invernadero
-    for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'bed', { bed: i });
+    for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'planter', { bed: i });
     C('gh', 'gh', 16, 18, 'manage', '🌱'); F(15, 26, 2, 2, 'tank');
     // Reactor
     F(48, 20, 4, 4, 'reactor'); for (let i = 0; i < 3; i++) F(43, 19 + i * 3, 2, 2, 'battery');
@@ -1988,20 +2483,34 @@ const World = (function () {
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
   const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
   const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2' };
+  const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
     if (a === b) return [b];
+    const here = nodeRoom(a);
     const prev = { [a]: null }, q = [a];
-    while (q.length) { const c = q.shift(); if (c === b) break; for (const n of ADJ[c]) if (!(n in prev)) { prev[n] = c; q.push(n); } }
+    while (q.length) { const c = q.shift(); if (c === b) break; for (const n of ADJ[c]) if (!(n in prev) && !(locked(nodeRoom(n)) && nodeRoom(n) !== here)) { prev[n] = c; q.push(n); } }
     if (!(b in prev)) return [b];
     const path = []; let c = b; while (c) { path.unshift(c); c = prev[c]; } return path;
   }
   function nearestNode(x, y) { let best = null, bd = 1e9; for (const k in N) { const d = (N[k][0] - x) ** 2 + (N[k][1] - y) ** 2; if (d < bd) { bd = d; best = k; } } return best; }
 
-  const BOTCOL = { engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
+  HOME.commander = ['bridge_c', 'bridge_d'];
+  function mkBot(role, n, i) { return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false }; }
+  /** Cambia el especialista del jugador: el especialista elegido deja de ser NPC y el anterior aparece junto al vestuario. */
+  function setPlayerRole(role) {
+    if (role === player.role || !Chars.ROLES[role]) return false;
+    const i = bots.findIndex((b) => b.role === role);
+    if (i >= 0) bots.splice(i, 1);
+    const n = nearestNode(player.x, player.y), nb = mkBot(player.role, n, 2);
+    nb.x = player.x - 1.2; nb.y = player.y; nb.wait = 2;
+    bots.push(nb); player.role = role; player.act = 'celebrate'; player.actT = 1;
+    return true;
+  }
+  const BOTCOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
   function init(sc) {
     scen = sc; build(); staticCv = null;
-    player.x = 30; player.y = 9.5; player.dir = 2;
-    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => { const n = HOME[role][0]; return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + i, dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false }; });
+    player.x = 30; player.y = 9.5; player.dir = 2; player.role = 'commander'; marker = null;
+    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => mkBot(role, HOME[role][0], i));
     airlock = { st: 'in', t: 0 }; parts = [];
   }
 
@@ -2022,7 +2531,8 @@ const World = (function () {
 
   /* ---------- Actualización ---------- */
   function update(dt, S, inp) {
-    lastT += dt;
+    lastT += dt; curS = S;
+    if (marker && (marker.until < lastT || Math.hypot(player.x - marker.p[0], player.y - marker.p[1]) < 1.6)) marker = null;
     // Jugador
     let vx = inp.x, vy = inp.y;
     const len = Math.hypot(vx, vy);
@@ -2041,12 +2551,14 @@ const World = (function () {
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
     // Bots
-    for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S, i + 1);
+    for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S);
     // Puertas
     const ents = [player].concat(bots);
     for (const d of doors) {
       let want = false;
       for (const e of ents) if (Math.abs(e.x - (d.x + 1)) < 1.9 && Math.abs(e.y - (d.y + 0.5)) < 2.0) want = true;
+      d.lock = d.rooms && d.rooms.some(locked);
+      if (d.lock) want = false;
       if (d.kind === 'inner') want = want && airlock.st === 'in';
       if (d.kind === 'outer') want = want && airlock.st === 'out';
       const before = d.open;
@@ -2087,21 +2599,21 @@ const World = (function () {
     if (k === 'ray') { p.vx = 0.8; p.vy = 14; p.life = 1.2; }
     parts.push(p);
   }
-  function updateBot(b, dt, S, idx) {
+  function updateBot(b, dt, S) {
     b.anim += dt * 7;
     if (!S) return;
-    const c = S.crew[idx];
+    const c = S.crew.find((x) => x.role === b.role);
     let goal = null;
-    if (c && c.zone === 'shelter') { goal = idx % 2 ? 'sh_c' : 'sh_c2'; b.task = 'shelter'; }
+    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? 'sh_c' : 'sh_c2'; b.task = 'shelter'; }
     else if (b.role === 'engineer') {
       const inc = S.inc.find((i) => !i.res && i.fix && S.t >= i.from);
-      if (inc) { goal = ROOMNODE[inc.room]; b.task = 'repair'; } else b.task = 'wander';
+      if (inc && !locked(inc.room)) { goal = ROOMNODE[inc.room]; b.task = 'repair'; } else b.task = 'wander';
     } else b.task = 'wander';
     if (b.path.length === 0) {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role]; const tgt = h[Math.floor(Math.random() * h.length)]; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
+        if (b.wait <= 0) { const h = HOME[b.role].filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -2115,12 +2627,26 @@ const World = (function () {
   }
 
   /* ---------- Interacción ---------- */
+  function plantPos(bed, slot) { const f = furn.find((x) => x.kind === 'planter' && x.bed === bed); return f ? [f.x + 0.5 + slot, f.y + 1.45] : null; }
   function nearest() {
     let best = null, bd = 1.9;
+    for (const f of furn) if (f.kind === 'planter') for (let k = 0; k < 3; k++) { const pp = [f.x + 0.5 + k, f.y + 1.45]; const d = Math.hypot(player.x - pp[0], player.y - pp[1]); if (d < 1.45 && d < bd + 0.25) { bd = d; best = { id: 'plant', bed: f.bed, slot: k, verb: 'investigate', icon: '🌱', x: pp[0], y: pp[1] }; } }
     for (const c of consoles) { const d = Math.hypot(player.x - (c.x + 0.5), player.y - (c.y + 0.5)); if (d < bd) { bd = d; best = c; } }
     for (const s of samples) if (!s.taken) { const d = Math.hypot(player.x - s.x, player.y - s.y); if (d < 1.2 && d < bd) { bd = d; best = { id: 'sample', verb: 'collect', icon: '🪨', s }; } }
     return best;
   }
+  /** Puerta bloqueada cercana (para explicar qué la abre). */
+  function lockedNear() { for (const d of doors) if (d.lock && Math.abs(player.x - (d.x + 1)) < 2 && Math.abs(player.y - (d.y + 0.5)) < 2.2) return d.rooms.find(locked); return null; }
+  /** Toque/clic en el mapa: devuelve la planta bajo el punto si el jugador está cerca. */
+  function pick(cssX, cssY, dpr) {
+    const z = cam.z || 1, wx = (cssX * dpr) / z + cam.x, wy = (cssY * dpr) / z + cam.y;
+    for (const f of furn) if (f.kind === 'planter') for (let k = 0; k < 3; k++) {
+      const px = (f.x + 0.5 + k) * TS, py = (f.y + 1.45) * TS;
+      if (Math.abs(wx - px) < TS * 0.5 && wy < py + 6 && wy > py - TS * 1.3 && Math.hypot(player.x * TS - px, player.y * TS - py) < TS * 3.2) return { id: 'plant', bed: f.bed, slot: k };
+    }
+    return null;
+  }
+  function setMarker(p, label) { if (p) marker = { p, label: label || '', until: lastT + 90 }; }
 
   /* ---------- Render ---------- */
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -2173,7 +2699,15 @@ const World = (function () {
       case 'bunk': c.fillStyle = '#4a3b72'; rr(c, x + 2, y + 2, w - 4, h - 4, 8); c.fill(); c.fillStyle = '#e8e2ff'; rr(c, x + 6, y + 6, w - 12, 18, 6); c.fill(); c.fillStyle = '#7c64c9'; c.fillRect(x + 4, y + 30, w - 8, h - 38); break;
       case 'medbed': c.fillStyle = '#e9f3ff'; rr(c, x + 2, y + 6, w - 4, h - 12, 10); c.fill(); c.fillStyle = '#ff6b9a'; c.fillRect(x + w / 2 - 4, y + 14, 8, h - 28); c.fillRect(x + w / 2 - 12, y + h / 2 - 4, 24, 8); break;
       case 'table': c.fillStyle = '#4b4f6e'; rr(c, x + 2, y + 2, w - 4, h - 4, 8); c.fill(); c.fillStyle = '#6c7299'; rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.fill(); break;
-      case 'bed': c.fillStyle = '#4b2f1c'; rr(c, x, y, w, h, 6); c.fill(); c.fillStyle = '#6b4226'; rr(c, x + 4, y + 4, w - 8, h - 8, 4); c.fill(); break;
+      case 'planter': // jardinera: marco metálico, sustrato y bandeja
+        c.fillStyle = '#56606f'; rr(c, x, y + 10, w, h - 10, 6); c.fill(); c.strokeStyle = '#2a313d'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#3b2414'; rr(c, x + 4, y + 16, w - 8, h - 24, 4); c.fill();
+        for (let i = 0; i < 40; i++) { c.fillStyle = i % 3 ? 'rgba(90,60,30,.6)' : 'rgba(20,10,5,.5)'; c.fillRect(x + 6 + ((i * 37) % (w - 14)), y + 18 + ((i * 13) % (h - 28)), 2, 2); }
+        c.fillStyle = '#c9ced8'; c.fillRect(x + 2, y + h - 6, w - 4, 3);
+        break;
+      case 'lockers':
+        for (let i = 0; i < 2; i++) { c.fillStyle = i ? '#4f5b80' : '#5a6890'; rr(c, x + 2 + i * (w / 2), y + 2, w / 2 - 4, h - 4, 4); c.fill(); c.strokeStyle = '#2a3150'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#d9a72b'; c.fillRect(x + w / 2 - 6 + i * (w / 2) - 8, y + h / 2, 3, 10); for (let k = 0; k < 3; k++) { c.fillStyle = '#2a3150'; c.fillRect(x + 8 + i * (w / 2), y + 10 + k * 6, w / 2 - 20, 2); } }
+        break;
       case 'tank': c.fillStyle = '#1b6d8f'; c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2 - 3, h / 2 - 3, 0, 0, 7); c.fill(); c.strokeStyle = '#7fe6ff'; c.lineWidth = 3; c.stroke(); break;
       case 'recycler': c.fillStyle = '#245a7a'; rr(c, x, y, w, h, 10); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#0e2c3d'; c.beginPath(); c.arc(x + w / 2, y + h / 2, w / 3, 0, 7); c.fill(); break;
       case 'o2gen': c.fillStyle = '#2e5276'; rr(c, x, y, w, h, 8); c.fill(); c.fillStyle = '#bfe9ff'; c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillText('O₂', x + w / 2, y + h / 2 + 8); break;
@@ -2229,20 +2763,36 @@ const World = (function () {
     // Puertas
     for (const d of doors) {
       const x = d.x * TS, y = d.y * TS, half = TS * (1 - d.open);
-      const lockC = d.kind === 'auto' ? '#4f6db8' : '#ffc24a';
+      const lockC = d.lock ? '#ff5a5a' : d.kind === 'auto' ? '#4f6db8' : '#ffc24a';
       ctx.fillStyle = '#2d3a63'; ctx.fillRect(x, y + 4, half, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, half, TS - 8);
       ctx.fillStyle = lockC; ctx.fillRect(x + half - 3, y + 4, 3, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, 3, TS - 8);
     }
-    // Camas del invernadero (cultivos)
-    if (S) for (const f of furn) if (f.kind === 'bed') {
-      const b = S.beds[f.bed]; if (!b || !b.crop) continue;
-      const x = f.x * TS, y = f.y * TS, n = 5, g = b.prog;
-      const col = b.hp < 40 ? '#b59a3a' : b.crop === 'radish' ? '#e0457b' : b.crop === 'micro' ? '#9be36b' : '#3ddc84';
-      for (let i = 0; i < n; i++) { const px = x + 10 + i * ((f.w * TS - 20) / (n - 1)), py = y + f.h * TS / 2; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, 3 + g * 8, 0, 7); ctx.fill(); }
-      if (g >= 1) { ctx.font = '14px system-ui'; ctx.fillText('✨', x + f.w * TS - 10, y + 4); }
+    // Jardineras: luz LED, riego, sensor de humedad, etiquetas e indicadores (las plantas se dibujan como entidades)
+    const plantEnts = [];
+    if (S) for (const f of furn) if (f.kind === 'planter') {
+      const b = S.beds[f.bed]; if (!b) continue;
+      const x = f.x * TS, y = f.y * TS, w = f.w * TS;
+      const lit = b.light * ((S.lf && S.lf.lights != null) ? S.lf.lights : 1) * S.cap.gh * (b.plants.some(Boolean) ? 1 : 0);
+      ctx.fillStyle = '#2a2f3d'; ctx.fillRect(x + 2, y - 8, w - 4, 5);
+      if (lit > 0.02) { ctx.save(); ctx.globalAlpha = 0.25 + 0.6 * lit; ctx.fillStyle = '#ff6ad5'; ctx.fillRect(x + 4, y - 7, w - 8, 3); const g2 = ctx.createLinearGradient(0, y - 4, 0, y + f.h * TS); g2.addColorStop(0, 'rgba(255,106,213,' + 0.22 * lit + ')'); g2.addColorStop(1, 'rgba(255,106,213,0)'); ctx.fillStyle = g2; ctx.fillRect(x + 2, y - 4, w - 4, f.h * TS); ctx.restore(); }
+      ctx.fillStyle = '#5b8fc9'; ctx.fillRect(x + 6, y + 13, w - 12, 2.5);
+      const plants = b.plants.filter(Boolean), avgM = plants.length ? plants.reduce((a, p) => a + p.moist, 0) / plants.length : 50;
+      ctx.fillStyle = '#9aa0aa'; ctx.fillRect(x + w - 7, y + 10, 3, 12);
+      ctx.fillStyle = avgM < 28 ? '#ff6b6b' : avgM > 82 ? '#6fb3ff' : avgM < 40 ? '#ffc24a' : '#5fe39a'; ctx.beginPath(); ctx.arc(x + w - 5.5, y + 9, 2.6, 0, 7); ctx.fill();
+      for (let k = 0; k < 3; k++) {
+        const px = x + (0.5 + k) * TS, py = y + 1.45 * TS, pl = b.plants[k];
+        ctx.fillStyle = '#7fc4ff'; ctx.fillRect(px - 1, y + 15, 2, 3);
+        if (!pl) { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('+', px, py - 2); continue; }
+        plantEnts.push({ y: f.y + 1.45, f: () => {
+          Flora.draw(ctx, pl.sp, px, py, 0.92, pl, rm ? null : t);
+          ctx.fillStyle = 'rgba(5,8,20,.7)'; ctx.fillRect(px - 11, py + 4, 22, 9);
+          ctx.fillStyle = '#eef3ff'; ctx.font = 'bold 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText(tr(Flora.SPECIES[pl.sp].short), px, py + 10.5);
+          ctx.fillStyle = '#26345e'; ctx.fillRect(px - 10, py + 14, 20, 2.5); ctx.fillStyle = pl.prog >= 1 ? '#ffd36b' : '#5fe39a'; ctx.fillRect(px - 10, py + 14, 20 * pl.prog, 2.5);
+          if (pl.prog >= 1) { ctx.font = '10px system-ui'; ctx.fillText('✨', px + 9, py - 22); }
+          if (pl.moist < 28 || pl.hp < 40 || (pl.pest && pl.pestKnown)) { ctx.font = 'bold 10px system-ui'; ctx.fillStyle = '#ffc24a'; ctx.fillText('!', px - 10, py - 18); }
+        } });
+      }
     }
-    // Luces de cultivo
-    if (S && S.sys.gh.lights > 0.05) { ctx.save(); ctx.globalAlpha = 0.12 * S.sys.gh.lights * ((S.lf && S.lf.lights) || 0); ctx.fillStyle = '#ff7af0'; const R = RECTS.gh; ctx.fillRect(R[0] * TS, R[1] * TS, (R[2] - R[0] + 1) * TS, (R[3] - R[1] + 1) * TS); ctx.restore(); }
     // Reactor brillando
     if (S) { const lv = (S.pw && S.pw.rea) || 0; const pulse = rm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 3); const g = ctx.createRadialGradient(50 * TS, 22 * TS, 4, 50 * TS, 22 * TS, 70); g.addColorStop(0, 'rgba(255,170,80,' + (0.25 + 0.5 * pulse) * Math.min(1, lv / 6) + ')'); g.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = g; ctx.fillRect(48 * TS - 40, 20 * TS - 40, 4 * TS + 80, 4 * TS + 80); }
     // Consolas
@@ -2259,8 +2809,14 @@ const World = (function () {
     // Entidades (orden por y)
     const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
     const ents = bots.map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
-    ents.push({ y: player.y, f: () => drawChar(ctx, 'commander', player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
+    plantEnts.forEach((pe) => ents.push(pe));
+    ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
+    // Secciones bloqueadas
+    if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
+      const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
+      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; ctx.fillText('🔒 ' + tr(DATA.ROOMS[k]), (Rr[0] + Rr[2] + 1) / 2 * TS, (Rr[1] + Rr[3] + 1) / 2 * TS);
+    }
     // Partículas
     for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
     ctx.globalAlpha = 1;
@@ -2276,9 +2832,11 @@ const World = (function () {
       ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
       if (o.crit) { ctx.fillStyle = 'rgba(255,40,40,' + (rm ? 0.08 : 0.06 + 0.06 * Math.sin(t * 4)) + ')'; ctx.fillRect(0, 0, cw, ch); }
     }
-    // Flecha guía hacia el objetivo
-    if (o.target) {
-      const tx = (o.target[0] * TS - cam.x) * zoom, ty = (o.target[1] * TS - cam.y) * zoom;
+    // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
+    const tgt = marker ? marker.p : o.target;
+    if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
+    if (tgt) {
+      const tx = (tgt[0] * TS - cam.x) * zoom, ty = (tgt[1] * TS - cam.y) * zoom;
       const off = tx < 0 || ty < 0 || tx > cw || ty > ch;
       const ang = Math.atan2(ty - ch / 2, tx - cw / 2);
       const m = 60 * dpr;
@@ -2300,7 +2858,9 @@ const World = (function () {
       c.fillRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s);
     }
     if (S) for (const i of S.inc) if (!i.res && S.t >= i.from) { const R = RECTS[i.room]; if (!R) continue; c.strokeStyle = i.sev === 'crit' ? '#ff6b6b' : i.sev === 'warn' ? '#ffc24a' : '#6fb3ff'; c.lineWidth = 3; c.strokeRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s); }
+    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); c.font = Math.round(10 * s / 2) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🔒', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s + 4); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
+    if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
     for (const b of bots) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ox + player.x * s, oy + player.y * s, 5, 0, 7); c.fill();
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
@@ -2308,18 +2868,20 @@ const World = (function () {
 
   function roomCenter(k) { const R = RECTS[k]; if (!R) return null; const n = N[ROOMNODE[k]]; return n ? [n[0], n[1]] : [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2]; }
   function consolePos(id) { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; }
-  function state() { return { px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
+  function state() { return { role: player.role, px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
     if (Number.isFinite(o.px) && Number.isFinite(o.py) && canStand(o.px, o.py, 0.3)) { player.x = o.px; player.y = o.py; }
     if (Array.isArray(o.samples)) o.samples.forEach((t, i) => { if (samples[i]) samples[i].taken = !!t; });
     airlock.st = o.lock === 'out' ? 'out' : 'in';
+    if (o.role && o.role !== 'commander') setPlayerRole(o.role);
+    player.act = null;
   }
   function respawnSamples() { samples.forEach((s) => (s.taken = false)); }
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
 
-  return { setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
+  return { setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, bfs, N } };
 })();
 /* =====================================================================
@@ -2734,9 +3296,11 @@ const Game = (function () {
     for (const e of S.log) {
       if (e.n <= lastN) continue;
       lastN = e.n;
-      const [t, b, ty] = logText(e);
-      toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
-      Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
+      if (!logToRadio(e)) {
+        const [t, b, ty] = logText(e);
+        toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
+        Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
+      }
       if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
       if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
@@ -2800,6 +3364,18 @@ const Game = (function () {
     if (S.d.power < 0.2 && !S.emergency) return { t: es ? 'Batería baja: ve a «Reactor y energía» y ahorra energía.' : 'Low battery: go to "Reactor & power" and save energy.', p: World.consolePos('reactor') };
     const inc = Sim.activeInc(S).filter((i) => i.fix && S.t >= i.from).sort((a, b) => (b.sev === 'crit') - (a.sev === 'crit'))[0];
     if (inc) { const cid = { water: inc.type === 'sensor_drift' ? 'o2' : 'water', life: 'med', bridge: 'comms', gh: 'gh', reactor: 'reactor', rad: 'shield', lab: 'lab' }[inc.room]; return { t: (es ? 'Repara «' : 'Repair "') + tr(DATA.EVT[inc.type].t) + (es ? '» en ' : '" in ') + room(inc.room), p: World.consolePos(cid) }; }
+    const cs = Sim.campStatus(S);
+    if (cs) {
+      const k = cs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '';
+        let p = null;
+        if (tg.startsWith('room:')) p = World.roomCenter(tg.slice(5));
+        else if (tg.startsWith('plant')) { const parts = tg.split(':'); p = parts.length > 1 ? World.plantPos(+parts[1], +parts[2]) : World.plantPos(1, 1); }
+        else p = World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[cs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
@@ -2856,6 +3432,7 @@ const Game = (function () {
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mgRun && mgRun.g && !mgRun.g.done && mgRun.tick) mgRun.tick(dt);
+    if (running && S) tickRadio(dt);
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
@@ -2869,7 +3446,7 @@ const Game = (function () {
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
       World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
-      hudT += dt; if (hudT > 0.25) { hudT = 0; updateHud(); updatePrompt(); }
+      hudT += dt; if (hudT > 0.25) { hudT = 0; updateHud(); updatePrompt(); watchResources(); checkRoomVisit(); }
     } else if (!running) drawMenuBg(now / 1000);
     requestAnimationFrame(frame);
   }
@@ -2891,13 +3468,24 @@ const Game = (function () {
   function updatePrompt() {
     near = running && !modalOpen() ? World.nearest() : null;
     const p = $('#prompt');
+    const lockRoom = !near && running && !modalOpen() ? World.lockedNear() : null;
+    if (lockRoom) {
+      const es = LANG === 'es', cs = Sim.campStatus(S);
+      $('#actBtn').textContent = '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : '');
+      p.classList.remove('hidden'); return;
+    }
     if (near) {
-      const name = near.id === 'sample' ? _('collect') : consoleName(near.id);
+      const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
+      const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
       $('#actBtn').textContent = (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name;
       p.classList.remove('hidden');
     } else p.classList.add('hidden');
   }
-  function interact() { if (!running || modalOpen() || !near) return; Sfx.play('click'); openConsole(near); }
+  function interact() {
+    if (!running || modalOpen()) return;
+    if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
+    Sfx.play('click'); openConsole(near);
+  }
   function togglePause() { paused = !paused; updateHud(); if (paused) pauseMenu(); }
   function toggleMute() { settings.muted = !settings.muted; applySettings(); }
 
@@ -2910,18 +3498,17 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = r.S; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); lastN = S.logN || 0;
+    S = Sim.migrate(r.S); speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; lastRoom = null;
     beginPlay();
     return true;
   }
-  function newRun(scen, diff) {
+  function newRun(scen, diff, opts) {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, seed }); speed = 1; lastN = 0;
+    S = Sim.create({ scen, diff, seed, skipCamp: !!(opts && opts.skipCamp) }); speed = 1; lastN = 0; radio.q = []; radio.cur = null; lastRoom = null; for (const k in resState) delete resState[k];
     settings.scen = scen; settings.diff = diff; if (diff === 'explorer') settings.hints = true; Store.set('settings', settings);
     World.init(scen); stats.runs++; Store.set('stats', stats);
     beginPlay();
-    if (!settings.tutDone) tutorial();
-    else toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
+    toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
   }
   function beginPlay() {
     clearLayer(); running = true; paused = false;
@@ -2929,7 +3516,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); saveRun();
   }
-  function stopPlay() { running = false; $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
@@ -2986,7 +3573,7 @@ const Game = (function () {
     push(panel('⏸ ' + _('paused'), h('div', { class: 'menu-grid' },
       btn('▶ ' + _('resume'), () => { pop(); }, 'primary', { autofocus: true }),
       btn('💾 ' + _('save'), () => { saveRun(); toast(_('saved'), '', 'ok'); }),
-      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel),
+      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel),
       btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }),
       btn('🏠 ' + _('mainMenu'), () => { saveRun(); mainMenu(); }))), { onclose: () => { paused = false; updateHud(); } });
   }
@@ -3026,13 +3613,20 @@ const Game = (function () {
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
-    lock: { es: 'Esclusa', en: 'Airlock' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
+    lock: { es: 'Esclusa', en: 'Airlock' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
   const consoleName = (id) => tr(CNAME[id]) || id;
   function openConsole(c) {
     if (c.id === 'sample') {
       return confirmDecision('eva', {}, '🪨 ' + _('collect'), () => { c.s.taken = true; World.setAct('player', 'carry', 8); if (World.zone() === 'outside') toast(LANG === 'es' ? 'Muestra recogida' : 'Sample collected', LANG === 'es' ? 'Llévala al laboratorio para analizarla.' : 'Take it to the lab for analysis.', 'ok'); });
     }
+    if (c.id === 'plant') return plantCard(c.bed, c.slot);
+    if (c.id === 'wardrobe') return wardrobePanel();
+    const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
+    if (!allowed(c.id)) return gatePanel(c.id, ROOM_OF[c.id]);
+    if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
+    if (c.id === 'log') Sim.campFlag(S, 'log_open');
+    if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
       shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
@@ -3072,7 +3666,9 @@ const Game = (function () {
     analyze: { u: { es: '1 muestra y 1,5 kW durante 3 h', en: '1 sample and 1.5 kW for 3 h' }, r: { es: 'Consume energía.', en: 'Uses energy.' }, b: { es: 'Puntos de ciencia.', en: 'Science points.' } },
     experiment: { u: { es: '2 L de agua y 1,5 kW durante 5 h', en: '2 L water and 1.5 kW for 5 h' }, r: { es: 'Consume agua y energía.', en: 'Uses water and energy.' }, b: { es: 'Ciencia y moral.', en: 'Science and morale.' } },
     recycle: { u: { es: '6 kg de residuos y 0,8 kW durante 3 h', en: '6 kg waste and 0.8 kW for 3 h' }, r: { es: 'Consume energía.', en: 'Uses energy.' }, b: { es: '+5 kg de materiales (economía circular).', en: '+5 kg materials (circular economy).' } },
-    plant: { u: { es: '1,5 L de agua para sembrar', en: '1.5 L water to plant' }, r: { es: 'El cultivo necesitará luz, agua y temperatura durante 7 días.', en: 'The crop will need light, water and temperature for 7 days.' }, b: { es: 'Comida fresca en 7 días.', en: 'Fresh food in 7 days.' } },
+    bedlight: { u: { es: 'Electricidad para las luces LED de la jardinera (0,6 kW al 100 %)', en: 'Electricity for the planter LEDs (0.6 kW at 100%)' }, r: { es: 'Más luz = menos batería para otros sistemas.', en: 'More light = less battery for other systems.' }, b: { es: 'Más luz = más crecimiento (hasta lo que la especie necesita).', en: 'More light = more growth (up to what the species needs).' } },
+    mixnutr: { u: { es: '2 kg de residuos orgánicos, 2 L de agua y 0,8 kW durante 2 h', en: '2 kg organic waste, 2 L water and 0.8 kW for 2 h' }, r: { es: 'Gasta agua y energía.', en: 'Uses water and energy.' }, b: { es: '+4 L de solución nutritiva: los residuos vuelven al cultivo (economía circular).', en: '+4 L nutrient solution: waste returns to the crops (circular economy).' } },
+    plant: { u: { es: '1 semilla, 0,5 L de agua y 0,2 L de nutrientes', en: '1 seed, 0.5 L water and 0.2 L nutrients' }, r: { es: 'El cultivo necesitará luz, agua y temperatura durante 7 días.', en: 'The crop will need light, water and temperature for 7 days.' }, b: { es: 'Comida fresca en 7 días.', en: 'Fresh food in 7 days.' } },
     sleep: { u: { es: '4 h de tiempo', en: '4 h of time' }, r: { es: 'El tiempo pasa: los recursos se siguen consumiendo.', en: 'Time passes: resources keep being used.' }, b: { es: 'Descanso +30, moral +4.', en: 'Rest +30, morale +4.' } },
     rec: { u: { es: '2 h de tiempo', en: '2 h of time' }, r: { es: 'El tiempo pasa.', en: 'Time passes.' }, b: { es: 'Moral +9.', en: 'Morale +9.' } },
     wait: { u: { es: 'Tiempo', en: 'Time' }, r: { es: 'Pueden ocurrir eventos mientras esperas.', en: 'Events can happen while you wait.' }, b: { es: 'Llegan mensajes y avanzan cultivos y obras.', en: 'Messages arrive; crops and jobs progress.' } },
@@ -3141,11 +3737,22 @@ const Game = (function () {
     const s = livePanel(() => {
       const tabs = [['missions', '🎯 ' + _('missions')], ['resources', '📊 ' + _('resources')], ['crew', '👩‍🚀 ' + _('crew')], ['log', '📜 ' + _('logT')], ['map', '🗺️ ' + _('mapT')]];
       const body = h('div', null, h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, l]) => h('button', { class: 'btn sm', role: 'tab', 'aria-selected': k === cur ? 'true' : 'false', onclick: () => { cur = k; s._refresh(); } }, l))),
-        cur === 'missions' ? missionsTab() : cur === 'resources' ? resourcesTab() : cur === 'crew' ? crewTab() : cur === 'log' ? logTab() : mapTab());
+        cur === 'missions' ? missionsTab() : cur === 'resources' ? (Sim.campFlag(S, 'cmd_resources'), resourcesTab()) : cur === 'crew' ? crewTab() : cur === 'log' ? logTab() : mapTab());
       return panel('🖥️ ' + consoleName('cmd'), body);
     });
   }
+  function campaignCard() {
+    const es = LANG === 'es', C = S.camp;
+    if (!C) return null;
+    const cs = Sim.campStatus(S);
+    return h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
+      h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
+      cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+  }
   function missionsTab() {
+    const campLock = S.camp && !S.camp.basicDone;
     const list = [1, 2, 3, 4, 5, 6, 7].map((id) => {
       const D = DATA.MIS[id], m = S.m[id];
       const stTag = tag(_(m.st), m.st === 'done' ? 'ok' : m.st === 'active' ? 'info' : m.st === 'failed' ? 'warn' : '');
@@ -3159,12 +3766,13 @@ const Game = (function () {
           Sim.LIMIT[id] < 900 ? h('p', { class: 'small muted' }, (LANG === 'es' ? 'Tiempo restante: ' : 'Time left: ') + fmt(Math.max(0, Sim.LIMIT[id] - (S.t - m.t0)), 0) + ' h') : null) : null,
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
-          m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));
     });
-    return h('div', null, h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
+    return h('div', null, campaignCard(), h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
       h('div', { class: 'grid2' }, list), h('div', { class: 'row', style: { marginTop: '12px' } }, btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }, 'danger')));
   }
   function resourcesTab() {
@@ -3195,7 +3803,7 @@ const Game = (function () {
       h('p', { class: 'small muted' }, LANG === 'es' ? 'Los parámetros del modelo están documentados en el README: R = dato real, M = estimación de modelo, G = simplificación para jugar.' : 'Model parameters are documented in the README: R = real data, M = model estimate, G = gameplay simplification.'));
   }
   function crewTab() {
-    return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
+    return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, c.role === S.playerRole ? (LANG === 'es' ? '🧑‍🚀 Tú · ' : '🧑‍🚀 You · ') + tr(Chars.ROLES[c.role].name) : tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
       h('p', null, (LANG === 'es' ? 'Zona: ' : 'Zone: ') + (c.zone === 'shelter' ? (LANG === 'es' ? 'refugio' : 'shelter') : c.zone === 'outside' ? (LANG === 'es' ? 'exterior' : 'outside') : (LANG === 'es' ? 'hábitat' : 'habitat'))),
       h('p', null, (LANG === 'es' ? 'Dosis: ' : 'Dose: ') + fmt(c.dose, 2) + ' mSv'))),
       h('div', { class: 'card' }, h('h3', null, '😊 ' + _('well')), h('p', null, (LANG === 'es' ? 'Moral: ' : 'Morale: ') + Math.round(S.morale) + ' %'), bar(S.morale / 100), h('p', null, (LANG === 'es' ? 'Descanso: ' : 'Rest: ') + Math.round(S.rest) + ' %'), bar(S.rest / 100),
@@ -3277,19 +3885,22 @@ const Game = (function () {
       h('p', { class: 'small muted' }, LANG === 'es' ? 'NASA OSDR reúne investigaciones sobre cómo el espacio afecta a seres vivos. No es un sistema médico en tiempo real: aquí las dosis son estimaciones del modelo.' : 'NASA OSDR gathers research on how space affects living things. It is not a real-time medical system: doses here are model estimates.'))));
   }
   function ghPanel() {
+    const es = LANG === 'es';
     livePanel(() => {
       const g = S.sys.gh;
-      const beds = S.beds.map((b, i) => h('div', { class: 'card' }, h('b', null, (LANG === 'es' ? 'Cama ' : 'Bed ') + (i + 1)),
-        b.crop ? h('div', null, h('p', null, tr(DATA.CROP_T[b.crop]) + ' · ' + (LANG === 'es' ? 'día ' : 'day ') + fmt(b.prog * 7, 1) + '/7'), bar(b.prog, '#3ddc84'), h('p', { class: 'small' }, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(b.hp) + ' %'),
-          b.prog >= 1 ? btn('🧺 ' + (LANG === 'es' ? 'Cosechar' : 'Harvest'), () => { Sim.harvest(S, i); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null)
-          : h('div', { class: 'row' }, Object.keys(Sim.CROPS).map((k) => btn('🌱 ' + tr(DATA.CROP_T[k]), () => confirmDecision('plant', { bed: i, crop: k }, tr(DATA.CROP_T[k])), 'sm', { title: tr(DATA.CROP_T[k].d) })))));
+      const beds = S.beds.map((b, bi) => h('div', { class: 'card' }, h('b', null, (es ? 'Jardinera ' : 'Planter ') + (bi + 1)),
+        h('div', { class: 'row' }, b.plants.map((pl, k) => btn(pl ? tr(Flora.SPECIES[pl.sp].name).split(' ')[0] + ' ' + Math.round(pl.prog * 100) + '%' + (pl.prog >= 1 ? ' ✨' : '') + (pl.hp < 50 || pl.moist < 28 ? ' ⚠' : '') : '➕ ' + (es ? 'vacío' : 'empty'), () => plantCard(bi, k), 'sm'))),
+        h('div', { class: 'row small' }, '💡 ' + Math.round(b.light * 100) + '%', btn('−', () => confirmDecision('bedlight', { bed: bi, v: Math.max(0, b.light - 0.2) }, 'LED ' + (bi + 1)), 'sm', { 'aria-label': (es ? 'Bajar LED jardinera ' : 'Lower LED planter ') + (bi + 1) }), btn('+', () => confirmDecision('bedlight', { bed: bi, v: Math.min(1, b.light + 0.2) }, 'LED ' + (bi + 1)), 'sm', { 'aria-label': (es ? 'Subir LED jardinera ' : 'Raise LED planter ') + (bi + 1) }))));
       return panel('🌱 ' + consoleName('gh'), h('div', null, incHere(['gh']),
+        h('p', { class: 'small muted' }, es ? 'Toca una planta para ver su ficha. También puedes acercarte a ella en el invernadero y pulsar E.' : 'Tap a plant to open its card. You can also walk up to it in the greenhouse and press E.'),
         h('div', { class: 'grid2' }, beds),
         h('div', { class: 'grid2', style: { marginTop: '10px' } },
-          h('div', { class: 'card' }, slider('💡 ' + (LANG === 'es' ? 'Iluminación' : 'Lighting'), g.lights, (v) => confirmDecision('lights', { v }, LANG === 'es' ? 'Iluminación' : 'Lighting'), (v) => Math.round(v * 100) + '% · ' + fmt(v * 3.6) + ' kW')),
-          h('div', { class: 'card' }, slider('💧 ' + (LANG === 'es' ? 'Riego' : 'Irrigation'), g.irrig, (v) => confirmDecision('irrig', { v }, LANG === 'es' ? 'Riego' : 'Irrigation'), (v) => Math.round(v * 100) + '%'),
-            h('p', { class: 'small' }, (LANG === 'es' ? 'Riego por goteo: ' : 'Drip irrigation: ') + (g.drip ? '✔ ' + _('on') : '✖ ' + (LANG === 'es' ? 'desbloquéalo con el minijuego' : 'unlock it with the mini-game'))))),
-        h('p', { class: 'small muted' }, (LANG === 'es' ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (LANG === 'es' ? 'El ciclo de 7 días es una simplificación educativa basada en el material de la Agencia Espacial Canadiense.' : 'The 7-day cycle is an educational simplification based on Canadian Space Agency material.')),
+          h('div', { class: 'card' }, slider('💧 ' + (es ? 'Riego automático (los sensores paran al 65 %)' : 'Automatic irrigation (sensors stop at 65%)'), g.irrig, (v) => confirmDecision('irrig', { v }, es ? 'Riego' : 'Irrigation'), (v) => Math.round(v * 100) + '%'),
+            h('p', { class: 'small' }, (es ? 'Riego por goteo: ' : 'Drip irrigation: ') + (g.drip ? '✔ ' + _('on') + (es ? ' (45 % menos agua)' : ' (45% less water)') : '✖ ' + (es ? 'desbloquéalo con el minijuego' : 'unlock it with the mini-game')))),
+          h('div', { class: 'card' }, h('h3', null, '🧪 ' + (es ? 'Solución nutritiva' : 'Nutrient solution')), h('p', null, fmt(S.r.nutr.v, 1) + ' / ' + S.r.nutr.max + ' L'),
+            btn('♻️ ' + (es ? 'Preparar con residuos orgánicos' : 'Make from organic waste'), () => confirmDecision('mixnutr', {}, es ? 'Solución nutritiva' : 'Nutrient solution'), 'sm'),
+            h('p', { class: 'small muted' }, '🌰 ' + Object.keys(S.seeds).map((k) => tr(Flora.SPECIES[k].name).split(' ')[0] + ' ' + S.seeds[k]).join(' · ')))),
+        h('p', { class: 'small muted' }, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (es ? 'El ciclo de 7 días es una simplificación de jugabilidad, no la duración biológica real de cada cultivo.' : 'The 7-day cycle is a gameplay simplification, not each crop\'s real biological duration.')),
         btn('🎮 ' + _('play') + ': ' + tr(MG.defs.gh.t), () => miniIntro('gh', { inc: (Sim.activeInc(S).find((i) => i.type === 'crop_fail') || {}).id }), 'primary')));
     });
   }
@@ -3387,6 +3998,299 @@ const Game = (function () {
       h('table', null, h('tbody', null, statRow(LANG === 'es' ? 'Muestras recogidas' : 'Samples collected', S.st.samplesTot), statRow(LANG === 'es' ? 'Puntos de ciencia' : 'Science points', S.science), statRow(LANG === 'es' ? 'Cosechas' : 'Harvests', Object.values(S.st.crops).reduce((a, b) => a + b, 0)))),
       h('div', { class: 'card' }, h('h3', null, 'NASA OSDR'), h('p', { class: 'small' }, LANG === 'es' ? 'El Open Science Data Repository guarda datos de experimentos biológicos en el espacio (plantas, microbios, animales). Sirve para investigar, no para vigilar la salud de una tripulación en tiempo real.' : 'The Open Science Data Repository stores data from biology experiments in space (plants, microbes, animals). It is for research, not real-time crew health monitoring.'), h('a', { href: 'https://osdr.nasa.gov/bio/repo/', target: '_blank', rel: 'noopener' }, 'osdr.nasa.gov')),
       h('div', { class: 'card' }, h('h3', null, LANG === 'es' ? 'Logros' : 'Achievements'), h('ul', null, Object.keys(DATA.ACH).map((k) => h('li', null, (ach[k] ? '🏅 ' : '⬜ ') + tr(DATA.ACH[k]))))))));
+  }
+  /* =================== NPC: RADIO, CONVERSACIONES, VESTUARIO Y PLANTAS =================== */
+  const ND = NPCDATA;
+  /** ¿Quién habla en nombre de un rol? Si el jugador lleva ese traje, habla el comandante (o Control si también es él). */
+  function speaker(role) {
+    const pr = S ? S.playerRole : 'commander';
+    if (!role || role === 'control') return 'control';
+    if (role !== pr) return role;
+    return pr === 'commander' ? 'control' : 'commander';
+  }
+  function portrait(who, size) {
+    const c = h('canvas', { width: size * 2, height: size * 2, style: { width: size + 'px', height: size + 'px', borderRadius: '12px', background: '#0b1124', flex: '0 0 auto' }, 'aria-hidden': 'true' });
+    const x = c.getContext('2d');
+    if (who === 'control') {
+      const r = size * 0.62; x.fillStyle = '#1c5fb8'; x.beginPath(); x.arc(size, size, r, 0, 7); x.fill();
+      x.fillStyle = '#3ddc84'; x.beginPath(); x.ellipse(size - r * 0.25, size - r * 0.2, r * 0.45, r * 0.3, 0.6, 0, 7); x.fill(); x.beginPath(); x.ellipse(size + r * 0.4, size + r * 0.35, r * 0.3, r * 0.22, -0.4, 0, 7); x.fill();
+      x.strokeStyle = '#7fd3ff'; x.lineWidth = 3; x.beginPath(); x.arc(size, size, r + 6, -0.9, 0.9); x.stroke(); x.beginPath(); x.arc(size, size, r + 14, -0.7, 0.7); x.stroke();
+    } else { const k = (size * 2) / 30; Chars.draw(x, who, size, size + 55 * k, { dir: 2, t: 0, pose: 'idle', scale: k, shadow: false }); }
+    return c;
+  }
+
+  /* ---------- Cola de llamadas por radio ---------- */
+  const SEVR = { crit: 3, warn: 2, info: 1, ok: 1 };
+  const radio = { q: [], cur: null, t: 0, recent: {} };
+  function call(o) {
+    // o: { key, sev, who, title, desc, loc, act, cons, target, console, why }
+    const now = performance.now() / 1000;
+    if (radio.cur && radio.cur.key === o.key) { Object.assign(radio.cur, o); renderRadio(); return; }
+    const qi = radio.q.findIndex((x) => x.key === o.key);
+    if (qi >= 0) { radio.q[qi] = Object.assign(radio.q[qi], o); return; }
+    if (o.sev !== 'crit' && radio.recent[o.key] && now - radio.recent[o.key] < 45) return; // no repetir lo mismo sin control
+    radio.recent[o.key] = now;
+    o.at = now;
+    if (radio.cur && SEVR[o.sev] > SEVR[radio.cur.sev]) { radio.q.push(radio.cur); radio.cur = null; }
+    radio.q.push(o);
+    radio.q.sort((a, b) => SEVR[b.sev] - SEVR[a.sev] || a.at - b.at);
+    if (radio.q.length > 8) radio.q = radio.q.slice(0, 8);
+    if (!radio.cur) nextCall();
+    else renderRadio();
+  }
+  function nextCall() {
+    radio.cur = radio.q.shift() || null; radio.t = 0;
+    if (radio.cur) Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info');
+    renderRadio();
+  }
+  function dismissCall() { nextCall(); }
+  function tickRadio(dt) {
+    if (!radio.cur || paused || modalOpen()) return;
+    radio.t += dt;
+    const life = radio.cur.sev === 'crit' ? Infinity : radio.cur.sev === 'warn' ? 18 : 9;
+    if (radio.t > life) nextCall();
+  }
+  function renderRadio() {
+    const box = $('#radio');
+    if (!radio.cur || !running) { box.classList.add('hidden'); box.innerHTML = ''; $('#hint').style.visibility = ''; return; }
+    const c = radio.cur, who = c.who || 'control', P = ND.PEOPLE[who];
+    const es = LANG === 'es';
+    box.className = 'radio ' + c.sev;
+    box.innerHTML = '';
+    box.append(
+      portrait(who, 64),
+      h('div', { class: 'col', style: { gap: '4px', minWidth: 0, flex: '1' } },
+        h('div', { class: 'row', style: { gap: '6px' } }, h('b', null, '📻 ' + tr(P.name)), h('span', { class: 'small muted' }, tr(P.spec)), tag(SEVI[c.sev] + ' ' + _(c.sev === 'ok' ? 'info' : c.sev), c.sev === 'ok' ? 'info' : c.sev), radio.q.length ? h('span', { class: 'small muted' }, '+' + radio.q.length) : null),
+        h('div', { class: 'radio-title' }, c.title),
+        c.desc ? h('div', { class: 'small r-desc' }, c.desc) : null,
+        c.loc ? h('div', { class: 'small' }, '📍 ' + c.loc) : null,
+        c.act ? h('div', { class: 'small' }, '👉 ' + c.act) : null,
+        c.cons ? h('div', { class: 'small muted r-cons' }, '⚠ ' + (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons) : null,
+        h('div', { class: 'row', style: { gap: '6px', marginTop: '2px' } },
+          btn('✔ ' + (es ? 'Entendido' : 'Got it'), dismissCall, 'sm primary'),
+          c.target ? btn('📍 ' + (es ? 'Marcar ubicación' : 'Mark location'), () => { World.setMarker(c.target, c.loc); toast(es ? 'Ubicación marcada en el minimapa' : 'Location marked on the minimap', c.loc, 'info'); }, 'sm') : null,
+          c.console ? btn('🖥️ ' + (es ? 'Consultar sistema' : 'Check system'), () => { openConsole({ id: c.console }); }, 'sm') : null,
+          c.why ? btn('❓ ' + (es ? 'Ver explicación' : 'See explanation'), () => (DATA.EVT[c.why] ? whyPanel(c.why) : null), 'sm') : null)));
+    box.classList.remove('hidden');
+    $('#hint').style.visibility = 'hidden';
+  }
+  function roomLoc(room, sysK) { const r = tr(DATA.ROOMS[room] || DATA.ROOMS.hall), sy = sysK && DATA.SYS_T[sysK] ? tr(DATA.SYS_T[sysK]) : ''; return r + (sy && sy !== r ? ' · ' + sy : ''); }
+  function consoleTarget(id, room) { return (id && World.consolePos(id)) || (room && World.roomCenter(room)) || null; }
+  /** Convierte entradas del registro del motor en llamadas de NPC (o devuelve false si no corresponde). */
+  function logToRadio(e) {
+    const k = e.k, p = e.p || {}, es = LANG === 'es';
+    if (k.startsWith('ev.') || k === 'esc') {
+      const ty = k === 'esc' ? p.type : k.slice(3), T = DATA.EVT[ty]; if (!T) return false;
+      const inc = S.inc.find((i) => i.id === p.id) || {};
+      const room = inc.room || 'hall', cons = ND.INC_CONSOLE[ty] || (inc.sys === 'reactor' || inc.sys === 'solar' ? 'reactor' : inc.sys === 'shield' ? 'shield' : inc.sys === 'o2' ? 'o2' : null);
+      let loc = roomLoc(room, inc.sys), tgt = consoleTarget(cons, room);
+      if (ty === 'crop_fail') { const sick = Sim.plantsList(S).filter((x) => x.p.pest); if (sick.length) { loc = tr(DATA.ROOMS.gh) + ' · ' + (es ? 'jardineras ' : 'planters ') + [...new Set(sick.map((x) => x.bi + 1))].join(', '); tgt = World.plantPos(sick[0].bi, sick[0].k); } }
+      call({ key: 'inc' + (inc.id || ty), sev: e.sev, who: ND.INC_NPC[ty], title: (k === 'esc' ? (es ? '¡Empeoró! ' : 'Getting worse! ') : (e.sev === 'crit' ? (es ? '¡Atención! ' : 'Attention! ') : '')) + tr(T.t),
+        desc: tr(T.what) + (p.lead ? ' ' + (es ? 'Llegará en ' : 'Arrives in ') + fmt(p.lead) + ' h.' : ''), loc, act: tr(T.act), cons: tr(ND.CONSEQ[ty]), target: tgt, console: cons, why: ty });
+      return true;
+    }
+    if (k.startsWith('res.')) {
+      const ty = k.slice(4); if (!DATA.EVT[ty]) return false;
+      call({ key: 'res' + p.id, sev: 'ok', who: ND.INC_NPC[ty], title: (es ? 'Resuelto: ' : 'Resolved: ') + tr(DATA.EVT[ty].t), desc: p.how === 'engineer' ? (es ? '¡Lo reparé yo! Todo vuelve a la normalidad.' : 'I fixed it! Everything is back to normal.') : p.how === 'expired' ? (es ? 'El fenómeno terminó.' : 'The event is over.') : (es ? '¡Buen trabajo! El sistema funciona otra vez.' : 'Good job! The system works again.') });
+      return true;
+    }
+    if (k === 'camp.done') {
+      const room = p.room, g = ND.GUIDE[room];
+      call({ key: 'camp' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: (es ? 'Se ha desbloqueado: ' : 'Unlocked: ') + tr(DATA.ROOMS[room]) + '. ' + (es ? '¡Ven a verme!' : 'Come and see me!'), loc: tr(DATA.ROOMS[room]), target: World.roomCenter(room) });
+      World.setAct('all', 'celebrate', 3);
+      return true;
+    }
+    if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }
+    if (k === 'crop.dead') { call({ key: 'dead' + e.n, sev: 'warn', who: 'agri', title: es ? 'Se perdió una planta' : 'A plant died', desc: (p.sp ? tr(Flora.SPECIES[p.sp].name) + ' · ' : '') + (es ? 'jardinera ' : 'planter ') + p.bed, loc: tr(DATA.ROOMS.gh), act: es ? 'Revisa humedad, luz y nutrientes de las otras plantas.' : 'Check moisture, light and nutrients of the other plants.', target: World.plantPos(p.bed - 1, 1), console: 'gh' }); return true; }
+    if (k === 'job.analyze') { call({ key: 'an' + e.n, sev: 'ok', who: 'scientist', title: es ? 'Análisis terminado' : 'Analysis done', desc: es ? 'La muestra contiene minerales típicos del regolito. +12 puntos de ciencia.' : 'The sample has typical regolith minerals. +12 science points.' }); return true; }
+    return false;
+  }
+  /** Vigila umbrales de recursos y avisa mediante el NPC responsable. */
+  const resState = {};
+  function watchResources() {
+    if (!S || S.ended) return;
+    for (const k of Object.keys(ND.RES)) {
+      const st = Sim.status(S, k === 'dose' ? 'dose' : k);
+      const prev = resState[k] || 'ok'; resState[k] = st;
+      if (st === 'ok' || (st === prev)) continue;
+      if (SEVR[st] < SEVR[prev]) continue;
+      const R = ND.RES[k], room = ND.RES_ROOM[k];
+      const val = k === 'dose' ? fmt(S.d.dose) + ' mSv' : Math.round((S.d[k] || 0) * 100) + ' %';
+      call({ key: 'res_' + k + st, sev: st, who: R.npc, title: tr(R.d) + ' (' + val + ')', desc: '', loc: tr(DATA.ROOMS[room]), act: tr(R.a), cons: tr(R.c), target: consoleTarget(R.console, room), console: R.console });
+    }
+  }
+
+  /* ---------- Conversaciones de bienvenida ---------- */
+  function talk(room, replay) {
+    const lines = ND.TALK[room]; if (!lines) return;
+    const who = speaker(ND.GUIDE[room] === 'commander' ? 'commander' : ND.GUIDE[room]);
+    let i = 0;
+    const s = push(h('div'), { sticky: true });
+    const draw = () => {
+      const P = ND.PEOPLE[who];
+      const box = h('div', { class: 'panel narrow talk' },
+        h('div', { class: 'row', style: { alignItems: 'flex-start', flexWrap: 'nowrap' } }, portrait(who, 72),
+          h('div', { class: 'col', style: { gap: '2px' } }, h('b', null, tr(P.name)), h('span', { class: 'small muted' }, tr(P.spec)), h('span', { class: 'small muted' }, '📍 ' + tr(DATA.ROOMS[room])))),
+        h('p', { class: 'bubble', 'aria-live': 'polite' }, tr(lines[i])),
+        h('div', { class: 'row', style: { justifyContent: 'space-between' } },
+          h('span', { class: 'small muted' }, (i + 1) + ' / ' + lines.length),
+          h('div', { class: 'row' }, i < lines.length - 1 ? btn(_('skip'), finish, 'sm') : null, btn(i < lines.length - 1 ? _('next') + ' ▶' : (LANG === 'es' ? '¡Entendido!' : 'Got it!'), () => { if (i < lines.length - 1) { i++; s.replaceChild(draw(), s.firstChild); focusFirst(s); } else finish(); }, 'primary', { autofocus: true }))));
+      return box;
+    };
+    function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
+    s.replaceChild(draw(), s.firstChild); focusFirst(s);
+  }
+  function talksPanel() {
+    const es = LANG === 'es';
+    const rooms = ['bridge', 'life', 'reactor', 'water', 'gh', 'lab', 'rad'];
+    push(panel('💬 ' + (es ? 'Conversaciones con los guías' : 'Guide conversations'), h('div', { class: 'grid2' }, rooms.map((r) => {
+      const ok = S && S.camp && S.camp.visited[r];
+      return h('div', { class: 'card' }, h('h3', null, tr(DATA.ROOMS[r])), h('p', { class: 'small muted' }, tr(ND.PEOPLE[ND.GUIDE[r]].name)), ok ? btn('▶ ' + (es ? 'Escuchar de nuevo' : 'Listen again'), () => talk(r, true), 'sm') : h('p', { class: 'small muted' }, '🔒 ' + (es ? 'Visita la sección primero.' : 'Visit the section first.')));
+    }))));
+  }
+  let lastRoom = null;
+  function checkRoomVisit() {
+    if (!S || !S.camp || modalOpen() || S.ended) return;
+    const rn = World.roomName(World.player.x, World.player.y);
+    const room = rn === 'lock' || rn === 'pad' ? 'rad' : rn;
+    if (room === lastRoom) return;
+    lastRoom = room;
+    if (ND.TALK[room] && S.camp.unlocked[room] && !S.camp.visited[room]) talk(room);
+  }
+
+  /* ---------- Vestuario y permisos ---------- */
+  const ROOMS_OF = { commander: ['bridge'], medic: ['life', 'water'], engineer: ['reactor', 'water', 'rad'], agri: ['gh'], scientist: ['lab', 'rad'] };
+  function wardrobePanel() {
+    const es = LANG === 'es';
+    const cards = Chars.ORDER.map((role) => {
+      const R = Chars.ROLES[role], cur = S.playerRole === role;
+      const cv = h('canvas', { width: 120, height: 150, style: { width: '90px', height: '112px', background: '#0b1124', borderRadius: '10px' }, 'aria-hidden': 'true' });
+      Chars.draw(cv.getContext('2d'), role, 60, 140, { dir: 2, t: 0.5, pose: cur ? 'celebrate' : 'idle', scale: 1.9 });
+      return h('div', { class: 'card', style: cur ? { borderColor: 'var(--accent)' } : {} },
+        h('div', { class: 'row', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, cv, h('div', { class: 'col', style: { gap: '4px' } },
+          h('h3', null, tr(R.name)), h('span', { class: 'small' }, tr(DATA.ROLE_T[role].b)),
+          h('span', { class: 'small muted' }, (es ? 'Opera: ' : 'Operates: ') + ROOMS_OF[role].map((r) => tr(DATA.ROOMS[r])).join(', ')),
+          h('span', { class: 'small muted' }, '◆ ' + tr(R.acc)))),
+        cur ? tag('✔ ' + (es ? 'Lo llevas puesto' : 'You are wearing it'), 'ok') : btn('🧥 ' + (es ? 'Ponerse este traje' : 'Wear this suit'), () => {
+          World.setPlayerRole(role); Sim.setPlayerRole(S, role); saveRun(); pop();
+          toast((es ? 'Ahora eres: ' : 'You are now: ') + tr(R.name), es ? 'El especialista titular te acompaña como apoyo.' : 'The regular specialist stays on as support.', 'ok');
+        }, 'primary sm'));
+    });
+    push(panel('🧥 ' + (es ? 'Vestuario de especialistas' : 'Specialist wardrobe'), h('div', null,
+      h('p', { class: 'small' }, S.camp && !S.camp.basicDone ? (es ? 'Durante la familiarización puedes operar todo. Después, cada sección pedirá su especialista.' : 'During familiarization you can operate everything. Afterwards, each section needs its specialist.') : (es ? 'Cada sección necesita su especialista. Pasillos y zonas comunes son libres, y en una emergencia cualquiera puede reparar.' : 'Each section needs its specialist. Corridors and common areas are open, and in an emergency anyone can repair.')),
+      h('div', { class: 'grid2' }, cards))));
+  }
+  function allowed(id) {
+    if (!S || !S.camp || !S.camp.basicDone) return true;
+    const need = ND.ACCESS[id]; return !need || need.includes(S.playerRole);
+  }
+  function gatePanel(id, room) {
+    const es = LANG === 'es', need = ND.ACCESS[id];
+    const incs = Sim.activeInc(S).filter((i) => i.room === room && i.fix && S.t >= i.from);
+    const storm = id === 'shield' && S.inc.some((i) => i.type === 'solar_storm' && !i.res) && !S.proto;
+    push(panel('🔐 ' + (es ? 'Se necesita otro especialista' : 'Another specialist is needed'), h('div', null,
+      h('p', null, (es ? 'Esta operación la realiza: ' : 'This operation is done by: ') + need.map((r) => tr(Chars.ROLES[r].name)).join(es ? ' o ' : ' or ') + '.'),
+      h('p', { class: 'small muted' }, (es ? 'Llevas el traje de ' : 'You are wearing the ') + tr(Chars.ROLES[S.playerRole].name) + (es ? '. Cámbialo en el vestuario 🧥 del puente de mando.' : ' suit. Change it at the 🧥 wardrobe on the bridge.')),
+      h('div', { class: 'row' }, btn('📍 ' + (es ? 'Marcar el vestuario' : 'Mark the wardrobe'), () => { World.setMarker(World.consolePos('wardrobe'), 'wardrobe'); pop(); }, 'primary'),
+        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id }); }, 'danger')),
+        storm ? btn('🚨 ' + (es ? 'Activar protocolo de refugio (emergencia)' : 'Turn on shelter protocol (emergency)'), () => { pop(); confirmDecision('proto', { v: true }, es ? 'Protocolo de refugio' : 'Shelter protocol'); }, 'danger') : null)), { narrow: true }));
+  }
+
+  /* ---------- Ficha de planta ---------- */
+  const ISSUE = {
+    dry: { es: 'Estrés hídrico: el sustrato está seco y las hojas se caen.', en: 'Water stress: the substrate is dry and leaves droop.' },
+    wet: { es: 'Exceso de agua: las raíces no respiran y las hojas viejas amarillean.', en: 'Too much water: roots cannot breathe and old leaves turn yellow.' },
+    dark: { es: 'Poca luz: la planta se estira, palidece y crece despacio.', en: 'Too little light: the plant stretches, turns pale and grows slowly.' },
+    nutr: { es: 'Faltan nutrientes: las hojas se ponen amarillas (clorosis).', en: 'Nutrients are low: leaves turn yellow (chlorosis).' },
+    temp: { es: 'La temperatura no es la adecuada para esta especie.', en: 'The temperature is not right for this species.' },
+    pest: { es: 'Plaga detectada: pequeños insectos sobre las hojas.', en: 'Pest detected: tiny insects on the leaves.' },
+    pestHint: { es: 'Se ven manchas raras en las hojas. Usa «Identificar problemas».', en: 'Odd spots on the leaves. Use "Identify problems".' },
+    prune: { es: 'Demasiadas ramas u hojas: conviene podar.', en: 'Too many branches or leaves: pruning helps.' },
+    ok: { es: 'La planta está sana.', en: 'The plant is healthy.' }
+  };
+  const FIX = { dry: { es: 'Riégala.', en: 'Water it.' }, wet: { es: 'No la riegues y baja el riego automático.', en: 'Do not water it and lower automatic irrigation.' }, dark: { es: 'Sube la luz LED de la jardinera (gasta energía).', en: 'Raise the planter LED (uses energy).' }, nutr: { es: 'Añade nutrientes.', en: 'Add nutrients.' }, temp: { es: 'Revisa el control térmico del módulo de vida.', en: 'Check thermal control in the habitation module.' }, pest: { es: 'Poda las hojas afectadas.', en: 'Prune the affected leaves.' }, pestHint: { es: 'Identifica el problema.', en: 'Identify the problem.' }, prune: { es: 'Pódala.', en: 'Prune it.' }, ok: { es: 'Sigue así.', en: 'Keep it up.' } };
+  function plantIssues(pl) {
+    const c = Sim.CROPS[pl.sp], out = [];
+    if (pl.moist < 28) out.push('dry'); if (pl.moist > 82) out.push('wet');
+    if (pl.light < c.light * 0.6) out.push('dark'); if (pl.nutr < 25) out.push('nutr');
+    if (Math.abs(S.sys.thermal.T - c.T) > 6) out.push('temp');
+    if (pl.pest) out.push(pl.pestKnown ? 'pest' : 'pestHint');
+    if (pl.prune > 0.6) out.push('prune');
+    return out.length ? out : ['ok'];
+  }
+  function plantCard(bed, slot) {
+    const es = LANG === 'es';
+    if (!S) return;
+    if (S.camp && S.camp.unlocked && !S.camp.unlocked.gh) return;
+    const can = allowed('plant');
+    let harvested = null;
+    livePanel(() => {
+      const b = S.beds[bed], pl = b.plants[slot];
+      const body = h('div');
+      if (harvested) {
+        const cvh = h('canvas', { width: 220, height: 220, style: { width: '160px', background: '#1c4331', borderRadius: '12px' }, 'aria-hidden': 'true' });
+        Flora.drawHarvested(cvh.getContext('2d'), harvested.sp, 110, harvested.sp === 'radish' ? 70 : 190, harvested.sp === 'radish' ? 5 : 4);
+        body.append(h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, cvh, h('div', null, h('h3', null, '🧺 ' + tr(Flora.SPECIES[harvested.sp].name)),
+          h('p', null, harvested.kg > 0 ? '+' + fmt(harvested.kg, 2) + ' kg ' + _('food') : (es ? 'No es comestible, pero la moral sube (+5).' : 'Not edible, but morale rises (+5).')),
+          h('p', null, '🌰 +' + harvested.seeds + (es ? ' semillas' : ' seeds')), harvested.sp === 'radish' ? h('p', { class: 'small muted' }, es ? 'La raíz roja es la parte que se come; las hojas también son comestibles.' : 'The red root is the part we eat; the leaves are edible too.') : null)));
+        harvested = null;
+      }
+      if (!pl) {
+        body.append(h('p', null, es ? 'Hueco vacío. Elige qué sembrar (cuesta 1 semilla, 0,5 L de agua y 0,2 L de nutrientes):' : 'Empty slot. Choose what to plant (costs 1 seed, 0.5 L water and 0.2 L nutrients):'),
+          h('div', { class: 'grid2' }, Object.keys(Flora.SPECIES).map((sp) => {
+            const cv = h('canvas', { width: 120, height: 110, style: { width: '80px', background: '#1c4331', borderRadius: '10px' }, 'aria-hidden': 'true' });
+            Flora.draw(cv.getContext('2d'), sp, 60, 100, 2.4, { prog: 1, hp: 100, moist: 55, nutr: 70, light: 1, seed: 3 });
+            return h('div', { class: 'card row', style: { flexWrap: 'nowrap' } }, cv, h('div', { class: 'col', style: { gap: '4px' } }, h('b', null, tr(Flora.SPECIES[sp].name)), h('span', { class: 'small muted' }, '🌰 ' + (S.seeds[sp] || 0)),
+              btn('🌱 ' + (es ? 'Sembrar' : 'Plant'), () => act('plant', { bed, slot, sp }), 'sm primary', { disabled: !can || !(S.seeds[sp] > 0) ? true : null })));
+          })));
+        return panel('🌱 ' + (es ? 'Jardinera ' : 'Planter ') + (bed + 1) + ' · ' + (es ? 'hueco ' : 'slot ') + (slot + 1), body);
+      }
+      const c = Sim.CROPS[pl.sp], sg = Flora.stage(pl.prog), issues = plantIssues(pl);
+      const cv = h('canvas', { width: 260, height: 260, style: { width: '180px', background: 'linear-gradient(#1c4331,#14301f)', borderRadius: '12px' }, 'aria-label': tr(Flora.SPECIES[pl.sp].name) });
+      const x = cv.getContext('2d'); x.fillStyle = '#3b2414'; x.fillRect(30, 222, 200, 22); Flora.draw(x, pl.sp, 130, 226, 5.6, pl, null);
+      const row = (label, v, col, txt) => h('div', { class: 'col', style: { gap: '2px', margin: '4px 0' } }, h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('span', { class: 'small' }, label), h('b', { class: 'small' }, txt)), bar(v, col));
+      const lightNeed = c.light;
+      body.append(h('div', { class: 'row', style: { flexWrap: 'wrap', alignItems: 'flex-start' } }, cv,
+        h('div', { class: 'col', style: { flex: '1', minWidth: '220px', gap: '2px' } },
+          h('div', { class: 'row' }, tag(Flora.STAGES[LANG][sg] + ' (' + (sg + 1) + '/5)', 'info'), tag('🕒 ' + fmt(pl.age / 24, 1) + (es ? ' días' : ' days'))),
+          row('❤️ ' + (es ? 'Salud' : 'Health'), pl.hp / 100, pl.hp < 40 ? 'var(--danger)' : pl.hp < 70 ? 'var(--warning)' : 'var(--success)', Math.round(pl.hp) + ' %'),
+          row('💧 ' + (es ? 'Humedad (ideal 35–75 %)' : 'Moisture (ideal 35–75%)'), pl.moist / 100, pl.moist < 28 || pl.moist > 82 ? 'var(--danger)' : '#38d6ff', Math.round(pl.moist) + ' %'),
+          row('🧪 ' + (es ? 'Nutrientes' : 'Nutrients'), pl.nutr / 100, pl.nutr < 25 ? 'var(--warning)' : '#a58cff', Math.round(pl.nutr) + ' %'),
+          row('💡 ' + (es ? 'Iluminación (necesita ' : 'Light (needs ') + Math.round(lightNeed * 100) + ' %)', pl.light, pl.light < lightNeed * 0.6 ? 'var(--warning)' : '#ff6ad5', Math.round(pl.light * 100) + ' %'),
+          row('🌡️ ' + (es ? 'Temperatura (óptima ' : 'Temperature (optimal ') + c.T + ' °C)', clampN(1 - Math.abs(S.sys.thermal.T - c.T) / 10, 0, 1), '#ff8a65', fmt(S.sys.thermal.T) + ' °C'),
+          row('📈 ' + (es ? 'Crecimiento (ciclo de 7 días)' : 'Growth (7-day cycle)'), pl.prog, '#ffd36b', Math.round(pl.prog * 100) + ' %'))));
+      // Diagnóstico y orientación del agrónomo
+      const shown = pl.inspected ? issues : ['pestHint'].filter(() => pl.pest && !pl.pestKnown).concat(issues.filter((i) => ['dry', 'wet'].includes(i)));
+      const who = 'agri';
+      body.append(h('div', { class: 'card', style: { marginTop: '8px' } }, h('div', { class: 'row', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, portrait(who, 48), h('div', null,
+        h('b', null, tr(ND.PEOPLE[who].name) + (S.playerRole === 'agri' ? (es ? ' (por radio)' : ' (by radio)') : '') + ': '),
+        pl.inspected ? h('span', null, issues.map((i) => tr(ISSUE[i]) + ' ' + tr(FIX[i])).join(' ')) : h('span', null, (shown.length ? shown.map((i) => tr(ISSUE[i])).join(' ') + ' ' : '') + (es ? 'Inspecciónala para un diagnóstico completo.' : 'Inspect it for a full diagnosis.')),
+        pl.inspected ? h('p', { class: 'small' }, '🌿 ' + tr(ND.PLANT[pl.sp].needs)) : null,
+        pl.inspected ? h('p', { class: 'small muted' }, es ? 'Agua, luz y nutrientes trabajan juntos: si falta uno, los otros no bastan. Demasiada agua también daña las raíces.' : 'Water, light and nutrients work together: if one is missing, the others are not enough. Too much water also harms roots.') : null,
+        h('p', { class: 'small muted' }, '🛰️ ' + tr(ND.PLANT[pl.sp].fact))))));
+      // Acciones
+      const nutrCost = S.playerRole === 'agri' ? 0.22 : 0.3;
+      const canPrune = pl.prune > 0.6 || (pl.pest && pl.pestKnown) || (pl.hp < 70 && sg >= 2);
+      body.append(h('div', { class: 'row', style: { marginTop: '8px' } },
+        btn('💧 ' + (es ? 'Regar' : 'Water') + ' (−0,3 L)', () => act('water', { bed, slot }), '', { disabled: !can ? true : null }),
+        btn('🧪 ' + (es ? 'Nutrientes' : 'Nutrients') + ' (−' + fmt(nutrCost, 2) + ' L)', () => act('feed', { bed, slot }), '', { disabled: !can ? true : null }),
+        btn('💡− LED', () => act('bedlight', { bed, v: Math.max(0, b.light - 0.2) }), 'sm', { disabled: !can ? true : null, title: es ? 'Ahorra energía' : 'Saves energy' }),
+        h('span', { class: 'small' }, Math.round(b.light * 100) + '% · ' + fmt(b.light * Sim.P.LIGHT_KW_PER_BED, 2) + ' kW'),
+        btn('💡+ LED', () => act('bedlight', { bed, v: Math.min(1, b.light + 0.2) }), 'sm', { disabled: !can ? true : null, title: es ? 'Gasta más energía' : 'Uses more energy' }),
+        btn('🔍 ' + (es ? 'Inspeccionar' : 'Inspect'), () => act('inspect', { bed, slot })),
+        btn('🩺 ' + (es ? 'Identificar problemas' : 'Identify problems'), () => act('identify', { bed, slot }), '', { disabled: !can ? true : null }),
+        btn('✂️ ' + (es ? 'Podar' : 'Prune'), () => act('prune', { bed, slot }), '', { disabled: !can || !canPrune ? true : null }),
+        btn('🧺 ' + (es ? 'Cosechar' : 'Harvest'), () => { const r = Sim.harvest(S, bed, slot); if (r) { harvested = r; processLogs(); } updateHud(); stack.forEach((z) => z._refresh && z._refresh()); }, 'primary', { disabled: !can || pl.prog < 1 ? true : null })),
+        !can ? h('p', { class: 'small muted' }, '🔐 ' + (es ? 'Solo el agrónomo puede cuidar las plantas. Cambia de traje en el vestuario.' : 'Only the agronomist can tend plants. Change suits at the wardrobe.')) : null,
+        h('p', { class: 'small muted' }, (es ? 'Reservas: ' : 'Stock: ') + '💧 ' + fmt(S.r.water.v, 0) + ' L · 🧪 ' + fmt(S.r.nutr.v, 1) + ' L · ⚡ ' + fmt(S.r.power.v, 0) + ' kWh · ' + (es ? 'El ciclo de 7 días es una simplificación del juego, no la duración real de cada cultivo.' : 'The 7-day cycle is a game simplification, not each crop\'s real duration.')));
+      return panel('🌱 ' + tr(Flora.SPECIES[pl.sp].name) + ' · ' + (es ? 'jardinera ' : 'planter ') + (bed + 1), body);
+    });
+    function act(id, p) {
+      const r = Sim.decide(S, id, p);
+      if (!r.ok) toast(_('err'), _(r.err) !== r.err ? _(r.err) : r.err, 'warn'); else Sfx.play(id === 'water' ? 'pick' : 'click');
+      processLogs(); updateHud(); stack.forEach((z) => z._refresh && z._refresh());
+    }
   }
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
@@ -3699,6 +4603,7 @@ const Game = (function () {
     $('#bMenu').addEventListener('click', () => pauseMenu());
     $('#bAlerts').addEventListener('click', () => openCmd('log'));
     $('#actBtn').addEventListener('click', () => interact());
+    cv.addEventListener('pointerdown', (e) => { if (!running || modalOpen() || !S) return; const pk = World.pick(e.clientX, e.clientY, dpr); if (pk) { Sfx.play('click'); openConsole(pk); } });
     document.addEventListener('pointerdown', () => Sfx.init(), { once: true });
     if (/[?&]selftest\b/.test(location.search)) { mainMenu(); selfTestPanel(); }
     else if (/[?&]sheet\b/.test(location.search)) sheetPanel();
@@ -3707,7 +4612,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

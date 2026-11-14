@@ -5,13 +5,20 @@
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
-    lock: { es: 'Esclusa', en: 'Airlock' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
+    lock: { es: 'Esclusa', en: 'Airlock' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
   const consoleName = (id) => tr(CNAME[id]) || id;
   function openConsole(c) {
     if (c.id === 'sample') {
       return confirmDecision('eva', {}, '🪨 ' + _('collect'), () => { c.s.taken = true; World.setAct('player', 'carry', 8); if (World.zone() === 'outside') toast(LANG === 'es' ? 'Muestra recogida' : 'Sample collected', LANG === 'es' ? 'Llévala al laboratorio para analizarla.' : 'Take it to the lab for analysis.', 'ok'); });
     }
+    if (c.id === 'plant') return plantCard(c.bed, c.slot);
+    if (c.id === 'wardrobe') return wardrobePanel();
+    const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
+    if (!allowed(c.id)) return gatePanel(c.id, ROOM_OF[c.id]);
+    if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
+    if (c.id === 'log') Sim.campFlag(S, 'log_open');
+    if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
       shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
@@ -51,7 +58,9 @@
     analyze: { u: { es: '1 muestra y 1,5 kW durante 3 h', en: '1 sample and 1.5 kW for 3 h' }, r: { es: 'Consume energía.', en: 'Uses energy.' }, b: { es: 'Puntos de ciencia.', en: 'Science points.' } },
     experiment: { u: { es: '2 L de agua y 1,5 kW durante 5 h', en: '2 L water and 1.5 kW for 5 h' }, r: { es: 'Consume agua y energía.', en: 'Uses water and energy.' }, b: { es: 'Ciencia y moral.', en: 'Science and morale.' } },
     recycle: { u: { es: '6 kg de residuos y 0,8 kW durante 3 h', en: '6 kg waste and 0.8 kW for 3 h' }, r: { es: 'Consume energía.', en: 'Uses energy.' }, b: { es: '+5 kg de materiales (economía circular).', en: '+5 kg materials (circular economy).' } },
-    plant: { u: { es: '1,5 L de agua para sembrar', en: '1.5 L water to plant' }, r: { es: 'El cultivo necesitará luz, agua y temperatura durante 7 días.', en: 'The crop will need light, water and temperature for 7 days.' }, b: { es: 'Comida fresca en 7 días.', en: 'Fresh food in 7 days.' } },
+    bedlight: { u: { es: 'Electricidad para las luces LED de la jardinera (0,6 kW al 100 %)', en: 'Electricity for the planter LEDs (0.6 kW at 100%)' }, r: { es: 'Más luz = menos batería para otros sistemas.', en: 'More light = less battery for other systems.' }, b: { es: 'Más luz = más crecimiento (hasta lo que la especie necesita).', en: 'More light = more growth (up to what the species needs).' } },
+    mixnutr: { u: { es: '2 kg de residuos orgánicos, 2 L de agua y 0,8 kW durante 2 h', en: '2 kg organic waste, 2 L water and 0.8 kW for 2 h' }, r: { es: 'Gasta agua y energía.', en: 'Uses water and energy.' }, b: { es: '+4 L de solución nutritiva: los residuos vuelven al cultivo (economía circular).', en: '+4 L nutrient solution: waste returns to the crops (circular economy).' } },
+    plant: { u: { es: '1 semilla, 0,5 L de agua y 0,2 L de nutrientes', en: '1 seed, 0.5 L water and 0.2 L nutrients' }, r: { es: 'El cultivo necesitará luz, agua y temperatura durante 7 días.', en: 'The crop will need light, water and temperature for 7 days.' }, b: { es: 'Comida fresca en 7 días.', en: 'Fresh food in 7 days.' } },
     sleep: { u: { es: '4 h de tiempo', en: '4 h of time' }, r: { es: 'El tiempo pasa: los recursos se siguen consumiendo.', en: 'Time passes: resources keep being used.' }, b: { es: 'Descanso +30, moral +4.', en: 'Rest +30, morale +4.' } },
     rec: { u: { es: '2 h de tiempo', en: '2 h of time' }, r: { es: 'El tiempo pasa.', en: 'Time passes.' }, b: { es: 'Moral +9.', en: 'Morale +9.' } },
     wait: { u: { es: 'Tiempo', en: 'Time' }, r: { es: 'Pueden ocurrir eventos mientras esperas.', en: 'Events can happen while you wait.' }, b: { es: 'Llegan mensajes y avanzan cultivos y obras.', en: 'Messages arrive; crops and jobs progress.' } },
@@ -120,11 +129,22 @@
     const s = livePanel(() => {
       const tabs = [['missions', '🎯 ' + _('missions')], ['resources', '📊 ' + _('resources')], ['crew', '👩‍🚀 ' + _('crew')], ['log', '📜 ' + _('logT')], ['map', '🗺️ ' + _('mapT')]];
       const body = h('div', null, h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, l]) => h('button', { class: 'btn sm', role: 'tab', 'aria-selected': k === cur ? 'true' : 'false', onclick: () => { cur = k; s._refresh(); } }, l))),
-        cur === 'missions' ? missionsTab() : cur === 'resources' ? resourcesTab() : cur === 'crew' ? crewTab() : cur === 'log' ? logTab() : mapTab());
+        cur === 'missions' ? missionsTab() : cur === 'resources' ? (Sim.campFlag(S, 'cmd_resources'), resourcesTab()) : cur === 'crew' ? crewTab() : cur === 'log' ? logTab() : mapTab());
       return panel('🖥️ ' + consoleName('cmd'), body);
     });
   }
+  function campaignCard() {
+    const es = LANG === 'es', C = S.camp;
+    if (!C) return null;
+    const cs = Sim.campStatus(S);
+    return h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
+      h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
+      cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+  }
   function missionsTab() {
+    const campLock = S.camp && !S.camp.basicDone;
     const list = [1, 2, 3, 4, 5, 6, 7].map((id) => {
       const D = DATA.MIS[id], m = S.m[id];
       const stTag = tag(_(m.st), m.st === 'done' ? 'ok' : m.st === 'active' ? 'info' : m.st === 'failed' ? 'warn' : '');
@@ -138,12 +158,13 @@
           Sim.LIMIT[id] < 900 ? h('p', { class: 'small muted' }, (LANG === 'es' ? 'Tiempo restante: ' : 'Time left: ') + fmt(Math.max(0, Sim.LIMIT[id] - (S.t - m.t0)), 0) + ' h') : null) : null,
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
-          m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));
     });
-    return h('div', null, h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
+    return h('div', null, campaignCard(), h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
       h('div', { class: 'grid2' }, list), h('div', { class: 'row', style: { marginTop: '12px' } }, btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }, 'danger')));
   }
   function resourcesTab() {
@@ -174,7 +195,7 @@
       h('p', { class: 'small muted' }, LANG === 'es' ? 'Los parámetros del modelo están documentados en el README: R = dato real, M = estimación de modelo, G = simplificación para jugar.' : 'Model parameters are documented in the README: R = real data, M = model estimate, G = gameplay simplification.'));
   }
   function crewTab() {
-    return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
+    return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, c.role === S.playerRole ? (LANG === 'es' ? '🧑‍🚀 Tú · ' : '🧑‍🚀 You · ') + tr(Chars.ROLES[c.role].name) : tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
       h('p', null, (LANG === 'es' ? 'Zona: ' : 'Zone: ') + (c.zone === 'shelter' ? (LANG === 'es' ? 'refugio' : 'shelter') : c.zone === 'outside' ? (LANG === 'es' ? 'exterior' : 'outside') : (LANG === 'es' ? 'hábitat' : 'habitat'))),
       h('p', null, (LANG === 'es' ? 'Dosis: ' : 'Dose: ') + fmt(c.dose, 2) + ' mSv'))),
       h('div', { class: 'card' }, h('h3', null, '😊 ' + _('well')), h('p', null, (LANG === 'es' ? 'Moral: ' : 'Morale: ') + Math.round(S.morale) + ' %'), bar(S.morale / 100), h('p', null, (LANG === 'es' ? 'Descanso: ' : 'Rest: ') + Math.round(S.rest) + ' %'), bar(S.rest / 100),
@@ -256,19 +277,22 @@
       h('p', { class: 'small muted' }, LANG === 'es' ? 'NASA OSDR reúne investigaciones sobre cómo el espacio afecta a seres vivos. No es un sistema médico en tiempo real: aquí las dosis son estimaciones del modelo.' : 'NASA OSDR gathers research on how space affects living things. It is not a real-time medical system: doses here are model estimates.'))));
   }
   function ghPanel() {
+    const es = LANG === 'es';
     livePanel(() => {
       const g = S.sys.gh;
-      const beds = S.beds.map((b, i) => h('div', { class: 'card' }, h('b', null, (LANG === 'es' ? 'Cama ' : 'Bed ') + (i + 1)),
-        b.crop ? h('div', null, h('p', null, tr(DATA.CROP_T[b.crop]) + ' · ' + (LANG === 'es' ? 'día ' : 'day ') + fmt(b.prog * 7, 1) + '/7'), bar(b.prog, '#3ddc84'), h('p', { class: 'small' }, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(b.hp) + ' %'),
-          b.prog >= 1 ? btn('🧺 ' + (LANG === 'es' ? 'Cosechar' : 'Harvest'), () => { Sim.harvest(S, i); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null)
-          : h('div', { class: 'row' }, Object.keys(Sim.CROPS).map((k) => btn('🌱 ' + tr(DATA.CROP_T[k]), () => confirmDecision('plant', { bed: i, crop: k }, tr(DATA.CROP_T[k])), 'sm', { title: tr(DATA.CROP_T[k].d) })))));
+      const beds = S.beds.map((b, bi) => h('div', { class: 'card' }, h('b', null, (es ? 'Jardinera ' : 'Planter ') + (bi + 1)),
+        h('div', { class: 'row' }, b.plants.map((pl, k) => btn(pl ? tr(Flora.SPECIES[pl.sp].name).split(' ')[0] + ' ' + Math.round(pl.prog * 100) + '%' + (pl.prog >= 1 ? ' ✨' : '') + (pl.hp < 50 || pl.moist < 28 ? ' ⚠' : '') : '➕ ' + (es ? 'vacío' : 'empty'), () => plantCard(bi, k), 'sm'))),
+        h('div', { class: 'row small' }, '💡 ' + Math.round(b.light * 100) + '%', btn('−', () => confirmDecision('bedlight', { bed: bi, v: Math.max(0, b.light - 0.2) }, 'LED ' + (bi + 1)), 'sm', { 'aria-label': (es ? 'Bajar LED jardinera ' : 'Lower LED planter ') + (bi + 1) }), btn('+', () => confirmDecision('bedlight', { bed: bi, v: Math.min(1, b.light + 0.2) }, 'LED ' + (bi + 1)), 'sm', { 'aria-label': (es ? 'Subir LED jardinera ' : 'Raise LED planter ') + (bi + 1) }))));
       return panel('🌱 ' + consoleName('gh'), h('div', null, incHere(['gh']),
+        h('p', { class: 'small muted' }, es ? 'Toca una planta para ver su ficha. También puedes acercarte a ella en el invernadero y pulsar E.' : 'Tap a plant to open its card. You can also walk up to it in the greenhouse and press E.'),
         h('div', { class: 'grid2' }, beds),
         h('div', { class: 'grid2', style: { marginTop: '10px' } },
-          h('div', { class: 'card' }, slider('💡 ' + (LANG === 'es' ? 'Iluminación' : 'Lighting'), g.lights, (v) => confirmDecision('lights', { v }, LANG === 'es' ? 'Iluminación' : 'Lighting'), (v) => Math.round(v * 100) + '% · ' + fmt(v * 3.6) + ' kW')),
-          h('div', { class: 'card' }, slider('💧 ' + (LANG === 'es' ? 'Riego' : 'Irrigation'), g.irrig, (v) => confirmDecision('irrig', { v }, LANG === 'es' ? 'Riego' : 'Irrigation'), (v) => Math.round(v * 100) + '%'),
-            h('p', { class: 'small' }, (LANG === 'es' ? 'Riego por goteo: ' : 'Drip irrigation: ') + (g.drip ? '✔ ' + _('on') : '✖ ' + (LANG === 'es' ? 'desbloquéalo con el minijuego' : 'unlock it with the mini-game'))))),
-        h('p', { class: 'small muted' }, (LANG === 'es' ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (LANG === 'es' ? 'El ciclo de 7 días es una simplificación educativa basada en el material de la Agencia Espacial Canadiense.' : 'The 7-day cycle is an educational simplification based on Canadian Space Agency material.')),
+          h('div', { class: 'card' }, slider('💧 ' + (es ? 'Riego automático (los sensores paran al 65 %)' : 'Automatic irrigation (sensors stop at 65%)'), g.irrig, (v) => confirmDecision('irrig', { v }, es ? 'Riego' : 'Irrigation'), (v) => Math.round(v * 100) + '%'),
+            h('p', { class: 'small' }, (es ? 'Riego por goteo: ' : 'Drip irrigation: ') + (g.drip ? '✔ ' + _('on') + (es ? ' (45 % menos agua)' : ' (45% less water)') : '✖ ' + (es ? 'desbloquéalo con el minijuego' : 'unlock it with the mini-game')))),
+          h('div', { class: 'card' }, h('h3', null, '🧪 ' + (es ? 'Solución nutritiva' : 'Nutrient solution')), h('p', null, fmt(S.r.nutr.v, 1) + ' / ' + S.r.nutr.max + ' L'),
+            btn('♻️ ' + (es ? 'Preparar con residuos orgánicos' : 'Make from organic waste'), () => confirmDecision('mixnutr', {}, es ? 'Solución nutritiva' : 'Nutrient solution'), 'sm'),
+            h('p', { class: 'small muted' }, '🌰 ' + Object.keys(S.seeds).map((k) => tr(Flora.SPECIES[k].name).split(' ')[0] + ' ' + S.seeds[k]).join(' · ')))),
+        h('p', { class: 'small muted' }, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (es ? 'El ciclo de 7 días es una simplificación de jugabilidad, no la duración biológica real de cada cultivo.' : 'The 7-day cycle is a gameplay simplification, not each crop\'s real biological duration.')),
         btn('🎮 ' + _('play') + ': ' + tr(MG.defs.gh.t), () => miniIntro('gh', { inc: (Sim.activeInc(S).find((i) => i.type === 'crop_fail') || {}).id }), 'primary')));
     });
   }
