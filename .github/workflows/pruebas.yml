@@ -1,0 +1,50 @@
+name: Pruebas
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: index.html coincide con src/
+        run: |
+          ./tools/build.sh
+          git diff --exit-code index.html || (echo "::error::index.html no coincide con src/. Ejecuta ./tools/build.sh y haz commit." && exit 1)
+
+      - name: Motor de simulación (100 partidas)
+        run: node tests/run-selftest.js 100
+
+      - name: Contraste WCAG AA
+        run: node tests/contrast.js
+
+      - name: Instalar Playwright y Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Pruebas de extremo a extremo (Chromium, sin conexión)
+        run: |
+          mkdir -p capturas
+          node tests/e2e.js --shots capturas
+
+      - name: Guardar capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: capturas
+          if-no-files-found: ignore

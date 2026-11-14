@@ -6,6 +6,10 @@ Simulador educativo 2D (vista cenital) para niños y niñas de 7 a 12 años. El 
 - Sin bibliotecas, motores, frameworks ni servidores. Funciona sin Internet.
 - Español por defecto, inglés opcional.
 
+## Jugar en línea
+- **GitHub Pages:** https://socra375.github.io/Astro-Caribe-Challenge/ (se publica automáticamente con cada cambio en `main`; requiere activar Pages una vez en *Settings → Pages → Source: GitHub Actions*).
+- También funciona sin Internet: descarga `index.html` y ábrelo con doble clic.
+
 ## Cómo ejecutar
 
 1. Descarga o clona el repositorio.
@@ -277,6 +281,8 @@ node tests/contrast.js
 ```bash
 node tests/e2e.js
 ```
+
+**Integración continua:** `.github/workflows/pruebas.yml` ejecuta en GitHub Actions, en cada PR y en cada cambio en `main`, la comprobación de que `index.html` coincide con `src/`, las 100 simulaciones, el contraste y las pruebas e2e en Chromium. Guarda las capturas como artefacto. Un PR solo está «en verde» si pasan todas.
 
 También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar 100 simulaciones de prueba». Las pruebas trabajan sobre copias del motor y no modifican el progreso del jugador.
 
