@@ -15,12 +15,12 @@
     drawLv();
     push(panel(D.icon + ' ' + tr(D.t), h('div', null,
       h('h3', null, _('instructions')), h('p', null, tr(D.how)), D.hintKeys ? h('p', { class: 'small muted' }, tr(D.hintKeys)) : null,
-      h('p', { class: 'small' }, '⏱ ' + D.dur(lvl) + ' s · 🎯 ' + effTxt), lvSel,
+      h('p', { class: 'small' }, '⏱ ' + mgDur(D, lvl) + ' s · 🎯 ' + effTxt), lvSel,
       h('div', { class: 'row', style: { marginTop: '12px' } }, btn('▶ ' + _('real'), () => { pop(); miniPlay(kind, opts, lvl, false); }, 'primary', { autofocus: true, disabled: !S || S.ended ? true : null }), btn('🧪 ' + _('practice'), () => { pop(); miniPlay(kind, opts, lvl, true); }), btn(_('cancel'), () => pop())))));
   }
   function miniPlay(kind, opts, lvl, practice) {
     const D = MG.defs[kind];
-    const g = { lvl, t: 0, dur: D.dur(lvl), keys: {}, opts: opts || {}, done: false };
+    const g = { lvl, t: 0, dur: mgDur(D, lvl), keys: {}, opts: opts || {}, done: false };
     D.setup(g);
     const c = h('canvas', { width: MG.GW, height: MG.GH, 'aria-label': tr(D.t) });
     const cx = c.getContext('2d');
@@ -68,18 +68,22 @@
   function earthCard(id, fresh) {
     const E = DATA.EARTH[id];
     const cards = Store.get('cards', {}); cards[id] = 1; Store.set('cards', cards);
-    const Q = DATA.QUIZ[id];
+    const Q = quizOf(id);
     const quizBox = h('div', { class: 'card' }, h('h3', null, '❓ ' + _('quiz')), h('p', null, tr(Q.q)));
     const answered = S && S.quiz[id] != null;
-    Q.o.forEach((o, i) => quizBox.append(btn(tr(o), (e) => {
+    const jun = !isAdv();
+    if (jun) quizBox.append(h('p', { class: 'small muted' }, LANG === 'es' ? 'Toca la respuesta que creas correcta.' : 'Tap the answer you think is right.'));
+    const optBox = h('div', { class: jun ? 'mt' : 'col' });
+    quizBox.append(optBox);
+    Q.o.forEach((o, i) => optBox.append(btn([jun ? Icons.el(QV[id][i], 'ico-lg') : null, jun ? h('div', null, tr(o)) : tr(o)], (e) => {
       const ok = i === Q.a;
       if (S) Sim.reportQuiz(S, id, ok);
       if (ok) { stats.quizOk++; Store.set('stats', stats); if (stats.quizOk >= 5) unlock('quiz'); }
       quizBox.querySelectorAll('button').forEach((b) => (b.disabled = true));
-      e.target.style.borderColor = ok ? 'var(--success)' : 'var(--danger)';
+      e.currentTarget.style.borderColor = ok ? 'var(--success)' : 'var(--danger)';
       quizBox.append(h('p', { class: ok ? 'delta-up' : 'delta-down' }, (ok ? '✔ ' + _('correct') : '✖ ' + _('wrong')) + ' '), h('p', null, tr(Q.why)));
       Sfx.play(ok ? 'ok' : 'bad');
-    }, 'sm', { style: { display: 'block', margin: '6px 0', width: '100%', textAlign: 'left' } })));
+    }, jun ? '' : 'sm', { style: { display: 'block', width: '100%', textAlign: 'left', minHeight: jun ? '72px' : '' } })));
     if (answered) quizBox.append(h('p', { class: 'small muted' }, (LANG === 'es' ? 'Ya respondiste en esta partida. ' : 'Already answered this game. ') + tr(Q.why)));
     const body = h('div', null,
       fresh ? h('p', { class: 'tag ok' }, '✔ ' + (LANG === 'es' ? '¡Misión completada! Nueva ficha desbloqueada.' : 'Mission completed! New card unlocked.')) : null,
@@ -161,11 +165,12 @@
     const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
     const tbl = (rows) => h('table', null, h('tbody', null, rows.map(([a, b]) => h('tr', null, h('th', null, a), h('td', null, b)))));
     const body = h('div', { class: 'panel' },
-      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + _(S.diff) + ' · ' + (es ? 'semilla ' : 'seed ') + S.seed),
+      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + (isAdv() ? DATA.U[LANG].modeA + ' · ' + (S.diff === 'commander' ? _('chHard') : _('chStd')) : DATA.U[LANG].modeJ) + (isAdv() ? ' · ' + (es ? 'semilla ' : 'seed ') + S.seed : '')),
       h('p', { class: 'small' }, es ? 'Este informe no te califica solo por ganar o perder: cada error es información para la próxima misión.' : 'This report does not grade you only on winning or losing: every mistake is information for the next mission.'),
       h('div', { class: 'grid2' },
         h('div', { class: 'card' }, h('h3', null, _('r1')), tbl([[es ? 'Tiempo de supervivencia' : 'Survival time', fmt(R.days) + (es ? ' días' : ' days') + ' (' + fmt(R.hours, 0) + ' h)'], [es ? 'Objetivos completados' : 'Goals completed', R.done.length + ' / 7 · ' + '★'.repeat(R.stars)], [es ? 'Sistemas mantenidos (≥50 %)' : 'Systems kept (≥50%)', R.sysOk + ' / 8'], [es ? 'Problemas resueltos' : 'Problems solved', R.incRes + ' / ' + R.incTot], [es ? 'Puntos' : 'Points', R.pts]])),
-        h('div', { class: 'card' }, h('h3', null, _('r2')), tbl([[es ? 'Agua usada / recuperada' : 'Water used / recovered', fmt(R.waterUsed, 0) + ' / ' + fmt(R.waterRec, 0) + ' L (' + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + ' %)'], [es ? 'Energía generada / consumida' : 'Energy generated / used', fmt(R.eGen, 0) + ' / ' + fmt(R.eUsed, 0) + ' kWh'], [es ? 'Protección radiológica' : 'Radiation protection', (es ? 'nivel ' : 'level ') + R.shield + ' · ' + (es ? 'refugio ' : 'shelter ') + R.cap + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(R.dose, 1) + ' / ' + R.limit + ' mSv'], [es ? 'Alimentos producidos / consumidos' : 'Food produced / eaten', fmt(R.foodProd) + ' / ' + fmt(R.foodCons) + ' kg'], [es ? 'Tripulación' : 'Crew', (es ? 'bienestar ' : 'wellbeing ') + Math.round(R.well) + ' %']])),
+        h('div', { class: 'card' }, h('h3', null, _('r2')), isAdv() ? tbl([[es ? 'Agua usada / recuperada' : 'Water used / recovered', fmt(R.waterUsed, 0) + ' / ' + fmt(R.waterRec, 0) + ' L (' + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + ' %)'], [es ? 'Energía generada / consumida' : 'Energy generated / used', fmt(R.eGen, 0) + ' / ' + fmt(R.eUsed, 0) + ' kWh'], [es ? 'Protección radiológica' : 'Radiation protection', (es ? 'nivel ' : 'level ') + R.shield + ' · ' + (es ? 'refugio ' : 'shelter ') + R.cap + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(R.dose, 1) + ' / ' + R.limit + ' mSv'], [es ? 'Alimentos producidos / consumidos' : 'Food produced / eaten', fmt(R.foodProd) + ' / ' + fmt(R.foodCons) + ' kg'], [es ? 'Tripulación' : 'Crew', (es ? 'bienestar ' : 'wellbeing ') + Math.round(R.well) + ' %']])
+          : tbl([[es ? 'Agua' : 'Water', (es ? 'Volviste a usar ' : 'You reused ') + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + (es ? ' de cada 100 litros' : ' of every 100 liters')], [es ? 'Energía' : 'Energy', (es ? 'Generaste ' : 'You made ') + Math.round(R.eGen / Math.max(1, R.eUsed) * 100) + (es ? ' por cada 100 que gastaste' : ' for every 100 you used')], [es ? 'Protección' : 'Protection', R.dose < R.limit * 0.5 ? (es ? 'La tripulación estuvo bien protegida' : 'The crew was well protected') : (es ? 'Faltó protección: usa el refugio antes' : 'Protection was low: use the shelter earlier')], [es ? 'Comida' : 'Food', (es ? 'Cosechaste ' : 'You harvested ') + Math.round(R.foodProd) + (es ? ' kilos' : ' kilos')], [es ? 'Tripulación' : 'Crew', R.well > 60 ? (es ? 'Contenta' : 'Happy') : R.well > 35 ? (es ? 'Cansada' : 'Tired') : (es ? 'Muy cansada' : 'Very tired')]])),
         h('div', { class: 'card' }, h('h3', null, _('r3')),
           h('p', null, h('b', null, es ? 'Conceptos trabajados: ' : 'Concepts practiced: '), R.done.length ? R.done.map((id) => tr(DATA.MIS[id].learn)).join(' ') : (es ? 'Exploración inicial de la base.' : 'Initial base exploration.')),
           h('p', null, h('b', null, es ? 'Preguntas correctas: ' : 'Correct answers: '), R.quizOk + ' / ' + R.quizTot),
@@ -318,6 +323,6 @@
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

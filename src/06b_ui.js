@@ -31,7 +31,7 @@
       list.map((i) => h('div', { class: 'row', style: { margin: '6px 0' } }, tag(SEVI[i.sev] + ' ' + _(i.sev), i.sev), h('b', null, tr(DATA.EVT[i.type].t)),
         S.t < i.from ? h('span', { class: 'small' }, (LANG === 'es' ? 'llega en ' : 'arrives in ') + fmt(i.from - S.t) + ' h') : null,
         i.fix ? h('span', { class: 'small muted' }, Math.round(i.prog) + '%') : null,
-        i.fix && S.t >= i.from ? btn('🔧 ' + _('repair'), () => miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id }), 'primary sm') : null,
+        i.fix && S.t >= i.from ? btn('🔧 ' + (S.adv && Sim.DIAG_OK[i.type] != null && !i.diag ? _('diagDo') : _('repair')), () => repairFlow(i), 'primary sm') : null,
         btn('❓ ' + _('why'), () => whyPanel(i.type), 'sm'))), body || null);
   }
   const statRow = (label, val, st) => h('tr', null, h('th', null, label), h('td', null, st ? tag(SEVI[st] + ' ' + val, st) : val));
@@ -69,58 +69,57 @@
   };
   const DKEYS = [['o2', 'kg', 2], ['water', 'L', 1], ['power', 'kWh', 1], ['food', 'kg', 2], ['mat', 'kg', 1], ['dose', 'mSv', 2], ['well', '%', 1], ['rad', '%', 0], ['shelter', '', 0]];
   const DLABEL = { o2: 'o2', water: 'water', power: 'power', food: 'food', mat: 'mat', dose: null, well: 'well', rad: 'rad', shelter: null };
+  const DICON = { o2: '🫁', water: '💧', power: '🔋', food: '🥗', mat: '🛠', dose: '🛡', well: '😊', rad: '🛡', shelter: '🛡' };
+  const DMAX = { o2: 36, water: 200, power: 200, food: 80, mat: 120, dose: 80, well: 100, rad: 100, shelter: 5 };
   function confirmDecision(id, params, title, after) {
     const pv = Sim.preview(S, id, params);
-    const meta = DMETA[id] || {};
-    const ups = [], downs = [];
+    const meta = DMETA[id] || {}, es = LANG === 'es', adv = MODE === 'adv';
+    const nameOf = (k) => (DLABEL[k] ? _(DLABEL[k]) : k === 'dose' ? (es ? 'Radiación recibida' : 'Radiation received') : (es ? 'Plazas del refugio' : 'Shelter places'));
+    const rows = [];
     for (const [k, u, d] of DKEYS) {
       const delta = pv.b[k] - pv.a[k];
-      if (!Number.isFinite(delta) || Math.abs(delta) < Math.pow(10, -d) * 0.5 || Math.abs(delta) < 0.05) continue;
-      const name = DLABEL[k] ? _(DLABEL[k]) : k === 'dose' ? (LANG === 'es' ? 'Dosis estimada' : 'Estimated dose') : (LANG === 'es' ? 'Plazas de refugio' : 'Shelter places');
-      const good = k === 'dose' ? delta < 0 : delta > 0;
-      (good ? ups : downs).push(h('li', { class: good ? 'delta-up' : 'delta-down' }, (delta > 0 ? '▲ ' : '▼ ') + name + ': ' + (delta > 0 ? '+' : '') + fmt(delta, d) + ' ' + u));
+      const big = Number.isFinite(delta) && Math.abs(delta) >= Math.max(Math.pow(10, -d) * 0.5, 0.05);
+      rows.push({ k, u, d, delta, big, good: k === 'dose' ? delta < 0 : delta > 0 });
     }
-    const now = pv.now;
-    const body = h('div', null,
-      h('p', { class: 'small muted' }, _('in12', { h: fmt(pv.hours) }) + ' · ' + (LANG === 'es' ? 'estimación del modelo del juego' : 'game model estimate')),
-      h('div', { class: 'grid2' },
-        h('div', { class: 'card' }, h('h3', null, '📍 ' + _('current')), h('ul', null, h('li', null, _('o2') + ': ' + fmt(now.o2) + ' kg'), h('li', null, _('water') + ': ' + fmt(now.water, 0) + ' L'), h('li', null, _('power') + ': ' + fmt(now.power, 0) + ' kWh (' + (now.net >= 0 ? '+' : '') + fmt(now.net) + ' kW)'), h('li', null, _('food') + ': ' + fmt(now.food) + ' kg'), h('li', null, _('mat') + ': ' + fmt(now.mat) + ' kg'))),
-        h('div', { class: 'card' }, h('h3', null, '🧰 ' + _('uses')), h('p', null, tr(meta.u) || '—'))),
-      h('div', { class: 'grid2' },
-        h('div', { class: 'card' }, h('h3', null, '▲ ' + _('up')), ups.length ? h('ul', null, ups) : h('p', { class: 'muted' }, _('noChange', { h: fmt(pv.hours) }))),
-        h('div', { class: 'card' }, h('h3', null, '▼ ' + _('down')), downs.length ? h('ul', null, downs) : h('p', { class: 'muted' }, _('noChange', { h: fmt(pv.hours) })))),
-      h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h3', null, '⚠ ' + _('risks')), h('p', null, tr(meta.r) || '—')), h('div', { class: 'card' }, h('h3', null, '✔ ' + _('benefits')), h('p', null, tr(meta.b) || '—'))),
-      !pv.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _(pv.err) ) : null,
+    const changed = rows.filter((r) => r.big);
+    const word = (r) => { const f = Math.abs(r.delta) / ((k) => (k === 'dose' ? S.limit : DMAX[k]))(r.k); return f < 0.02 ? (es ? 'un poco' : 'a little') : f < 0.08 ? (es ? 'bastante' : 'quite a bit') : (es ? 'mucho' : 'a lot'); };
+    let body;
+    if (!adv) {
+      const ups = changed.filter((r) => r.good), downs = changed.filter((r) => !r.good);
+      const li = (r) => h('li', { class: r.good ? 'delta-up' : 'delta-down' }, (r.delta > 0 ? '▲ ' : '▼ ') + DICON[r.k] + ' ' + nameOf(r.k) + ': ' + (r.delta > 0 ? (es ? 'sube ' : 'goes up ') : (es ? 'baja ' : 'goes down ')) + word(r));
+      body = h('div', null,
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, '▲ ' + (es ? 'Lo que mejora' : 'What gets better')), ups.length ? h('ul', null, ups.map(li)) : h('p', { class: 'muted' }, es ? 'Nada cambia mucho.' : 'Nothing changes much.')),
+          h('div', { class: 'card' }, h('h3', null, '▼ ' + (es ? 'Lo que se gasta o empeora' : 'What gets used or worse')), downs.length ? h('ul', null, downs.map(li)) : h('p', { class: 'muted' }, es ? 'Nada cambia mucho.' : 'Nothing changes much.'))),
+        h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h3', null, '⚠ ' + (es ? 'Ojo con esto' : 'Careful')), h('p', null, tr(meta.r) || '—')), h('div', { class: 'card' }, h('h3', null, '✔ ' + (es ? 'Lo bueno' : 'The good part')), h('p', null, tr(meta.b) || '—'))),
+        h('p', { class: 'small muted' }, es ? 'Es una predicción del juego para las próximas ' + fmt(pv.hours) + ' horas.' : 'This is a game prediction for the next ' + fmt(pv.hours) + ' hours.'));
+    } else {
+      const fmtv = (k, v, d) => (k === 'dose' ? fmt(v, 2) : fmt(v, d));
+      const tbl = h('table', null, h('thead', null, h('tr', null, h('th', null, es ? 'Variable' : 'Variable'), h('th', null, es ? 'Ahora' : 'Now'), h('th', null, (es ? 'En ' : 'In ') + fmt(pv.hours) + ' h ' + (es ? 'sin actuar' : 'no action')), h('th', null, (es ? 'En ' : 'In ') + fmt(pv.hours) + ' h ' + (es ? 'con la decisión' : 'with decision')), h('th', null, 'Δ'))),
+        h('tbody', null, rows.filter((r) => r.big || ['o2', 'water', 'power', 'food'].includes(r.k)).map((r) => h('tr', { class: r.big ? (r.good ? 'delta-up' : 'delta-down') : '' }, h('th', null, nameOf(r.k)), h('td', null, fmtv(r.k, pv.now[r.k], r.d) + ' ' + r.u), h('td', null, fmtv(r.k, pv.a[r.k], r.d) + ' ' + r.u), h('td', null, fmtv(r.k, pv.b[r.k], r.d) + ' ' + r.u), h('td', null, r.big ? (r.delta > 0 ? '+' : '') + fmtv(r.k, r.delta, r.d) + ' ' + r.u : '—')))));
+      body = h('div', null,
+        h('p', { class: 'small muted' }, _('in12', { h: fmt(pv.hours) }) + ' · ' + (es ? 'balance de potencia ahora: ' : 'power balance now: ') + (pv.now.net >= 0 ? '+' : '') + fmt(pv.now.net) + ' kW'),
+        h('div', { style: { overflowX: 'auto' } }, tbl),
+        h('div', { class: 'grid2', style: { marginTop: '8px' } },
+          h('div', { class: 'card' }, h('h3', null, '🧰 ' + _('uses')), h('p', null, tr(meta.u) || '—')),
+          h('div', { class: 'card' }, h('h3', null, '⚠ ' + _('risks')), h('p', null, tr(meta.r) || '—')),
+          h('div', { class: 'card' }, h('h3', null, '✔ ' + _('benefits')), h('p', null, tr(meta.b) || '—'))));
+    }
+    body.append(
+      !pv.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _(pv.err)) : null,
       h('div', { class: 'row', style: { marginTop: '10px' } },
         btn('✔ ' + _('confirm'), () => {
           const r = Sim.decide(S, id, params);
           pop();
-          if (!r.ok) toast(_('err'), _(r.err), 'warn'); else { processLogs(); updateHud(); if (after) after(); stack.forEach((s) => s._refresh && s._refresh()); }
+          if (!r.ok) toast(_('err'), _(r.err), 'warn'); else { processLogs(); updateHud(); if (after) after(); stack.forEach((z) => z._refresh && z._refresh()); }
         }, 'primary', { disabled: !pv.ok ? true : null, autofocus: true }),
         btn(_('cancel'), () => pop())));
-    push(panel('⚖️ ' + _('consequences') + ' · ' + title, body));
+    push(panel('⚖️ ' + (adv ? _('consequences') : (es ? '¿Qué pasará?' : 'What will happen?')) + ' · ' + title, body));
   }
   function livePanel(builder) { // modal que se reconstruye tras cada decisión
     const s = push(builder());
     s._refresh = () => { if (s.isConnected) refresh(s, builder); };
     return s;
-  }
-
-  /* ---------- ¿Por qué ocurrió? ---------- */
-  function whyPanel(type) {
-    const T = DATA.EVT[type]; if (!T) return;
-    const inc = S && S.inc.find((i) => i.type === type && !i.res);
-    const sysK = inc ? inc.sys : null;
-    const live = type === 'solar_storm' && donkiLive && donkiLive.items.length ? h('p', { class: 'small' }, '🛰️ ' + _('liveData') + ': ' + donkiLive.items.slice(0, 3).map((x) => x.cls + ' ' + x.date).join(' · ') + ' (' + donkiLive.fetched + ')') : null;
-    const donki = type === 'solar_storm' && inc && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
-    push(panel('❓ ' + _('why') + ' · ' + tr(T.t), h('div', { class: 'col' },
-      h('div', { class: 'why' }, h('h3', null, '1. ' + _('whatH')), h('p', null, tr(T.what))),
-      h('div', { class: 'why' }, h('h3', null, '2. ' + _('sysH')), h('p', null, sysK ? tr(DATA.SYS_T[sysK]) : '—')),
-      h('div', { class: 'why' }, h('h3', null, '3. ' + _('causeH')), h('p', null, tr(T.cause))),
-      h('div', { class: 'why' }, h('h3', null, '4. ' + _('doH')), h('p', null, tr(T.act))),
-      h('div', { class: 'why' }, h('h3', null, '5. ' + _('dataH')), h('p', null, tr(T.data)), donki ? h('p', { class: 'small' }, (LANG === 'es' ? 'Inspirado en: ' : 'Inspired by: ') + donki.cls + ' · ' + donki.date + ' — ' + tr(donki)) : null, live),
-      h('div', { class: 'why' }, h('h3', null, '6. ' + _('srcH')), h('p', { class: 'small' }, T.src)),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Los valores numéricos del juego son un modelo simplificado; el dato científico citado es real.' : 'In-game numbers are a simplified model; the cited science fact is real.')), { narrow: true }));
   }
 
   /* ---------- Consola de mando ---------- */
@@ -167,7 +166,7 @@
     return h('div', null, campaignCard(), h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
       h('div', { class: 'grid2' }, list), h('div', { class: 'row', style: { marginTop: '12px' } }, btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }, 'danger')));
   }
-  function resourcesTab() {
+  function resourcesTabRaw() {
     const R = S.r, rows = [];
     const res = [['o2', 'kg'], ['water', 'L'], ['power', 'kWh'], ['food', 'kg'], ['mat', 'kg'], ['waste', 'kg']];
     for (const [k, u] of res) {
@@ -192,7 +191,7 @@
           statRow(LANG === 'es' ? 'Plazas en refugio' : 'Shelter places', S.sys.shield.cap + ' / ' + S.N), statRow(LANG === 'es' ? 'Actividad solar' : 'Solar activity', S.mods && S.mods.spe > 0 ? (LANG === 'es' ? 'TORMENTA' : 'STORM') : (LANG === 'es' ? 'tranquila' : 'quiet'), S.mods && S.mods.spe > 0 ? 'crit' : 'ok')))),
         h('div', { class: 'card' }, h('h3', null, '🔧 ' + (LANG === 'es' ? 'Sistemas' : 'Systems')), h('table', null, h('tbody', null, ['reactor', 'solar', 'o2', 'rec', 'thermal', 'press', 'comms', 'shield', 'isru'].map(sysRow))))),
       h('div', { class: 'row', style: { marginTop: '10px' } }, btn('⏩ ' + _('wait1'), () => confirmDecision('wait', { h: 1 }, _('wait1'))), btn('⏩ ' + _('wait6'), () => confirmDecision('wait', { h: 6 }, _('wait6')))),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Los parámetros del modelo están documentados en el README: R = dato real, M = estimación de modelo, G = simplificación para jugar.' : 'Model parameters are documented in the README: R = real data, M = model estimate, G = gameplay simplification.'));
+      null);
   }
   function crewTab() {
     return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, c.role === S.playerRole ? (LANG === 'es' ? '🧑‍🚀 Tú · ' : '🧑‍🚀 You · ') + tr(Chars.ROLES[c.role].name) : tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
@@ -249,7 +248,7 @@
         down ? h('p', { class: 'tag crit' }, '⛔ ' + (LANG === 'es' ? 'Sin enlace: los mensajes esperan en la antena hasta que se repare.' : 'No link: messages wait at the antenna until it is repaired.')) : null,
         incHere(['bridge']),
         h('table', null, h('tbody', null, statRow(_('delayReal'), realTxt), statRow(_('delayOne'), fmt(ow) + ' h ' + (LANG === 'es' ? '(escala del juego: 1 min-luz ≈ 1 h)' : '(game scale: 1 light-min ≈ 1 h)')), statRow(LANG === 'es' ? 'Ida y vuelta mínima' : 'Minimum round trip', fmt(ow * 2 + 0.5) + ' h'))),
-        h('p', { class: 'small muted' }, LANG === 'es' ? 'La Tierra responde con los datos que le llegaron, no con los de ahora. Si algo urge, actúa con tus protocolos.' : 'Earth replies using the data it received, not the current data. If something is urgent, follow your protocols.'),
+        more(null, h('p', null, LANG === 'es' ? 'La Tierra responde con los datos que le llegaron, no con los de ahora. Si algo urge, actúa con tus protocolos.' : 'Earth replies using the data it received, not the current data. If something is urgent, follow your protocols.'), !isAdv() ? h('p', { class: 'small' }, LANG === 'es' ? 'En este modo el retraso es más corto que el real para que el juego sea ágil.' : 'In this mode the delay is shorter than the real one to keep the game lively.') : null),
         h('div', { class: 'row' }, btn('📤 ' + _('reqStatus'), () => { Sim.send(S, 'status'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqForecast'), () => { Sim.send(S, 'forecast'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqRoute'), () => { Sim.send(S, 'route'); processLogs(); s._refresh(); })),
         h('h3', null, _('transit')), q.length ? h('ul', null, q) : h('p', { class: 'muted' }, _('none')),
         h('div', { class: 'row' }, btn('⏩ ' + _('wait1'), () => { Sim.decide(S, 'wait', { h: 1 }); processLogs(); s._refresh(); }), btn('⏩ ' + _('wait6'), () => confirmDecision('wait', { h: 6 }, _('wait6')))),
@@ -292,7 +291,7 @@
           h('div', { class: 'card' }, h('h3', null, '🧪 ' + (es ? 'Solución nutritiva' : 'Nutrient solution')), h('p', null, fmt(S.r.nutr.v, 1) + ' / ' + S.r.nutr.max + ' L'),
             btn('♻️ ' + (es ? 'Preparar con residuos orgánicos' : 'Make from organic waste'), () => confirmDecision('mixnutr', {}, es ? 'Solución nutritiva' : 'Nutrient solution'), 'sm'),
             h('p', { class: 'small muted' }, '🌰 ' + Object.keys(S.seeds).map((k) => tr(Flora.SPECIES[k].name).split(' ')[0] + ' ' + S.seeds[k]).join(' · ')))),
-        h('p', { class: 'small muted' }, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (es ? 'El ciclo de 7 días es una simplificación de jugabilidad, no la duración biológica real de cada cultivo.' : 'The 7-day cycle is a gameplay simplification, not each crop\'s real biological duration.')),
+        more(null, h('p', null, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C. ' + (es ? 'El ciclo de 7 días es una simplificación del juego, no lo que tarda cada cultivo en la vida real.' : 'The 7-day cycle is a game simplification, not how long each crop takes in real life.'))),
         btn('🎮 ' + _('play') + ': ' + tr(MG.defs.gh.t), () => miniIntro('gh', { inc: (Sim.activeInc(S).find((i) => i.type === 'crop_fail') || {}).id }), 'primary')));
     });
   }
@@ -308,7 +307,8 @@
         btn('🛠️ ' + (LANG === 'es' ? 'Mantenimiento solar' : 'Solar maintenance'), () => confirmDecision('maint', { sys: 'solar' }, LANG === 'es' ? 'Mantenimiento' : 'Maintenance')),
         btn('🔌 ' + tr(MG.defs.wiring.t), () => miniIntro('wiring', { sys: S.sys.reactor.h <= S.sys.solar.h ? 'reactor' : 'solar' })),
         btn('☀️ ' + tr(MG.defs.solar.t), () => miniIntro('solar', {})), btn('⚖️ ' + tr(MG.defs.balance.t), () => miniIntro('balance', {}))),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Prioridades: 1) soporte vital, 2) comunicaciones y blindaje, 3) laboratorio, rover, obras y extractor de hielo, 4) luces y bombas del invernadero. Si falta energía, se apaga primero lo de prioridad 4.' : 'Priorities: 1) life support, 2) comms and shielding, 3) lab, rover, jobs and ice extractor, 4) greenhouse lights and pumps. When power is short, priority 4 goes first.'))));
+      isAdv() ? prioCard() : null,
+      more(null, h('p', null, LANG === 'es' ? (isAdv() ? 'Prioridades por defecto: 1) soporte vital, 2) comunicaciones y blindaje, 3) laboratorio, rover, obras y extractor de hielo, 4) luces y bombas del invernadero. Si falta energía, se recorta primero el número más alto.' : 'Si falta energía, se apagan primero las luces de las plantas y al final lo que mantiene vivas a las personas.') : (isAdv() ? 'Default priorities: 1) life support, 2) comms and shielding, 3) lab, rover, jobs and ice extractor, 4) greenhouse lights and pumps. When power is short, the highest number is shed first.' : 'When power is short, plant lights go off first and what keeps people alive goes off last.'))))));
   }
   function waterPanel() {
     livePanel(() => panel('💧 ' + consoleName('water'), h('div', null, incHere(['water']),
@@ -321,7 +321,7 @@
         btn(S.sys.o2.auto ? (LANG === 'es' ? '🎛️ Pasar O₂ a manual' : '🎛️ Switch O₂ to manual') : (LANG === 'es' ? '🤖 Volver a automático' : '🤖 Back to automatic'), () => confirmDecision('o2lvl', { auto: !S.sys.o2.auto, v: S.sys.o2.lvl }, LANG === 'es' ? 'Generador de O₂' : 'O₂ generator')),
         btn('🔌 ' + tr(MG.defs.wiring.t), () => miniIntro('wiring', { sys: 'rec' })), btn('🫧 ' + tr(MG.defs.o2.t), () => miniIntro('o2', {}))),
       !S.sys.o2.auto ? slider(LANG === 'es' ? 'Producción manual de O₂' : 'Manual O₂ production', S.sys.o2.lvl, (v) => confirmDecision('o2lvl', { auto: false, v }, 'O₂'), (v) => Math.round(v * 100) + '%') : null,
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Electrólisis: 2 H₂O → 2 H₂ + O₂. Para 1 kg de oxígeno se necesitan 1,125 L de agua: ¡el oxígeno y el agua están conectados!' : 'Electrolysis: 2 H₂O → 2 H₂ + O₂. 1 kg of oxygen needs 1.125 L of water: oxygen and water are connected!'))));
+      more(null, h('p', null, isAdv() ? (LANG === 'es' ? 'Electrólisis: 2 H₂O → 2 H₂ + O₂. Para 1 kg de oxígeno se necesitan 1,125 L de agua y electricidad.' : 'Electrolysis: 2 H₂O → 2 H₂ + O₂. 1 kg of oxygen needs 1.125 L of water plus electricity.') : (LANG === 'es' ? 'Para hacer aire hace falta agua y electricidad: el aire y el agua están conectados.' : 'Making air needs water and electricity: air and water are connected.'))))));
   }
   function shieldPanel() {
     livePanel(() => {
@@ -336,8 +336,8 @@
           btn((S.proto ? '🟢 ' : '🚨 ') + (LANG === 'es' ? (S.proto ? 'Desactivar protocolo' : 'Activar protocolo de refugio') : (S.proto ? 'Turn off protocol' : 'Turn on shelter protocol')), () => confirmDecision('proto', { v: !S.proto }, LANG === 'es' ? 'Protocolo de refugio' : 'Shelter protocol'), S.proto ? '' : 'primary'),
           btn('🧱 ' + (LANG === 'es' ? 'Reforzar blindaje' : 'Reinforce shield'), () => confirmDecision('shield', {}, LANG === 'es' ? 'Reforzar blindaje' : 'Reinforce shield')),
           btn('➕ ' + (LANG === 'es' ? 'Ampliar refugio' : 'Expand shelter'), () => confirmDecision('shelter', {}, LANG === 'es' ? 'Ampliar refugio' : 'Expand shelter'))),
-        h('div', { class: 'card', style: { marginTop: '10px' } }, h('h3', null, '📚 RadLab · ISS'),
-          h('p', { class: 'small' }, LANG === 'es' ? 'RadLab (NASA OSDR) publica mediciones de dosímetros de la Estación Espacial Internacional. La ISS orbita dentro del campo magnético de la Tierra, que la protege en parte: sus valores sirven como referencia educativa, NO son mediciones de la Luna ni de Marte. En el juego usamos un modelo simplificado: el blindaje frena mucho mejor las partículas de una tormenta solar que los rayos cósmicos galácticos, que son más energéticos.' : 'RadLab (NASA OSDR) publishes dosimeter measurements from the International Space Station. The ISS orbits inside Earth\'s magnetic field, which partly protects it: its values are an educational reference, NOT Moon or Mars measurements. The game uses a simplified model: shielding stops solar-storm particles much better than galactic cosmic rays, which are more energetic.'),
+        more(isAdv() ? 'RadLab · ISS' : (LANG === 'es' ? 'Más información: la radiación' : 'More information: radiation'),
+          h('p', { class: 'small' }, isAdv() ? (LANG === 'es' ? 'RadLab (NASA OSDR) publica mediciones de dosímetros de la ISS. La ISS orbita dentro del campo magnético terrestre, que la protege en parte: sus valores son una referencia, NO mediciones de la Luna ni de Marte. El modelo del juego es simplificado: el blindaje frena mucho mejor las partículas de una tormenta solar que los rayos cósmicos galácticos.' : 'RadLab (NASA OSDR) publishes dosimeter measurements from the ISS. The ISS orbits inside Earth\'s magnetic field, which partly protects it: its values are a reference, NOT Moon or Mars measurements. The game model is simplified: shielding stops solar-storm particles much better than galactic cosmic rays.') : (LANG === 'es' ? 'Los astronautas de la Estación Espacial miden su radiación, pero allí la Tierra los protege un poco. En la Luna y en Marte hace falta más protección. Aquí usamos números inventados para el juego.' : 'Astronauts on the Space Station measure their radiation, but there Earth protects them a little. On the Moon and Mars more protection is needed. Here we use made-up numbers for the game.')),
           h('a', { href: 'https://visualization.osdr.nasa.gov/radlab/gui/data-api/', target: '_blank', rel: 'noopener' }, 'RadLab'), ' · ', h('a', { href: 'https://osdr.nasa.gov/bio/repo/', target: '_blank', rel: 'noopener' }, 'OSDR'))));
     });
   }

@@ -30,7 +30,30 @@ No hace falta instalar nada. Si el navegador bloquea `localStorage` (modo privad
 
 Los minijuegos tienen controles de teclado y de puntero o táctiles (se explican en cada pantalla de instrucciones).
 
+## Dos modalidades en un mismo juego
+Al empezar se elige una modalidad, que se guarda con la partida. Comparten mapa, personajes, instalaciones, misiones, motor de simulación y base científica; cambian la profundidad, el lenguaje, la interfaz y algunas mecánicas.
+
+| | Explorador Junior (7 a 12 años) | Ingeniero de Misión (13 años en adelante) |
+|---|---|---|
+| Indicadores | 4 simples: aire, agua, energía y comida (barra + «Bien / Cuidado / ¡Urgente!»), sin unidades | 5 detallados: soporte vital (O₂ y H₂O), energía, radiación, alimentos y bienestar, con valores, unidades y tendencia (↑ ↓ →) |
+| Lenguaje | Palabras cotidianas, una idea por frase, ejemplos sencillos | Terminología técnica, nombres de sistemas, unidades y relaciones entre variables |
+| Fallos | Menos tipos (sin sensores descalibrados ni fallo térmico) y presentados de forma progresiva: día 1 averías simples, día 2 plagas, día 3 comunicaciones y presión, día 4 tormentas solares | Todos los fallos desde el principio y **encadenados**: el polvo desgasta los paneles, una tormenta solar puede cortar el enlace y la falta de agua sin reparar daña las plantas |
+| Reparar | Minijuego sencillo con más tiempo (×1,4) | **Diagnóstico previo**: hay que elegir la causa a partir de la telemetría; acertar desbloquea la reparación y la adelanta un 20 %, fallar cuesta 1 h |
+| Energía | Reparto automático por prioridades | Prioridades de reparto configurables para laboratorio, rover, extractor, obras, luces y bombas |
+| Comunicaciones | Retraso reducido (40 %) para que sea ágil, explicado en pantalla | Retraso completo (escala 1 min-luz ≈ 1 h) y respuestas con datos antiguos |
+| Decisiones | «¿Qué pasará?»: qué mejora y qué se gasta en palabras (un poco / bastante / mucho) | Panel de consecuencias numérico: ahora, 12 h sin actuar y 12 h con la decisión, con unidades |
+| Recursos | Tarjetas con barra y una frase | Tabla con producción, consumo y umbrales, gráficos de tendencia y tabla de datos clasificados (real / histórico / modelo / jugabilidad) con su fuente |
+| NPC y alertas | Orientación paso a paso con ejemplos | Valores en vivo del sistema (eficiencia, kW, kPa…) y diagnóstico |
+| Preguntas | Cortas, con botones grandes e icono (causa-efecto) | De razonamiento con cálculos, interpretación de datos y justificación |
+| Ayudas | Pistas y flecha activadas | Desactivadas por defecto, y el ingeniero repara de forma autónoma más despacio y solo tras el diagnóstico |
+| Dificultad | Fija y guiada | «Estándar» o «Exigente» |
+
+La modalidad avanzada añade sistemas (diagnóstico, cadenas, prioridades, datos), no solo menos recursos. Los dos niveles explican el mismo fenómeno: el texto técnico es la versión avanzada del mismo contenido. Las pruebas comprueban que ambas completan la campaña, que Junior no usa jerga y que Ingeniero no es infantil.
+
 ## Características
+
+### Interfaz limpia
+Sin emojis decorativos: el juego usa iconografía propia en SVG (módulo `Icons`, también para el canvas). Las explicaciones largas están en paneles plegables «Más información». Los avisos repetidos se fusionan, y los gráficos solo aparecen en el modo Ingeniero.
 
 ### Mapa y exploración
 - Mapa original de 60 × 56 baldosas con 7 instalaciones conectadas en anillo por pasillos: Puente de mando, Módulo de vida, Invernadero, Reactor y energía, Reciclaje de agua y oxígeno, Protección radiológica y bahía del rover, Laboratorio científico.
@@ -258,6 +281,7 @@ Un solo archivo, organizado en módulos internos con responsabilidades separadas
 | `Sfx` | Sonidos originales sintetizados con Web Audio API |
 | `Sim` | Motor de simulación puro (entre los marcadores `/*SIM-START*/` y `/*SIM-END*/`) |
 | `SelfTest` | 100 simulaciones automáticas sobre `Sim` |
+| `Icons` | Iconos SVG por rutas (DOM y canvas) y conversión de pictogramas |
 | `Chars` | Los cinco astronautas: dibujo por capas, 4 direcciones y 7 poses |
 | `Flora` | Las cinco especies vegetales: 5 etapas, variación natural y estados de estrés |
 | `NPCDATA` | Guías, conversaciones, campaña, contenido de las llamadas y fichas botánicas |
@@ -287,9 +311,9 @@ node tests/e2e.js
 También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar 100 simulaciones de prueba». Las pruebas trabajan sobre copias del motor y no modifican el progreso del jugador.
 
 **Resultados obtenidos al construir esta versión:**
-- `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos y plantas dentro de sus límites y finales coherentes. La política activa completa la familiarización y gana 73 de 75 partidas; la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
+- `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos y plantas dentro de sus límites y finales coherentes. La política activa completa la familiarización y gana las 75 partidas (50 en Junior y 25 en Ingeniero, con diagnóstico previo); la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
 - `contrast.js`: 14/14 pares de tokens cumplen WCAG AA.
-- `e2e.js` (Chromium, sin Internet): **74/74** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9. Además, la familiarización completa con acciones reales: solo 3 secciones al empezar, puertas bloqueadas, cada guía presentándose al entrar, desbloqueo de cada sección al terminar su misión y las 7 abiertas al final. Plantas: selección individual, sembrar gasta semillas, regar gasta agua, los nutrientes gastan solución, subir el LED aumenta la demanda eléctrica, cosechar suma alimentos, la nutrición cambia el crecimiento (0,148 frente a 0,022 en 24 h), las cinco especies tienen siluetas distintas (solapamiento máximo 0,633) y las cinco etapas crecen en tamaño. Especialistas y alertas: el vestuario cambia de rol y deja al anterior como NPC, los permisos no bloquean las reparaciones de emergencia, cada fallo lo comunica el NPC adecuado, «Marcar ubicación» coloca el marcador, los mensajes repetidos no se acumulan y las alertas críticas tienen prioridad.
+- `e2e.js` (Chromium, sin Internet): **113/113** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9. Además, la familiarización completa con acciones reales: solo 3 secciones al empezar, puertas bloqueadas, cada guía presentándose al entrar, desbloqueo de cada sección al terminar su misión y las 7 abiertas al final. Modalidades: la pantalla de inicio ofrece las dos, se guardan y se recuperan con la partida, Junior muestra 4 indicadores sin unidades y Ingeniero 5 con unidades, los textos de Junior no contienen jerga técnica en español ni en inglés (frases de 190 caracteres como máximo) y los de Ingeniero conservan los términos, las explicaciones cambian de nivel manteniendo el fenómeno, Junior no recibe sensores descalibrados ni fallos térmicos, las cadenas de eventos solo ocurren en Ingeniero, el diagnóstico bloquea la reparación hasta acertar (y el error cuesta 1 h), las llamadas y las conversaciones de los NPC cambian de nivel, hay preguntas distintas por nivel, el informe se adapta, la interfaz no contiene emojis y el móvil de 390 px no tiene scroll horizontal en ninguno de los dos modos. Plantas: selección individual, sembrar gasta semillas, regar gasta agua, los nutrientes gastan solución, subir el LED aumenta la demanda eléctrica, cosechar suma alimentos, la nutrición cambia el crecimiento (0,148 frente a 0,022 en 24 h), las cinco especies tienen siluetas distintas (solapamiento máximo 0,633) y las cinco etapas crecen en tamaño. Especialistas y alertas: el vestuario cambia de rol y deja al anterior como NPC, los permisos no bloquean las reparaciones de emergencia, cada fallo lo comunica el NPC adecuado, «Marcar ubicación» coloca el marcador, los mensajes repetidos no se acumulan y las alertas críticas tienen prioridad.
 
 **No probado:** Firefox, Edge y Safari reales, tablets o teléfonos físicos y lectores de pantalla. El código usa solo APIs estándar (Canvas 2D, Pointer Events, Web Audio, `fetch`), pero esas plataformas no se han verificado.
 

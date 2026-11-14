@@ -400,7 +400,7 @@ const World = (function () {
           ctx.fillStyle = 'rgba(5,8,20,.7)'; ctx.fillRect(px - 11, py + 4, 22, 9);
           ctx.fillStyle = '#eef3ff'; ctx.font = 'bold 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText(tr(Flora.SPECIES[pl.sp].short), px, py + 10.5);
           ctx.fillStyle = '#26345e'; ctx.fillRect(px - 10, py + 14, 20, 2.5); ctx.fillStyle = pl.prog >= 1 ? '#ffd36b' : '#5fe39a'; ctx.fillRect(px - 10, py + 14, 20 * pl.prog, 2.5);
-          if (pl.prog >= 1) { ctx.font = '10px system-ui'; ctx.fillText('✨', px + 9, py - 22); }
+          if (pl.prog >= 1) { ctx.font = '10px system-ui'; Icons.draw(ctx, 'star', px + 9, py - 24, 11, '#ffd36b'); }
           if (pl.moist < 28 || pl.hp < 40 || (pl.pest && pl.pestKnown)) { ctx.font = 'bold 10px system-ui'; ctx.fillStyle = '#ffc24a'; ctx.fillText('!', px - 10, py - 18); }
         } });
       }
@@ -413,7 +413,7 @@ const World = (function () {
       const alert = S && S.inc.some((i) => !i.res && i.fix && i.room === cn.room && S.t >= i.from) && cn.verb !== 'play';
       ctx.fillStyle = alert ? 'rgba(255,107,107,' + blink + ')' : 'rgba(56,214,255,' + blink * 0.9 + ')';
       ctx.fillRect(x + 7, y + 7, TS - 14, TS - 16);
-      ctx.font = '16px system-ui'; ctx.textAlign = 'center'; ctx.fillText(cn.icon, x + TS / 2, y - 2);
+      Icons.draw(ctx, Icons.byEmoji(cn.icon) || 'gear', x + TS / 2, y - 8, 15, alert ? '#ff9a9a' : '#bfe9ff');
     }
     // Rover fuera
     // Muestras
@@ -427,7 +427,7 @@ const World = (function () {
     // Secciones bloqueadas
     if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
       const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
-      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; ctx.fillText('🔒 ' + tr(DATA.ROOMS[k]), (Rr[0] + Rr[2] + 1) / 2 * TS, (Rr[1] + Rr[3] + 1) / 2 * TS);
+      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; { const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4); }
     }
     // Partículas
     for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
@@ -470,7 +470,7 @@ const World = (function () {
       c.fillRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s);
     }
     if (S) for (const i of S.inc) if (!i.res && S.t >= i.from) { const R = RECTS[i.room]; if (!R) continue; c.strokeStyle = i.sev === 'crit' ? '#ff6b6b' : i.sev === 'warn' ? '#ffc24a' : '#6fb3ff'; c.lineWidth = 3; c.strokeRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s); }
-    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); c.font = Math.round(10 * s / 2) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🔒', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s + 4); }
+    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); Icons.draw(c, 'lock', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s, Math.max(8, 5 * s), '#ffc24a'); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
     if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
     for (const b of bots) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }

@@ -119,6 +119,8 @@ th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical
   #hudR{margin-left:0;width:100%;justify-content:space-between;gap:4px}
   .chip{min-height:38px;padding:4px 8px;font-size:13px}
   #mini{width:112px;height:90px;top:128px;right:6px;bottom:auto}
+  #m_life{grid-column:span 2}
+  #hud .meters{grid-auto-rows:auto}
   #hint{top:128px;bottom:auto;left:6px;transform:none;max-width:calc(100% - 132px);font-size:13px;padding:6px 8px}
   #toasts{top:auto;bottom:200px;left:6px}
   #prompt{bottom:190px}
@@ -131,6 +133,19 @@ th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical
 .radio-title{font-weight:800;font-size:16px}
 .talk .bubble{background:var(--surface-2);border:1px solid var(--border-input);border-radius:14px;padding:12px;font-size:17px;line-height:1.45}
 @media (max-width:600px){#radio{bottom:186px;padding:8px;gap:8px;font-size:13px}#radio .r-desc,#radio .r-cons,#radio .muted{display:none}#radio canvas{width:44px!important;height:44px!important}.radio-title{font-size:14px}#radio .btn.sm{min-height:34px;padding:4px 8px;font-size:12px}}
+.ico{width:1.15em;height:1.15em;vertical-align:-.2em;flex:0 0 auto;margin-right:.2em;overflow:visible}
+button .ico:only-child,.chip .ico:only-child,.meter .ico:only-child{margin:0}
+details.more{margin:6px 0;border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px;background:var(--surface)}
+details.more summary{cursor:pointer;font-size:var(--fs-sm);color:var(--text-muted);min-height:32px;display:flex;align-items:center}
+details.more p{margin:6px 0}
+.mt{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.mt .choice h3{margin:6px 0}
+.meter .trend{font-size:11px;margin-left:4px}
+.meter .sub{display:flex;gap:6px;margin-top:3px}.meter .sub .bar{flex:1;margin-top:0}
+.sev-word{font-weight:700}
+.ico-lg{width:2.2em;height:2.2em;display:block;margin:0 auto 6px}
+.mt button.btn{text-align:center!important}
+canvas.spark{width:100%;height:46px;display:block}
 html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
 </style>
@@ -141,12 +156,12 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
   <div id="hud" class="hidden">
     <div class="meters" id="meters"></div>
     <div id="hudR">
-      <div class="chip" id="clock" aria-live="off">D1 00:00</div>
-      <button class="chip btn" id="bSpeed" title="Velocidad">x1</button>
-      <button class="chip btn" id="bAlerts" title="Alertas">🔔 0</button>
-      <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa">❚❚</button>
-      <button class="chip btn" id="bMute" title="Silencio (M)">🔊</button>
-      <button class="chip btn" id="bMenu" title="Menú">☰</button>
+      <div class="chip" id="clock" aria-live="off"></div>
+      <button class="chip btn" id="bSpeed" title="Velocidad" aria-label="Velocidad">x1</button>
+      <button class="chip btn" id="bAlerts" title="Alertas" aria-label="Alertas"></button>
+      <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa"></button>
+      <button class="chip btn" id="bMute" title="Silencio (M)" aria-label="Silencio"></button>
+      <button class="chip btn" id="bMenu" title="Menú" aria-label="Menú"></button>
     </div>
   </div>
   <div id="toasts" aria-live="polite"></div>
@@ -173,7 +188,8 @@ const DATA = (function () {
       moonD: 'Región del cráter Shackleton, polo sur lunar. Sin atmósfera, luz solar casi rasante, mensajes con ~1,3 s de retraso.',
       marsD: 'Atmósfera tenue, polvo, días de 24 h 39 min y mensajes con 3 a 22 minutos de retraso.',
       go: '¡Despegar!', back: 'Volver', close: 'Cerrar', confirm: 'Confirmar', cancel: 'Cancelar', yes: 'Sí', no: 'No', on: 'Activado', off: 'Desactivado',
-      o2: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
+      o2: 'Aire', o2A: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', radA: 'Radiación', food: 'Comida', foodA: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos', life: 'Soporte vital',
+      modeT: 'Modalidad', modeJ: 'Explorador Junior', modeJage: '7 a 12 años', modeJd: 'Aprende lo básico de vivir en el espacio explorando, probando y siguiendo misiones guiadas.', modeA: 'Ingeniero de Misión', modeAage: '13 años en adelante', modeAd: 'Entiende problemas de ingeniería espacial con simulaciones, datos y decisiones técnicas.', challenge: 'Reto', chStd: 'Estándar', chStdD: 'Recursos equilibrados y eventos ambientales.', chHard: 'Exigente', chHardD: 'Recursos justos y eventos más complejos.', good: 'Bien', careful: 'Cuidado', urgent: '¡Urgente!', more: 'Más información', diagT: 'Diagnóstico', diagDo: 'Diagnosticar', diagAsk: '¿Cuál es la causa más probable?', diagOk: 'Diagnóstico correcto: reparación desbloqueada.', diagBad: 'No encaja con los datos. Pierdes 1 hora; vuelve a mirar los valores.',
       ok: 'Normal', warn: 'Advertencia', crit: 'Crítico', info: 'Información',
       interact: 'Interactuar', repair: 'Reparar', investigate: 'Investigar', manage: 'Administrar', collect: 'Recoger muestras', play: 'Ejecutar minijuego', rest: 'Descansar', explore: 'Explorar',
       paused: 'Pausa', resume: 'Reanudar', mainMenu: 'Menú principal', save: 'Guardar', saved: 'Partida guardada', endRun: 'Terminar y ver informe',
@@ -206,7 +222,8 @@ const DATA = (function () {
       moonD: 'Shackleton crater region, lunar south pole. No air, low-angle sunlight, messages delayed ~1.3 s.',
       marsD: 'Thin air, dust, 24 h 39 min days and messages delayed 3 to 22 minutes.',
       go: 'Launch!', back: 'Back', close: 'Close', confirm: 'Confirm', cancel: 'Cancel', yes: 'Yes', no: 'No', on: 'On', off: 'Off',
-      o2: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
+      o2: 'Air', o2A: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', radA: 'Radiation', food: 'Food', foodA: 'Food supply', well: 'Wellbeing', mat: 'Materials', waste: 'Waste', life: 'Life support',
+      modeT: 'Mode', modeJ: 'Junior Explorer', modeJage: 'Ages 7 to 12', modeJd: 'Learn the basics of living in space by exploring, experimenting and following guided missions.', modeA: 'Mission Engineer', modeAage: 'Ages 13 and up', modeAd: 'Understand space engineering problems through simulations, data and technical decisions.', challenge: 'Challenge', chStd: 'Standard', chStdD: 'Balanced resources and environmental events.', chHard: 'Demanding', chHardD: 'Tight resources and more complex events.', good: 'Good', careful: 'Careful', urgent: 'Urgent!', more: 'More information', diagT: 'Diagnosis', diagDo: 'Diagnose', diagAsk: 'What is the most likely cause?', diagOk: 'Correct diagnosis: repair unlocked.', diagBad: 'That does not fit the data. You lose 1 hour; look at the values again.',
       ok: 'Normal', warn: 'Warning', crit: 'Critical', info: 'Info',
       interact: 'Interact', repair: 'Repair', investigate: 'Investigate', manage: 'Manage', collect: 'Collect samples', play: 'Play mini-game', rest: 'Rest', explore: 'Explore',
       paused: 'Paused', resume: 'Resume', mainMenu: 'Main menu', save: 'Save', saved: 'Game saved', endRun: 'End and see report',
@@ -546,8 +563,20 @@ const DATA = (function () {
 
 /* ---------- i18n helpers ---------- */
 let LANG = 'es';
-const _ = (k, p) => { let s = (DATA.U[LANG] && DATA.U[LANG][k]) || DATA.U.es[k] || k; if (p) for (const x in p) s = s.replace('{' + x + '}', p[x]); return s; };
-const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o[LANG] != null ? o[LANG] : o.es);
+/** Modalidad: 'junior' (Explorador Junior) o 'adv' (Ingeniero de Misión). Los textos con variante técnica llevan esA/enA. */
+let MODE = 'junior';
+const _ = (k, p) => {
+  const U = DATA.U[LANG] || {};
+  let s = (MODE === 'adv' && (U[k + 'A'] != null)) ? U[k + 'A'] : U[k] != null ? U[k] : DATA.U.es[k] != null ? DATA.U.es[k] : k;
+  if (p) for (const x in p) s = s.replace('{' + x + '}', p[x]);
+  return s;
+};
+const tr = (o) => {
+  if (o == null) return '';
+  if (typeof o === 'string') return o;
+  if (MODE === 'adv') { const a = o[LANG + 'A']; if (a != null) return a; }
+  return o[LANG] != null ? o[LANG] : o.es;
+};
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 const fmt = (v, d) => (Number.isFinite(v) ? v.toLocaleString(LANG === 'es' ? 'es-DO' : 'en-US', { maximumFractionDigits: d == null ? 1 : d, minimumFractionDigits: 0 }) : '—');
 
@@ -735,7 +764,315 @@ const NPCDATA = (function () {
   const ACCESS = { cmd: ['commander'], comms: ['commander'], med: ['medic'], gh: ['agri'], plant: ['agri'], reactor: ['engineer'], solar: ['engineer'], balance: ['engineer'],
     water: ['engineer', 'medic'], o2: ['medic', 'engineer'], shield: ['scientist', 'engineer'], rover: ['engineer'], isru: ['engineer'], lab: ['scientist'], spec: ['scientist'], log: ['scientist'] };
 
-  return { PEOPLE, GUIDE, TALK, CAMP, KEY, KEYTARGET, INC_NPC, INC_CONSOLE, CONSEQ, RES, RES_ROOM, PLANT, ACCESS };
+  // Opciones de diagnóstico (modo Ingeniero). El orden debe coincidir con Sim.DIAG_OK.
+  const DIAG = {
+    water_fail: { opts: [{ es: 'Obstrucción en la bomba o el filtro (cae el caudal con alimentación normal)', en: 'Pump or filter blockage (flow drops with normal power)' }, { es: 'Falta de energía en el reciclador', en: 'Lack of power to the recycler' }, { es: 'Sensor de nivel del depósito descalibrado', en: 'Tank level sensor out of calibration' }] },
+    pressure_leak: { opts: [{ es: 'Fallo del compresor', en: 'Compressor failure' }, { es: 'Fuga en una junta (la presión cae aunque el compresor está alimentado)', en: 'Seal leak (pressure drops even though the compressor is powered)' }, { es: 'Sensor de presión averiado', en: 'Faulty pressure sensor' }] },
+    comms_blackout: { opts: [{ es: 'Conjunción solar: el Sol queda entre la Tierra y la base', en: 'Solar conjunction: the Sun sits between Earth and the base' }, { es: 'Falta de energía en la antena', en: 'Lack of power to the antenna' }, { es: 'Fallo del equipo de la antena (la alimentación es normal)', en: 'Antenna hardware fault (power is normal)' }] },
+    thermal_fail: { opts: [{ es: 'Falta de energía para la calefacción', en: 'Not enough power for heating' }, { es: 'Circuito térmico degradado (alimentación normal, eficacia baja)', en: 'Degraded thermal loop (normal supply, low effectiveness)' }, { es: 'Temperatura exterior inusualmente baja', en: 'Unusually low outside temperature' }] },
+    wear: { opts: [{ es: 'Desgaste del equipo: la salud del sistema bajó', en: 'Equipment wear: system health dropped' }, { es: 'Falta de materiales de repuesto', en: 'Lack of spare materials' }, { es: 'Error de operación de la tripulación', en: 'Crew operating error' }] },
+    sensor_drift: { opts: [{ es: 'Fallo del generador de O₂', en: 'O₂ generator failure' }, { es: 'Fuga de gas', en: 'Gas leak' }, { es: 'Deriva del sensor: la lectura se desvía y la producción es normal', en: 'Sensor drift: the reading deviates while production is normal' }] }
+  };
+  // Datos del modelo clasificados: real (medición NASA/normas), hist (registro histórico), model (modelo simplificado), game (valor de jugabilidad)
+  const PARAMS = [
+    { k: 'real', n: { es: 'O₂ consumido por persona', en: 'O₂ used per person' }, v: '0,84 kg/día', s: 'NASA' },
+    { k: 'real', n: { es: 'Agua por kg de O₂ (electrólisis)', en: 'Water per kg of O₂ (electrolysis)' }, v: '1,125 L/kg', s: '2 H₂O → 2 H₂ + O₂' },
+    { k: 'real', n: { es: 'Rango seguro de O₂ en cabina', en: 'Safe cabin O₂ range' }, v: '19,5–23,5 %', s: 'OSHA 29 CFR 1910.146' },
+    { k: 'real', n: { es: 'Dosis de fondo Marte', en: 'Mars background dose' }, v: '≈ 0,64 mSv/día', s: 'MSL/RAD (Hassler et al., Science 2014)' },
+    { k: 'real', n: { es: 'Dosis de fondo Luna', en: 'Moon background dose' }, v: '≈ 1,37 mSv/día', s: "Chang'e-4 LND (Zhang et al., Sci. Adv. 2020)" },
+    { k: 'real', n: { es: 'Retraso de la luz Tierra–Marte', en: 'Earth–Mars light delay' }, v: '≈ 3–22 min', s: 'NASA' },
+    { k: 'hist', n: { es: 'Eventos solares usados', en: 'Solar events used' }, v: '2003-10-28 X17 · 2017-09-06 X9.3 · 2024-05-10 G5', s: 'NASA DONKI' },
+    { k: 'hist', n: { es: 'Opportunity deja de comunicar', en: 'Opportunity stops communicating' }, v: '2018-06-10', s: 'NASA JPL' },
+    { k: 'model', n: { es: 'Eficiencia del reciclador de agua', en: 'Water recycler efficiency' }, v: '85 % eco · 93 % máx.', s: es0('Menor que el mejor valor de la ISS (>90 %)', 'Below the ISS best (>90%)') },
+    { k: 'model', n: { es: 'Tormenta solar sin blindaje', en: 'Unshielded solar storm' }, v: '2,0–2,8 mSv/h, 14–22 h', s: es0('Modelo, no medición', 'Model, not a measurement') },
+    { k: 'model', n: { es: 'Reactor / paneles', en: 'Reactor / panels' }, v: '6–10 kW / 12–18 kW', s: es0('Reducido respecto a diseños de NASA (~40 kWe)', 'Scaled down from NASA designs (~40 kWe)') },
+    { k: 'game', n: { es: 'Ciclo de cultivo', en: 'Crop cycle' }, v: es0('7 días simulados', '7 simulated days'), s: es0('Compresión educativa', 'Educational compression') },
+    { k: 'game', n: { es: 'Escala de comunicaciones', en: 'Communication scale' }, v: es0('1 min-luz ≈ 1 h simulada', '1 light-min ≈ 1 simulated h'), s: es0('Para que el retraso se note', 'So the delay is noticeable') },
+    { k: 'game', n: { es: 'Límite de dosis de la partida', en: 'Game dose limit' }, v: '120 / 80 / 60 mSv', s: es0('Umbral del juego, no límite médico', 'Game threshold, not a medical limit') }
+  ];
+  function es0(a, b) { return (typeof LANG !== 'undefined' && LANG === 'en') ? b : a; }
+  return { DIAG, PARAMS, PEOPLE, GUIDE, TALK, CAMP, KEY, KEYTARGET, INC_NPC, INC_CONSOLE, CONSEQ, RES, RES_ROOM, PLANT, ACCESS };
+})();
+/* =====================================================================
+   ICONS — iconografía propia y consistente (SVG por rutas, 24×24).
+   Se usa en el DOM (Icons.el) y en Canvas (Icons.draw con Path2D).
+   decor(): convierte los pictogramas de los textos en iconos y descarta
+   los emojis decorativos.
+   ===================================================================== */
+const Icons = (function () {
+  // f = relleno (evenodd) · s = trazo
+  const I = {
+    air: { s: 'M3 8h11a3 3 0 10-3-3M3 12h15a3 3 0 11-3 3M3 16h8' },
+    drop: { f: 'M12 3S5.5 10 5.5 14.5a6.5 6.5 0 0013 0C18.5 10 12 3 12 3z' },
+    bolt: { f: 'M13 2L5 13h5l-1 9 8-12h-5z' },
+    leaf: { f: 'M4 20C4 11 9 5 20 4c-1 10-6 16-16 16z' },
+    shield: { f: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z' },
+    heart: { f: 'M12 21s-8-5.5-8-11a4.5 4.5 0 018-2.7A4.5 4.5 0 0120 10c0 5.5-8 11-8 11z' },
+    warn: { f: 'M12 2L1 21h22L12 2zm-1 7h2v6h-2V9zm0 8h2v2h-2v-2z' },
+    crit: { f: 'M8 2h8l6 6v8l-6 6H8l-6-6V8l6-6zm3 5v6h2V7h-2zm0 8v2h2v-2h-2z' },
+    info: { f: 'M12 2a10 10 0 100 20 10 10 0 000-20zm-1 5h2v2h-2V7zm0 4h2v7h-2v-7z' },
+    check: { s: 'M4 12.5l5 5L20 6.5' },
+    cross: { s: 'M6 6l12 12M18 6L6 18' },
+    lock: { f: 'M6 10V8a6 6 0 0112 0v2h1v12H5V10h1zm3 0h6V8a3 3 0 00-6 0v2z' },
+    pin: { f: 'M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 4.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5z' },
+    gear: { f: 'M10.5 2h3l.5 3 2 1 2.8-1.2 1.5 2.6-2.3 2 .1 2.2 2.3 2-1.5 2.6L16 17l-2 1-.5 3h-3l-.5-3-2-1-2.8 1.2-1.5-2.6 2.3-2-.1-2.2-2.3-2 1.5-2.6L8 6l2-1 .5-3zM12 9a3 3 0 100 6 3 3 0 000-6z' },
+    pause: { f: 'M6 4h4v16H6zM14 4h4v16h-4z' },
+    play: { f: 'M7 4l13 8-13 8z' },
+    sound: { f: 'M3 9h4l5-4v14l-5-4H3z', s: 'M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11' },
+    mute: { f: 'M3 9h4l5-4v14l-5-4H3z', s: 'M16 9l5 6M21 9l-5 6' },
+    menu: { s: 'M4 6h16M4 12h16M4 18h16' },
+    bell: { f: 'M12 22a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22zm7-6v-5a7 7 0 00-5-6.7V3a2 2 0 10-4 0v1.3A7 7 0 005 11v5l-2 2v1h18v-1l-2-2z' },
+    flask: { f: 'M9 2h6v2h-1v5l5.5 9.5A2 2 0 0117.8 21H6.2a2 2 0 01-1.7-2.5L10 9V4H9V2z' },
+    antenna: { f: 'M12 11a2 2 0 110 4 2 2 0 010-4z', s: 'M12 15v6M8 21h8M8 8a6 6 0 000 6M16 8a6 6 0 010 6M5 5a10 10 0 000 12M19 5a10 10 0 010 12' },
+    radio: { f: 'M3 9h18v11H3V9zm3 3v2h6v-2H6zm9 0a2 2 0 100 4 2 2 0 000-4z', s: 'M7 9l11-6' },
+    rover: { f: 'M5 13l2-5h8l3 5v2H5v-2zM6 22a2.2 2.2 0 100-4.400 2.2 2.2 0 000 4.400zm12 0a2.2 2.2 0 100-4.400 2.2 2.2 0 000 4.400z' },
+    target: { f: 'M12 3a9 9 0 100 18 9 9 0 000-18zm0 4a5 5 0 110 10 5 5 0 010-10zm0 3a2 2 0 100 4 2 2 0 000-4z' },
+    map: { f: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z' },
+    person: { f: 'M12 3a4 4 0 100 8 4 4 0 000-8zM4 21a8 8 0 0116 0H4z' },
+    shirt: { f: 'M8 3L3 6l2 4 2-1v12h10V9l2 1 2-4-5-3a4 4 0 01-8 0z' },
+    sun: { f: 'M12 7a5 5 0 100 10 5 5 0 000-10z', s: 'M12 1v3M12 20v3M1 12h3M20 12h3M4.2 4.2l2.1 2.1M17.700 17.700l2.100 2.100M4.200 19.800l2.100-2.100M17.700 6.300l2.100-2.100' },
+    moon: { f: 'M21 12.800A9 9 0 1111.200 3a7 7 0 009.800 9.800z' },
+    dot: { f: 'M12 4a8 8 0 100 16 8 8 0 000-16z' },
+    scale: { s: 'M12 3v18M6 21h12M5 7h14M5 7l-3 8h6L5 7zM19 7l-3 8h6l-3-8z' },
+    wrench: { f: 'M21 6.500a5 5 0 01-6.600 4.700L7 18.700 5.300 17l7.500-7.400A5 5 0 0117.500 3l-3 3 .8 2.700L18 9.500l3-3z' },
+    bed: { f: 'M3 7v11h2v-3h14v3h2v-7a3 3 0 00-3-3h-8v5H5V7H3z' },
+    loop: { s: 'M4 12a8 8 0 0114-5l2-2v6h-6l2-2a5 5 0 00-9 3M20 12a8 8 0 01-14 5l-2 2v-6h6l-2 2a5 5 0 009-3' },
+    chat: { f: 'M4 4h16v12H9l-5 4V4z' },
+    cube: { f: 'M12 2l8 4.500v9L12 20l-8-4.500v-9L12 2z' },
+    door: { f: 'M5 2h14v20H5V2zm9 9v2h2v-2h-2z' },
+    earth: { s: 'M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2c3.500 3 3.500 17 0 20M12 2c-3.500 3-3.500 17 0 20' },
+    star: { f: 'M12 2l3 7 7 .6-5.300 4.700 1.700 7.200L12 17.700 5.600 21.500l1.700-7.200L2 9.600 9 9l3-7z' },
+    search: { s: 'M10 3a7 7 0 100 14 7 7 0 000-14zM15 15l6 6' },
+    scissors: { s: 'M6 8a3 3 0 100-6 3 3 0 000 6zM6 22a3 3 0 100-6 3 3 0 000 6zM8 7l12 12M8 17L20 5' },
+    basket: { f: 'M3 10h18l-2 11H5L3 10z', s: 'M8 10l3-6M16 10l-3-6' },
+    thermo: { f: 'M10 3a2 2 0 014 0v10a4 4 0 11-4 0V3z' },
+    clock: { s: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2' },
+    book: { f: 'M4 4h7v16H4V4zm9 0h7v16h-7V4z' },
+    seed: { f: 'M12 3c4 3 6 7 6 11a6 6 0 01-12 0c0-4 2-8 6-11z' },
+    chart: { s: 'M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3' },
+    home: { f: 'M3 11l9-8 9 8v10h-6v-6H9v6H3V11z' }
+  };
+  // emoji / glifo → icono
+  const MAP = {
+    '🫁': 'air', '💧': 'drop', '🔋': 'bolt', '⚡': 'bolt', '🛡': 'shield', '🥗': 'leaf', '😊': 'heart', '☀': 'sun', '⚛': 'bolt', '🌱': 'leaf', '🌿': 'leaf',
+    '🔬': 'flask', '🧪': 'flask', '🧫': 'flask', '🔧': 'wrench', '🛠': 'wrench', '🔌': 'bolt', '📡': 'antenna', '📻': 'radio', '🌎': 'earth', '🌍': 'earth', '🌙': 'moon',
+    '🔴': 'dot', '🎯': 'target', '🗺': 'map', '👩‍🚀': 'person', '🧑‍🚀': 'person', '🧥': 'shirt', '📍': 'pin', '🔒': 'lock', '⚙': 'gear', '⏸': 'pause', '▶': 'play',
+    '🔊': 'sound', '🔇': 'mute', '☰': 'menu', '🔔': 'bell', '⚖': 'scale', '🚙': 'rover', '🧊': 'cube', '🚪': 'door', '🛏': 'bed', '🎲': 'heart', '🩺': 'heart',
+    '💬': 'chat', '♻': 'loop', '🧺': 'basket', '✂': 'scissors', '🔍': 'search', '🌡': 'thermo', '🕒': 'clock', '⛔': 'crit', '⚠': 'warn', 'ℹ': 'info', '✔': 'check',
+    '✖': 'cross', '🏅': 'star', '📚': 'book', '🌈': 'chart', '🌰': 'seed', '🗺️': 'map', '🛡️': 'shield', '☀️': 'sun', '⚛️': 'bolt', '⚖️': 'scale', '⚙️': 'gear',
+    '🛠️': 'wrench', '🌡️': 'thermo', '🛏️': 'bed', '♻️': 'loop', '✂️': 'scissors', '⏸️': 'pause', '▶️': 'play', 'ℹ️': 'info', '✔️': 'check', '⚠️': 'warn', '✖️': 'cross',
+    '🖥': 'chart', '🖥️': 'chart', '🏠': 'home'
+  };
+  const RX = /(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2139}\u{2190}-\u{21FF}]️?(?:‍[\u{1F300}-\u{1FAFF}]️?)*)/gu;
+  const KEEP = new Set(['★', '☆', '→', '←', '↑', '↓', '↔', '✕']);
+  const NS = 'http://www.w3.org/2000/svg';
+  const cache = {};
+  function el(name, cls) {
+    const d = I[name]; if (!d) return document.createTextNode('');
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('class', 'ico ' + (cls || '')); svg.setAttribute('aria-hidden', 'true'); svg.dataset.i = name;
+    if (d.f) { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d.f); p.setAttribute('fill', 'currentColor'); p.setAttribute('fill-rule', 'evenodd'); svg.append(p); }
+    if (d.s) { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d.s); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '2'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); svg.append(p); }
+    return svg;
+  }
+  /** Dibuja el icono centrado en (x, y) con tamaño size px. */
+  function draw(c, name, x, y, size, color) {
+    const d = I[name]; if (!d) return;
+    c.save(); c.translate(x - size / 2, y - size / 2); c.scale(size / 24, size / 24);
+    if (d.f) { const k = 'f' + name; c.fillStyle = color || '#eef3ff'; c.fill(cache[k] || (cache[k] = new Path2D(d.f)), 'evenodd'); }
+    if (d.s) { const k = 's' + name; c.strokeStyle = color || '#eef3ff'; c.lineWidth = 2; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(cache[k] || (cache[k] = new Path2D(d.s))); }
+    c.restore();
+  }
+  const norm = (m) => m.replace(/️/g, '');
+  const byEmoji = (e) => MAP[e] || MAP[norm(e)] || null;
+  /** Texto → nodos: pictogramas conocidos pasan a icono, el resto de emojis se descarta. */
+  function decor(str) {
+    str = String(str);
+    if (!RX.test(str)) { RX.lastIndex = 0; return [str]; }
+    RX.lastIndex = 0;
+    const out = []; let last = 0, m;
+    while ((m = RX.exec(str))) {
+      const pre = str.slice(last, m.index); if (pre) out.push(pre);
+      const g = m[0], ic = byEmoji(g);
+      if (ic) out.push(el(ic)); else if (KEEP.has(norm(g))) out.push(norm(g));
+      last = m.index + g.length;
+    }
+    const post = str.slice(last); if (post) out.push(post);
+    // limpia espacios que quedaron al descartar emojis al inicio
+    if (typeof out[0] === 'string') out[0] = out[0].replace(/^\s+/, '');
+    return out;
+  }
+  function setText(node, str) { node.textContent = ''; for (const n of decor(str)) node.append(n.nodeType ? n : document.createTextNode(n)); }
+  return { names: Object.keys(I), el, draw, decor, setText, byEmoji, I };
+})();
+/* =====================================================================
+   LEVELS — Dos niveles de lenguaje sobre el mismo contenido científico.
+   Base (es/en) = Explorador Junior: palabras cotidianas, una idea por frase.
+   esA/enA     = Ingeniero de Misión: terminología, unidades, relaciones.
+   lv(): el texto técnico existente pasa a esA/enA y se escribe el junior.
+   av(): se añade la variante técnica sin tocar el texto base.
+   ===================================================================== */
+(function () {
+  const lv = (o, es, en) => { o.esA = o.es; o.enA = o.en; o.es = es; o.en = en; };
+  const av = (o, es, en) => { o.esA = es; o.enA = en; };
+
+  /* ---------- Eventos: ¿Por qué ocurrió? ---------- */
+  const EVJ = {
+    solar_storm: [
+      ['El Sol lanzó un chorro de partículas hacia la base.', 'The Sun sent a stream of particles toward the base.'],
+      ['A veces el Sol suelta partículas muy rápidas. Aquí no hay aire que nos proteja, solo las paredes.', 'Sometimes the Sun throws out very fast particles. There is no air here to protect us, only the walls.'],
+      ['Activa el protocolo de refugio y métete en el refugio.', 'Turn on the shelter protocol and go into the shelter.'],
+      ['Un aviso del Sol no es lo mismo que la radiación que recibes: depende de dónde estés y de cuánto te protejas.', 'A warning from the Sun is not the same as the radiation you get: it depends on where you are and how well you are protected.']],
+    power_drop: [
+      ['Los paneles solares reciben poca luz.', 'The solar panels get little light.'],
+      ['Cerca del polo de la Luna el Sol está muy bajo y las montañas hacen sombras largas.', 'Near the Moon\'s pole the Sun is very low and mountains cast long shadows.'],
+      ['Apaga las luces de las plantas, sube el reactor o gira los paneles.', 'Turn off the plant lights, raise the reactor or turn the panels.'],
+      ['Algunos puntos altos del borde del cráter casi siempre tienen luz, pero no todo el tiempo.', 'Some high points on the crater rim are lit almost always, but not all the time.']],
+    dust_storm: [
+      ['El polvo tapa el Sol y ensucia los paneles.', 'Dust blocks the Sun and dirties the panels.'],
+      ['En Marte el viento levanta polvo muy fino que flota durante semanas.', 'On Mars the wind lifts very fine dust that floats for weeks.'],
+      ['Ahorra energía, usa el reactor y limpia los paneles al terminar.', 'Save power, use the reactor and clean the panels afterwards.'],
+      ['En 2018 una tormenta de polvo dejó sin energía al robot Opportunity: dejó de comunicarse el 10 de junio.', 'In 2018 a dust storm left the Opportunity robot without power: it stopped communicating on 10 June.']],
+    water_fail: [
+      ['La máquina que recupera el agua se atascó y recupera menos.', 'The machine that recovers water got stuck and recovers less.'],
+      ['Con el uso, los filtros y los tubos se ensucian.', 'With use, filters and pipes get dirty.'],
+      ['Repara la bomba en la sala de agua y riega menos mientras tanto.', 'Repair the pump in the water room and water less meanwhile.'],
+      ['La Estación Espacial recupera casi toda su agua: más de 9 de cada 10 litros.', 'The Space Station recovers almost all its water: more than 9 out of every 10 liters.']],
+    pressure_leak: [
+      ['Se escapa un poco de aire del módulo de vida.', 'A little air is leaking from the habitation module.'],
+      ['Con el frío y el calor los materiales se mueven y las juntas se gastan.', 'Hot and cold make materials move and seals wear out.'],
+      ['Repara la fuga en el módulo de vida. Mientras tanto se pierde oxígeno.', 'Fix the leak in the habitation module. Oxygen is lost meanwhile.'],
+      ['La Estación Espacial mantiene el aire como al nivel del mar.', 'The Space Station keeps its air like at sea level.']],
+    comms_blackout: [
+      ['La antena perdió la conexión con la Tierra.', 'The antenna lost its link with Earth.'],
+      ['Una avería, el polvo o el Sol entre la Tierra y Marte pueden cortar la señal.', 'A fault, dust or the Sun between Earth and Mars can cut the signal.'],
+      ['Repara la antena en el puente o sigue los pasos de emergencia sin esperar ayuda.', 'Repair the antenna on the bridge or follow emergency steps without waiting for help.'],
+      ['Cada dos años Marte queda detrás del Sol y casi no se le puede hablar durante unas dos semanas.', 'Every two years Mars goes behind the Sun and we can hardly talk to it for about two weeks.']],
+    crop_fail: [
+      ['Algunas plantas se pusieron enfermas.', 'Some plants got sick.'],
+      ['En un lugar cerrado, los bichitos y los hongos se esparcen rápido.', 'In a closed place, bugs and mold spread fast.'],
+      ['Identifica el problema y poda las hojas afectadas.', 'Identify the problem and prune the affected leaves.'],
+      ['En 2016 unas zinnias de la Estación Espacial se enfermaron por demasiada humedad y los astronautas las salvaron.', 'In 2016 some zinnias on the Space Station got sick from too much humidity and the astronauts saved them.']],
+    thermal_fail: [
+      ['La calefacción funciona a medias.', 'The heating works only halfway.'],
+      ['Afuera hace muchísimo frío y el calor se escapa si falla.', 'It is extremely cold outside and heat escapes if it fails.'],
+      ['Repara el control de temperatura en el módulo de vida.', 'Repair temperature control in the habitation module.'],
+      ['Marte tiene unos 63 grados bajo cero de media. En algunos cráteres de la Luna hace más de 200 bajo cero.', 'Mars averages about 63 degrees below zero. In some Moon craters it is more than 200 below zero.']],
+    wear: [
+      ['Una máquina rinde menos porque se gastó.', 'A machine works worse because it wore out.'],
+      ['El polvo, los cambios de temperatura y el uso desgastan las piezas.', 'Dust, temperature changes and use wear out parts.'],
+      ['Repárala o haz mantenimiento (usa materiales).', 'Repair it or do maintenance (uses materials).'],
+      ['El polvo de la Luna es fino y raspa: los astronautas del Apolo contaron que dañaba trajes y juntas.', 'Moon dust is fine and scratchy: Apollo astronauts said it damaged suits and seals.']],
+    sensor_drift: [
+      ['El aparato mide mal el oxígeno.', 'The device measures oxygen wrongly.'],
+      ['Los sensores se desajustan con el tiempo y hay que calibrarlos.', 'Sensors drift over time and must be calibrated.'],
+      ['Calibra el oxígeno en la sala de agua.', 'Calibrate oxygen in the water room.'],
+      ['El aire normal tiene unas 21 partes de oxígeno de cada 100.', 'Normal air has about 21 parts of oxygen in every 100.']]
+  };
+  for (const ty in EVJ) { const E = DATA.EVT[ty], J = EVJ[ty]; ['what', 'cause', 'act', 'data'].forEach((k, i) => lv(E[k], J[i][0], J[i][1])); }
+
+  /* ---------- Misiones ---------- */
+  const MJ = {
+    1: { b: ['La máquina que recicla el agua falla. Mantén el aire y el agua bien durante un día.', 'The water recycling machine is failing. Keep the air and water healthy for a day.'],
+      v: [['Aire y agua en verde durante 24 horas seguidas.', 'Air and water in green for 24 hours in a row.'], ['Pon el reciclador en modo máximo y mantén aire y agua en verde 24 horas.', 'Set the recycler to max mode and keep air and water green for 24 hours.']],
+      l: ['Cuánto gastamos, qué reciclamos y qué guardamos.', 'How much we use, what we recycle and what we save.'] },
+    2: { b: ['Llega poca luz a los paneles y el reactor está dañado. Ahorra energía para que lo importante nunca se apague.', 'Little light reaches the panels and the reactor is damaged. Save power so the important things never go off.'],
+      v: [['Durante 12 horas: batería con carga y soporte vital encendido. Repara el reactor.', 'For 12 hours: battery charged and life support on. Repair the reactor.'], ['Igual, pero prueba el minijuego de repartir la energía.', 'Same, but try the energy sharing mini-game.']],
+      l: ['De dónde sale la energía, cómo se guarda y qué es lo primero que hay que cuidar.', 'Where energy comes from, how it is stored and what to protect first.'] },
+    3: { b: ['El Sol va a lanzar partículas, como pasó de verdad hace años. ¡Prepárate!', 'The Sun will throw particles, like it really did years ago. Get ready!'],
+      v: [['Activa el refugio antes de que lleguen y quédate dentro.', 'Turn on the shelter before they arrive and stay inside.'], ['Igual, y mantén encendido lo importante.', 'Same, and keep the important things running.']],
+      l: ['Las tormentas del Sol, la radiación y cómo protegerse.', 'Storms from the Sun, radiation and how to stay safe.'] },
+    4: { b: ['Elige el mejor lugar para explorar según lo que se pide.', 'Choose the best place to explore for what is asked.'],
+      v: [['Compara los lugares y elige el mejor para lo que se pide.', 'Compare the places and pick the best for what is asked.'], ['Igual, con otro pedido.', 'Same, with another request.']],
+      l: ['Cómo se elige un buen lugar: suelo, luz y riesgos.', 'How to choose a good place: ground, light and risks.'] },
+    5: { b: ['Las paredes del escudo están gastadas y el refugio es chico. Mejóralos con materiales.', 'The shield walls are worn and the shelter is small. Improve them with materials.'],
+      v: [['Escudo más fuerte y refugio para casi todos, sin quedarte sin batería.', 'Stronger shield and a shelter for almost everyone, without running out of battery.'], ['Escudo al máximo y refugio mediano, sin quedarte sin batería.', 'Maximum shield and a medium shelter, without running out of battery.']],
+      l: ['Cómo protegen las paredes, los materiales y los refugios.', 'How walls, materials and shelters protect.'] },
+    6: { b: ['Siembra, riega y da luz a las plantas. Cada planta tarda 7 días del juego.', 'Plant, water and light the plants. Each plant takes 7 game days.'],
+      v: [['Cosecha al menos 5 kilos de comida.', 'Harvest at least 5 kilos of food.'], ['Cosecha al menos 7 kilos con 2 plantas distintas.', 'Harvest at least 7 kilos with 2 different plants.']],
+      l: ['Qué necesitan las plantas: agua, luz y abono.', 'What plants need: water, light and nutrients.'] },
+    7: { b: ['Conduce el rover, recoge piedras y vuelve a la base. La antena falla: ¿esperas ayuda o decides tú?', 'Drive the rover, collect rocks and come back. The antenna is failing: do you wait for help or decide yourself?'],
+      v: [['Recoge las muestras pedidas y vuelve con batería.', 'Collect the requested samples and return with battery left.'], ['Igual, aunque falle la comunicación.', 'Same, even if communication fails.']],
+      l: ['Cómo exploran los robots y por qué la Tierra tarda en contestar.', 'How robots explore and why Earth is slow to answer.'] }
+  };
+  const MSJ = {
+    1: [['Ve a la sala de agua y aire.', 'Go to the water and air room.'], ['Arregla la bomba (minijuego de cables).', 'Fix the pump (wire mini-game).'], ['Elige el modo del reciclador y el riego.', 'Pick the recycler mode and watering.'], ['Espera un día mirando los indicadores.', 'Wait a day watching the meters.']],
+    2: [['Ve a la sala del reactor.', 'Go to the reactor room.'], ['Arregla el reactor (cables).', 'Fix the reactor (wires).'], ['Apaga luces de plantas o usa el modo de emergencia.', 'Turn off plant lights or use emergency mode.'], ['Gira los paneles solares.', 'Turn the solar panels.']],
+    3: [['Abre «Blindaje y refugio» en la bahía del rover.', 'Open "Shielding & shelter" in the rover bay.'], ['Activa el protocolo de refugio.', 'Turn on the shelter protocol.'], ['Métete tú también en el refugio (zona amarilla).', 'Walk into the shelter yourself (yellow zone).'], ['Espera a que pase la tormenta.', 'Wait for the storm to pass.']],
+    4: [['Abre la consola de mando, pestaña Misiones.', 'Open the command console, Missions tab.'], ['Lee qué se pide.', 'Read what is asked.'], ['Compara los lugares y elige.', 'Compare the places and choose.']],
+    5: [['Ve a la bahía del rover, consola de escudo.', 'Go to the rover bay, shield console.'], ['Refuerza el escudo.', 'Reinforce the shield.'], ['Amplía el refugio.', 'Expand the shelter.'], ['¿Faltan materiales? Recicla basura o explora con el rover.', 'Short of materials? Recycle waste or explore with the rover.']],
+    6: [['Ve al invernadero.', 'Go to the greenhouse.'], ['Siembra en los huecos vacíos.', 'Plant in the empty slots.'], ['Ajusta la luz y el agua.', 'Adjust light and water.'], ['Acelera el tiempo (x4) y cosecha.', 'Speed up time (x4) and harvest.']],
+    7: [['(Opcional) Pide a la Tierra una ruta segura; tardará en llegar.', '(Optional) Ask Earth for a safe route; it will take time.'], ['Ve a la bahía del rover.', 'Go to the rover bay.'], ['Conduce, esquiva rocas y recoge muestras.', 'Drive, dodge rocks and collect samples.'], ['Vuelve antes de que se acabe la batería.', 'Return before the battery runs out.']]
+  };
+  for (const id in MJ) {
+    const M = DATA.MIS[id], J = MJ[id];
+    lv(M.brief, J.b[0], J.b[1]);
+    J.v.forEach((x, i) => lv(M.vars[i], x[0], x[1]));
+    lv(M.steps, MSJ[id].map((x) => x[0]), MSJ[id].map((x) => x[1]));
+    lv(M.learn, J.l[0], J.l[1]);
+  }
+
+  /* ---------- Conversaciones: Junior en palabras cotidianas, Ingeniero con terminología ---------- */
+  const T = NPCDATA.TALK;
+  lv(T.bridge[1], 'Arriba ves los indicadores: aire, agua, energía y comida. Verde es bien, amarillo es cuidado y rojo es urgente.', 'At the top you see the meters: air, water, power and food. Green is fine, yellow is careful and red is urgent.');
+  av(T.bridge[1], 'El HUD muestra O₂, H₂O, energía, radiación, alimentos y bienestar con umbrales de advertencia (ámbar) y críticos (rojo). Pulsa un indicador para ver valores, producción y consumo.', 'The HUD shows O₂, H₂O, power, radiation, food and wellbeing with warning (amber) and critical (red) thresholds. Tap a meter for values, production and use.');
+  av(T.life[1], 'Aquí se monitoriza el bienestar de la tripulación: moral y descanso dependen de temperatura, presión, composición del aire, alimentos y alertas activas.', 'Crew wellbeing is monitored here: morale and rest depend on temperature, pressure, air composition, food and active alerts.');
+  av(T.reactor[1], 'El reactor, los paneles solares y la batería alimentan cuatro niveles de prioridad. Si la demanda supera la generación más la descarga de la batería, se recorta primero lo menos esencial.', 'The reactor, solar panels and battery feed four priority levels. If demand exceeds generation plus battery discharge, the least essential load is shed first.');
+  lv(T.water[1], 'Aquí el agua usada se limpia para volver a beberla, y otra máquina saca oxígeno del agua.', 'Used water is cleaned here to drink again, and another machine gets oxygen from water.');
+  lv(T.water[2], 'Tenemos el reciclador, el generador de oxígeno y los tanques. Sin agua no hay aire: por eso cuidamos cada gota.', 'We have the recycler, the oxygen generator and the tanks. Without water there is no air: that is why we save every drop.');
+  av(T.water[1], 'El procesador recupera agua con eficiencia del 85–93 %; el generador de O₂ la divide por electrólisis (2 H₂O → 2 H₂ + O₂).', 'The processor recovers water at 85–93% efficiency; the O₂ generator splits it by electrolysis (2 H₂O → 2 H₂ + O₂).');
+  av(T.water[2], 'Sistemas: reciclador, generador de O₂ y depósitos. Estequiometría: 1 kg de O₂ consume 1,125 L de agua más electricidad.', 'Systems: recycler, O₂ generator and tanks. Stoichiometry: 1 kg of O₂ consumes 1.125 L of water plus electricity.');
+  lv(T.lab[1], 'Aquí miramos piedras y polvo para saber dónde estamos y qué peligros hay.', 'Here we look at rocks and dust to learn where we are and what dangers exist.');
+  av(T.lab[1], 'Se analizan muestras de regolito y datos ambientales para caracterizar el entorno y sus riesgos.', 'Regolith samples and environmental data are analyzed to characterize the environment and its risks.');
+  av(T.rad[1], 'Desde aquí se opera el rover y se gestiona el blindaje: el espesor reduce más las partículas de tormentas solares que los rayos cósmicos galácticos.', 'The rover is run from here and shielding is managed: thickness stops solar-storm particles better than galactic cosmic rays.');
+
+  lv(T.lab[2], 'Tenemos la mesa de análisis, el lector de colores y el cuaderno de investigaciones.', 'We have the analysis table, the color reader and the research notebook.');
+  lv(T.lab[3], 'Misión «Exploración científica»: analiza una muestra, usa el lector de colores y mira el cuaderno.', 'Mission "Science exploration": analyze a sample, use the color reader and check the notebook.');
+  lv(NPCDATA.KEY.spec_open, 'Usa el lector de colores', 'Use the color reader');
+  lv(DATA.QUIZ[3].q, 'Si el Sol lanza una tormenta, ¿recibes toda esa radiación sí o sí?', 'If the Sun throws a storm, do you always get all that radiation?');
+  lv(DATA.QUIZ[3].why, 'Un aviso del Sol cuenta lo que pasa en el Sol. Lo que recibes depende de dónde estés y de cómo te protejas.', 'A warning from the Sun tells what happens on the Sun. What you receive depends on where you are and how you protect yourself.');
+
+  /* ---------- Alertas por recursos ---------- */
+  const RJ = { o2: [['Se está acabando el aire', 'The air is running low'], ['Revisa la máquina de oxígeno y que haya agua; arregla las fugas.', 'Check the oxygen machine and that there is water; fix leaks.'], ['Sin aire habría que irse de la base.', 'Without air we would have to leave the base.']],
+    water: [['Queda poca agua', 'Water is running low'], ['Recicla más agua, riega menos o saca agua del hielo.', 'Recycle more water, water less or get water from ice.'], ['Sin agua no podemos beber ni hacer aire.', 'Without water we cannot drink or make air.']],
+    power: [['La batería está baja', 'The battery is low'], ['Apaga las luces de las plantas, sube el reactor o gira los paneles.', 'Turn off the plant lights, raise the reactor or turn the panels.'], ['Se apagarán máquinas, y al final las más importantes.', 'Machines will shut down, and in the end the most important ones.']],
+    food: [['Queda poca comida', 'Food is running low'], ['Cosecha lo que esté maduro y siembra más.', 'Harvest what is ripe and plant more.'], ['Sin comida la misión termina.', 'Without food the mission ends.']],
+    well: [['La tripulación está cansada', 'The crew is tired'], ['Arregla las alertas, descansa y cuida la temperatura.', 'Fix the alerts, rest and keep the temperature right.'], ['Control podría pedir que volvamos.', 'Control could ask us to come back.']],
+    dose: [['Hemos recibido bastante radiación', 'We have received a lot of radiation'], ['Refuerza el escudo y usa el refugio en las tormentas.', 'Reinforce the shield and use the shelter in storms.'], ['Si pasamos el límite del juego, la misión termina.', 'If we pass the game limit, the mission ends.']] };
+  for (const k in RJ) { const R = NPCDATA.RES[k]; ['d', 'a', 'c'].forEach((f, i) => lv(R[f], RJ[k][i][0], RJ[k][i][1])); }
+
+  /* ---------- Fichas botánicas ---------- */
+  const PJ = { romaine: ['Le gusta la luz, el agua sin encharcar y la tierra con abono. Prefiere el fresquito.', 'It likes light, water without flooding and fed soil. It prefers cool weather.'],
+    mizuna: ['Crece rápido. Sus hojitas finas se secan pronto: vigila el agua.', 'It grows fast. Its thin leaves dry quickly: watch the water.'],
+    radish: ['Quiere buena luz y agua pareja; la raíz roja engorda al final. Con demasiada agua se pudre.', 'It wants good light and even water; the red root swells at the end. Too much water rots it.'],
+    chili: ['Necesita mucha luz, calorcito y mucho abono. Podarla ayuda a que dé chiles.', 'It needs lots of light, warmth and plenty of nutrients. Pruning helps it make chilies.'],
+    zinnia: ['Quiere mucha luz y no demasiada agua: si se encharca se enferma. No se come, pero alegra.', 'It wants lots of light and not too much water: it gets sick if waterlogged. Not edible, but cheerful.'] };
+  for (const sp in PJ) lv(NPCDATA.PLANT[sp].needs, PJ[sp][0], PJ[sp][1]);
+
+  /* ---------- Preguntas: Junior (causa-efecto) y Avanzado (razonar con datos) ---------- */
+  DATA.QUIZ_A = {
+    1: { q: { es: 'El sistema procesa 17,5 L/día de agua usada con una recuperación del 85 %. ¿Cuánta agua se pierde al día?', en: 'The system processes 17.5 L/day of used water at 85% recovery. How much water is lost per day?' },
+      o: [{ es: 'Unos 2,6 L: es el 15 % que no se recupera', en: 'About 2.6 L: the 15% that is not recovered' }, { es: 'Unos 14,9 L: es lo que sí se recupera', en: 'About 14.9 L: what is recovered' }, { es: 'Nada: el reciclaje es siempre del 100 %', en: 'None: recycling is always 100%' }], a: 0,
+      why: { es: 'Pérdida = consumo × (1 − eficiencia) = 17,5 × 0,15 ≈ 2,6 L/día. Subir la eficiencia unos puntos ahorra mucha agua en semanas.', en: 'Loss = use × (1 − efficiency) = 17.5 × 0.15 ≈ 2.6 L/day. A few efficiency points save a lot of water over weeks.' } },
+    2: { q: { es: 'Generación 4,7 kW, demanda 10 kW y batería de 90 kWh. ¿Cuánto aguanta aproximadamente y qué decisión es más razonable?', en: 'Generation 4.7 kW, demand 10 kW and a 90 kWh battery. About how long does it last and what is the most reasonable decision?' },
+      o: [{ es: 'Unas 17 h; recortar las cargas de prioridad 4 y reparar el reactor', en: 'About 17 h; shed priority-4 loads and repair the reactor' }, { es: 'Unas 90 h; no hace falta hacer nada', en: 'About 90 h; nothing needs to be done' }, { es: 'Unas 2 h; apagar el soporte vital', en: 'About 2 h; shut down life support' }], a: 0,
+      why: { es: 'Déficit 5,3 kW → 90 kWh ÷ 5,3 kW ≈ 17 h. Se protege primero lo esencial y se actúa sobre la generación (reactor) y la demanda no esencial.', en: 'Deficit 5.3 kW → 90 kWh ÷ 5.3 kW ≈ 17 h. Essentials are protected first, then generation (reactor) and non-essential demand are tackled.' } },
+    3: { q: { es: 'Un evento de DONKI clase X aparece en el catálogo. ¿Qué dato necesitas para estimar tu dosis?', en: 'A class-X DONKI event appears in the catalog. What data do you need to estimate your dose?' },
+      o: [{ es: 'Tu ubicación y el blindaje (y la duración del evento)', en: 'Your location and shielding (and the event duration)' }, { es: 'Solo la letra de la clase', en: 'Only the class letter' }, { es: 'Ninguno: la dosis es la misma para todos', en: 'None: the dose is the same for everyone' }], a: 0,
+      why: { es: 'El catálogo describe el fenómeno solar, no la exposición. La dosis depende del flujo de partículas, la duración y la protección interpuesta.', en: 'The catalog describes the solar phenomenon, not exposure. Dose depends on particle flux, duration and the shielding in between.' } },
+    4: { q: { es: 'Para una base solar a largo plazo, ¿qué sitio es mejor: iluminación 5/5 y pendiente 2/5, o iluminación 1/5 y pendiente 4/5? Justifícalo.', en: 'For a long-term solar base, which site is better: lighting 5/5 and slope 2/5, or lighting 1/5 and slope 4/5? Justify it.' },
+      o: [{ es: 'El primero: la energía solar depende sobre todo de la iluminación y la pendiente se puede ingenierizar', en: 'The first: solar power depends mostly on lighting and slope can be engineered' }, { es: 'El segundo: el terreno plano siempre pesa más', en: 'The second: flat ground always counts more' }, { es: 'Da igual: no cambian la energía', en: 'No difference: they do not change power' }], a: 0,
+      why: { es: 'La ponderación depende del objetivo: para energía, la iluminación domina. Para aterrizar una nave pesada, la pendiente pesaría más.', en: 'Weighting depends on the goal: for power, lighting dominates. For landing a heavy craft, slope would weigh more.' } },
+    5: { q: { es: 'Con la misma masa de blindaje, ¿qué reduce más: las partículas de una tormenta solar o los rayos cósmicos galácticos?', en: 'With the same shielding mass, which is reduced more: solar-storm particles or galactic cosmic rays?' },
+      o: [{ es: 'Las partículas solares, que son menos energéticas', en: 'Solar particles, which are less energetic' }, { es: 'Los rayos cósmicos, que son menos energéticos', en: 'Cosmic rays, which are less energetic' }, { es: 'Los dos por igual', en: 'Both equally' }], a: 0,
+      why: { es: 'Los protones de tormentas solares tienen menor energía y se frenan en pocos centímetros de material; los rayos cósmicos penetran más y generan partículas secundarias.', en: 'Solar-storm protons are less energetic and stop in a few centimeters of material; cosmic rays penetrate more and make secondary particles.' } },
+    6: { q: { es: 'Subes la luz LED de una jardinera del 60 % al 100 %. ¿Qué efecto esperas en el sistema?', en: 'You raise a planter LED from 60% to 100%. What system effect do you expect?' },
+      o: [{ es: 'Más crecimiento hasta el límite de la especie y +0,24 kW de demanda', en: 'More growth up to the species limit and +0.24 kW of demand' }, { es: 'Más crecimiento sin ningún coste', en: 'More growth at no cost' }, { es: 'Menos consumo de agua', en: 'Lower water use' }], a: 0,
+      why: { es: 'La luz solo ayuda hasta cubrir la necesidad de la especie; más allá solo gasta energía. 0,6 kW × 0,4 = 0,24 kW por jardinera.', en: 'Light only helps up to the species need; beyond that it only wastes energy. 0.6 kW × 0.4 = 0.24 kW per planter.' } },
+    7: { q: { es: 'Con un retraso de ida de 12 min, ¿cuánto tardas como mínimo en recibir una respuesta y qué implica para operar un rover?', en: 'With a 12 min one-way delay, what is the minimum time to get a reply and what does it mean for driving a rover?' },
+      o: [{ es: '24 min; hay que planificar con antelación y dar autonomía al rover', en: '24 min; plan ahead and give the rover autonomy' }, { es: '12 min; se puede conducir en tiempo real', en: '12 min; it can be driven in real time' }, { es: '0 min: las ondas viajan instantáneamente', en: '0 min: waves travel instantly' }], a: 0,
+      why: { es: 'Ida y vuelta = 2 × 12 = 24 min (más el tiempo de proceso). Por eso los rovers de Marte siguen planes enviados antes y navegan de forma autónoma.', en: 'Round trip = 2 × 12 = 24 min (plus processing). That is why Mars rovers follow plans sent earlier and navigate autonomously.' } }
+  };
 })();
 /*SIM-START*/
 /* =====================================================================
@@ -810,18 +1147,22 @@ const Sim = (function () {
 
   /* ---------- Incidentes (plantillas) ---------- */
   const EV = {
-    solar_storm: { sc: ['moon', 'mars'], sev: 'crit', room: 'rad', sys: 'shield', w: 0.7, dur: [14, 22], env: true },
+    solar_storm: { sc: ['moon', 'mars'], sev: 'crit', room: 'rad', sys: 'shield', w: 0.7, dur: [14, 22], env: true, jd: 4 },
     power_drop: { sc: ['moon'], sev: 'warn', room: 'reactor', sys: 'solar', w: 1.0, dur: [20, 34], env: true },
     dust_storm: { sc: ['mars'], sev: 'warn', room: 'reactor', sys: 'solar', w: 1.1, dur: [30, 60], env: true },
-    water_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'water', sys: 'rec', w: 1.0, fix: 'wiring' },
-    pressure_leak: { sc: ['moon', 'mars'], sev: 'crit', room: 'life', sys: 'press', w: 0.7, fix: 'wiring' },
-    comms_blackout: { sc: ['moon', 'mars'], sev: 'info', room: 'bridge', sys: 'comms', w: 0.8, fix: 'wiring', dur: [14, 26] },
-    crop_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'gh', sys: 'gh', w: 0.8, fix: 'gh' },
-    thermal_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'life', sys: 'thermal', w: 0.8, fix: 'wiring' },
+    water_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'water', sys: 'rec', w: 1.0, fix: 'wiring' }, // jd = día a partir del cual aparece en Junior (eventos presentados progresivamente)
+    pressure_leak: { sc: ['moon', 'mars'], sev: 'crit', room: 'life', sys: 'press', w: 0.7, fix: 'wiring', jd: 3 },
+    comms_blackout: { sc: ['moon', 'mars'], sev: 'info', room: 'bridge', sys: 'comms', w: 0.8, fix: 'wiring', dur: [14, 26], jd: 3 },
+    crop_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'gh', sys: 'gh', w: 0.8, fix: 'gh', jd: 2 },
+    thermal_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'life', sys: 'thermal', w: 0.8, fix: 'wiring', adv: true },
     wear: { sc: ['moon', 'mars'], sev: 'info', room: 'reactor', sys: 'reactor', w: 1.1, fix: 'wiring' },
-    sensor_drift: { sc: ['moon', 'mars'], sev: 'info', room: 'water', sys: 'o2', w: 0.6, fix: 'o2' }
+    sensor_drift: { sc: ['moon', 'mars'], sev: 'info', room: 'water', sys: 'o2', w: 0.6, fix: 'o2', adv: true }
   };
   const SYS_ROOM = { isru: 'rad', reactor: 'reactor', solar: 'reactor', shield: 'rad', o2: 'water', rec: 'water', comms: 'bridge', thermal: 'life', press: 'life', gh: 'gh', lab: 'lab' };
+
+  // Diagnóstico (modo Ingeniero): índice de la causa correcta entre 3 opciones (los textos están en NPCDATA.DIAG).
+  const DIAG_OK = { water_fail: 0, pressure_leak: 1, comms_blackout: 2, thermal_fail: 1, wear: 0, sensor_drift: 2 };
+  const PRIO_IDS = ['lab', 'rover', 'isru', 'jobs', 'lights', 'pumps'];
 
   /* ---------- RNG (mulberry32 con estado en S.rs) ---------- */
   function rnd(S) {
@@ -838,11 +1179,12 @@ const Sim = (function () {
   function create(o) {
     o = o || {};
     const scen = o.scen === 'mars' ? 'mars' : 'moon';
-    const diff = DIFFS[o.diff] ? o.diff : 'engineer';
+    const adv = o.mode === 'adv';
+    const diff = !adv ? 'explorer' : o.diff === 'commander' ? 'commander' : 'engineer'; // Junior = guiado; Ingeniero = estándar o exigente
     const df = DIFFS[diff];
     const seed = (o.seed >>> 0) || 1;
     const S = {
-      v: 1, scen, diff, seed, rs: seed, t: 0, N: 5, noEv: !!o.noEv, ended: null,
+      v: 1, scen, diff, seed, rs: seed, t: 0, N: 5, noEv: !!o.noEv, ended: null, mode: adv ? 'adv' : 'junior', adv, prioOv: {}, hist: [], hlast: 0,
       lightMin: 0.0217, // minutos-luz Luna (≈1,3 s)
       limit: df.dose,
       r: {
@@ -904,6 +1246,9 @@ const Sim = (function () {
     if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
     if (!S.playerRole) S.playerRole = 'commander';
+    if (!S.mode) { S.adv = S.diff !== 'explorer'; S.mode = S.adv ? 'adv' : 'junior'; }
+    if (!S.prioOv) S.prioOv = {};
+    if (!S.hist) { S.hist = []; S.hlast = S.t || 0; }
     S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
     return S;
   }
@@ -919,7 +1264,7 @@ const Sim = (function () {
   function activeInc(S) { return S.inc.filter((i) => !i.res); }
   function hasActive(S, type) { return S.inc.some((i) => !i.res && i.type === type && S.t >= i.from); }
   function shieldEff(S) { return clamp((0.25 + 0.25 * S.sys.shield.lvl) * (S.sys.shield.h / 100), 0, 1); }
-  function oneWay(S) { return S.scen === 'moon' ? P.MOON_ONEWAY_H : S.lightMin * P.LIGHT_MIN_TO_H; }
+  function oneWay(S) { const base = S.scen === 'moon' ? P.MOON_ONEWAY_H : S.lightMin * P.LIGHT_MIN_TO_H; return S.adv ? base : Math.max(P.MOON_ONEWAY_H, base * 0.4); } // Junior: retraso reducido para que sea jugable (se explica en la interfaz)
   function bonus(S, role) {
     // Un especialista aporta su bonus si no está en el refugio durante una tormenta.
     const c = S.crew.find((x) => x.role === role);
@@ -968,9 +1313,20 @@ const Sim = (function () {
   function repair(S, id, amount) {
     const inc = S.inc.find((i) => i.id === id);
     if (!inc || inc.res || !inc.fix) return false;
+    if (S.adv && DIAG_OK[inc.type] != null && !inc.diag) return false; // en el modo avanzado hay que diagnosticar antes
     inc.prog = clamp(inc.prog + amount, 0, 100);
     if (inc.prog >= 100) resolveInc(S, inc, 'player');
     return true;
+  }
+  /** Modo Ingeniero: elegir la causa probable. Acertar desbloquea la reparación (+20 %); fallar cuesta 1 h. */
+  function diagnose(S, id, choice) {
+    const inc = S.inc.find((i) => i.id === id);
+    if (!inc || inc.res || DIAG_OK[inc.type] == null) return { ok: false, err: 'none' };
+    if (inc.diag) return { ok: true, already: true };
+    if (choice === DIAG_OK[inc.type]) { inc.diag = 1; inc.prog = clamp(inc.prog + 20, 0, 100); S.st.good.diag = (S.st.good.diag || 0) + 1; S.pts += 10; log(S, 'ok', 'diag.ok', { id, type: inc.type }); return { ok: true }; }
+    inc.wrong = (inc.wrong || 0) + 1; S.st.mistakes.diag = (S.st.mistakes.diag || 0) + 1; log(S, 'warn', 'diag.bad', { id, type: inc.type });
+    step(S, 1);
+    return { ok: false };
   }
   function mods(S) {
     const M = { sunMul: 1, leak: 0, spe: 0, recMul: 1, thermMul: 1, commsDown: false, blight: false };
@@ -996,7 +1352,7 @@ const Sim = (function () {
     if (S.t - S.lastEv < 10) return;
     if (rnd(S) > 0.02 * df.ev * h * (S.camp && !S.camp.basicDone ? 0.5 : 1)) return;
     const open = (room) => !S.camp || !!S.camp.unlocked[room];
-    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) &&
+    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) && !(EV[k].adv && !S.adv) && (S.adv || S.t >= (EV[k].jd || 0) * 24) &&
       !(k === 'crop_fail' && !plantsList(S).length));
     if (!pool.length) return;
     let tot = pool.reduce((a, k) => a + EV[k].w, 0), x = rnd(S) * tot, pick = pool[0];
@@ -1055,6 +1411,7 @@ const Sim = (function () {
       { id: 'lights', p: 4, kw: S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? P.LIGHT_KW_PER_BED * b.light : 0), 0) * S.cap.gh },
       { id: 'pumps', p: 4, kw: 0.3 * sy.gh.irrig * (planted ? 1 : 0) }
     ];
+    if (S.adv) loads.forEach((l) => { const o = S.prioOv[l.id]; if (o >= 2 && o <= 4) l.p = o; });
     if (S.emergency) loads.forEach((l) => { if (l.p >= 3) l.kw = 0; });
     const avail = G + (r.power.v > 0.01 ? P.BATT_MAX_DIS : 0);
     let served = 0, demand = 0;
@@ -1196,8 +1553,8 @@ const Sim = (function () {
 
     /* --- Ingeniero: reparación autónoma lenta --- */
     if (bonus(S, 'engineer')) {
-      const tgt = activeInc(S).filter((i) => i.fix && S.t >= i.from).sort((a, b) => (a.sev === 'crit' ? -1 : 1) - (b.sev === 'crit' ? -1 : 1))[0];
-      if (tgt) { tgt.prog = clamp(tgt.prog + 1.6 * h * df.repair, 0, 100); tgt.bot = true; if (tgt.prog >= 100) resolveInc(S, tgt, 'engineer'); }
+      const tgt = activeInc(S).filter((i) => i.fix && S.t >= i.from && (!S.adv || DIAG_OK[i.type] == null || i.diag)).sort((a, b) => (a.sev === 'crit' ? -1 : 1) - (b.sev === 'crit' ? -1 : 1))[0];
+      if (tgt) { tgt.prog = clamp(tgt.prog + (S.adv ? 1.0 : 1.6) * h * df.repair, 0, 100); tgt.bot = true; if (tgt.prog >= 100) resolveInc(S, tgt, 'engineer'); }
     }
 
     /* --- Ciclo de incidentes --- */
@@ -1208,6 +1565,10 @@ const Sim = (function () {
     }
     if (nCrit) S.st.critH += h;
     spawn(S, h);
+
+    /* --- Eventos encadenados (modo Ingeniero) y registro histórico --- */
+    if (S.adv) chains(S);
+    if (S.adv && S.t - S.hlast >= 1) { S.hlast = S.t; S.hist.push([pct(r.o2), pct(r.water), pct(r.power), pct(r.food), S.st.maxDose / S.limit, r.well.v / 100].map((x) => Math.round(clamp(x, 0, 1.5) * 1000) / 1000)); if (S.hist.length > 120) S.hist.shift(); }
 
     /* --- Comunicaciones --- */
     commsStep(S, M);
@@ -1221,6 +1582,16 @@ const Sim = (function () {
     derive(S);
   }
 
+  /** Cadenas causa → efecto: el polvo desgasta los paneles, una tormenta solar puede dejar sin enlace y la falta de agua daña las plantas. */
+  function chains(S) {
+    if (S.noEv) return;
+    for (const i of S.inc) {
+      if (i.chain) continue;
+      if ((i.type === 'power_drop' || i.type === 'dust_storm') && !i.res && S.t - i.from > 12) { i.chain = 1; if (!S.inc.some((x) => !x.res && x.type === 'wear')) addInc(S, 'wear', { sys: 'solar', dmg: 14 }); }
+      else if (i.type === 'solar_storm' && i.res) { i.chain = 1; if (rnd(S) < 0.6 && !S.inc.some((x) => !x.res && x.type === 'comms_blackout')) addInc(S, 'comms_blackout', { dur: 12 }); }
+      else if (i.type === 'water_fail' && !i.res && S.t - i.t0 > 18) { i.chain = 1; if (plantsList(S).length && !S.inc.some((x) => !x.res && x.type === 'crop_fail')) addInc(S, 'crop_fail', {}); }
+    }
+  }
   function normalize(S) {
     for (const k in S.r) { const x = S.r[k]; x.v = clamp(fin(x.v, 0), 0, x.max); }
     const s = S.sys;
@@ -1280,6 +1651,7 @@ const Sim = (function () {
     isru: (S, p) => { S.sys.isru.on = !!p.v; },
     recmode: (S, p) => { S.sys.rec.mode = p.v === 'max' ? 'max' : 'eco'; },
     emergency: (S, p) => { S.emergency = !!p.v; },
+    prio: (S, p) => { if (!S.adv || !PRIO_IDS.includes(p.id)) return 'err'; S.prioOv[p.id] = clamp(Math.round(+p.v), 2, 4); },
     proto: (S, p) => { S.proto = !!p.v; },
     shield: (S) => {
       if (S.sys.shield.lvl >= 3 || S.jobs.some((j) => j.kind === 'shield')) return 'busy';
@@ -1633,7 +2005,7 @@ const Sim = (function () {
     };
   }
 
-  return { CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -1692,6 +2064,7 @@ const SelfTest = (function () {
     if (S.m[1].st === 'active' && S.m[1].var) Sim.decide(S, 'recmode', { v: 'max' });
     if (S.t - (mem.rep || -99) > 3) {
       const inc = Sim.activeInc(S).find((i) => i.fix && S.t >= i.from);
+      if (inc && S.adv && Sim.DIAG_OK[inc.type] != null && !inc.diag) Sim.diagnose(S, inc.id, Sim.DIAG_OK[inc.type]);
       if (inc) { mem.rep = S.t; Sim.mini(S, inc.fix === 'o2' ? 'o2' : inc.fix === 'gh' ? 'gh' : 'wiring', { ok: true, score: 0.8, inc: inc.id }); }
     }
     if (S.m[5].st === 'active' || S.sys.shield.cap < S.N) { Sim.decide(S, 'shield', {}); Sim.decide(S, 'shelter', {}); }
@@ -1710,8 +2083,9 @@ const SelfTest = (function () {
   }
   function runOne(seed, policy, opts) {
     const scen = opts.scen || (seed % 2 ? 'mars' : 'moon');
-    const diff = opts.diff || ['explorer', 'engineer', 'commander'][seed % 3];
-    const S = Sim.create({ scen, diff, seed: 1000 + seed * 7919 });
+    const mode = opts.mode || (Math.floor(seed / 2) % 2 ? 'adv' : 'junior');
+    const diff = mode === 'junior' ? 'explorer' : (seed % 3 === 2 ? 'commander' : 'engineer');
+    const S = Sim.create({ scen, diff, mode, seed: 1000 + seed * 7919 });
     const errs = [], mem = {};
     const maxH = opts.maxH || 24 * 30;
     let consecutive = 0, maxConsec = 0;
@@ -1732,7 +2106,7 @@ const SelfTest = (function () {
     if (S.ended && S.ended.reason === 'o2' && S.r.o2.v > 0) errs.push('final por O2 incoherente');
     // Recuperación: tras resolver incidentes, ninguno de los resueltos debe seguir afectando
     const resolved = S.inc.filter((i) => i.res).length;
-    return { seed, scen, diff, policy, ended: S.ended, hours: Math.round(S.t), errs, done: [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done').length,
+    return { seed, scen, diff, mode, policy, ended: S.ended, hours: Math.round(S.t), errs, done: [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done').length,
       incidents: S.inc.length, resolved, maxConsec };
   }
   function run(n, opts) {
@@ -1747,6 +2121,7 @@ const SelfTest = (function () {
       passiveAbort: out.filter((r) => r.policy === 'passive' && r.ended && r.ended.kind === 'abort').length,
       passiveRuns: out.filter((r) => r.policy === 'passive').length,
       endReasons: out.reduce((a, r) => { const k = r.policy + ':' + (r.ended ? r.ended.reason : 'none'); a[k] = (a[k] || 0) + 1; return a; }, {}),
+      byMode: ['junior', 'adv'].reduce((o, m) => { const rs = smartRuns.filter((r) => r.mode === m); o[m] = { runs: rs.length, victories: rs.filter((r) => r.ended && r.ended.kind === 'victory').length }; return o; }, {}),
       totalIncidents: out.reduce((a, r) => a + r.incidents, 0), maxConsecutiveIncidentsH: Math.max(...out.map((r) => r.maxConsec))
     };
     return { summary, fails, out };
@@ -2788,7 +3163,7 @@ const World = (function () {
           ctx.fillStyle = 'rgba(5,8,20,.7)'; ctx.fillRect(px - 11, py + 4, 22, 9);
           ctx.fillStyle = '#eef3ff'; ctx.font = 'bold 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText(tr(Flora.SPECIES[pl.sp].short), px, py + 10.5);
           ctx.fillStyle = '#26345e'; ctx.fillRect(px - 10, py + 14, 20, 2.5); ctx.fillStyle = pl.prog >= 1 ? '#ffd36b' : '#5fe39a'; ctx.fillRect(px - 10, py + 14, 20 * pl.prog, 2.5);
-          if (pl.prog >= 1) { ctx.font = '10px system-ui'; ctx.fillText('✨', px + 9, py - 22); }
+          if (pl.prog >= 1) { ctx.font = '10px system-ui'; Icons.draw(ctx, 'star', px + 9, py - 24, 11, '#ffd36b'); }
           if (pl.moist < 28 || pl.hp < 40 || (pl.pest && pl.pestKnown)) { ctx.font = 'bold 10px system-ui'; ctx.fillStyle = '#ffc24a'; ctx.fillText('!', px - 10, py - 18); }
         } });
       }
@@ -2801,7 +3176,7 @@ const World = (function () {
       const alert = S && S.inc.some((i) => !i.res && i.fix && i.room === cn.room && S.t >= i.from) && cn.verb !== 'play';
       ctx.fillStyle = alert ? 'rgba(255,107,107,' + blink + ')' : 'rgba(56,214,255,' + blink * 0.9 + ')';
       ctx.fillRect(x + 7, y + 7, TS - 14, TS - 16);
-      ctx.font = '16px system-ui'; ctx.textAlign = 'center'; ctx.fillText(cn.icon, x + TS / 2, y - 2);
+      Icons.draw(ctx, Icons.byEmoji(cn.icon) || 'gear', x + TS / 2, y - 8, 15, alert ? '#ff9a9a' : '#bfe9ff');
     }
     // Rover fuera
     // Muestras
@@ -2815,7 +3190,7 @@ const World = (function () {
     // Secciones bloqueadas
     if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
       const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
-      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; ctx.fillText('🔒 ' + tr(DATA.ROOMS[k]), (Rr[0] + Rr[2] + 1) / 2 * TS, (Rr[1] + Rr[3] + 1) / 2 * TS);
+      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; { const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4); }
     }
     // Partículas
     for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
@@ -2858,7 +3233,7 @@ const World = (function () {
       c.fillRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s);
     }
     if (S) for (const i of S.inc) if (!i.res && S.t >= i.from) { const R = RECTS[i.room]; if (!R) continue; c.strokeStyle = i.sev === 'crit' ? '#ff6b6b' : i.sev === 'warn' ? '#ffc24a' : '#6fb3ff'; c.lineWidth = 3; c.strokeRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s); }
-    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); c.font = Math.round(10 * s / 2) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🔒', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s + 4); }
+    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); Icons.draw(c, 'lock', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s, Math.max(8, 5 * s), '#ffc24a'); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
     if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
     for (const b of bots) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
@@ -3134,8 +3509,8 @@ const MG = (function () {
         c.fillStyle = '#e8ebf2'; rr(c, -14, -10, 28, 20, 5); c.fill(); c.fillStyle = '#222'; c.fillRect(-12, -13, 8, 4); c.fillRect(4, -13, 8, 4); c.fillRect(-12, 9, 8, 4); c.fillRect(4, 9, 8, 4); c.fillStyle = '#38d6ff'; c.fillRect(6, -5, 8, 10);
         c.restore();
         c.fillStyle = 'rgba(5,8,20,.8)'; rr(c, 8, 8, 300, 30, 8); c.fill();
-        txt(c, '🔋 ' + Math.round(g.batt) + ' %  ◆ ' + g.got + '/' + g.target + '  ⚠ ' + g.dmg, 16, 29, 15, g.batt < 25 ? '#ff6b6b' : '#eef3ff', 'left');
-        if (g.lost) txt(c, LANG === 'es' ? '📡 Señal perdida: telemetría reducida' : '📡 Signal lost: reduced telemetry', GW / 2, 60, 16, '#ffc24a');
+        txt(c, (LANG === 'es' ? 'Batería ' : 'Battery ') + Math.round(g.batt) + ' %  ·  ' + (LANG === 'es' ? 'Muestras ' : 'Samples ') + g.got + '/' + g.target + '  ·  ' + (LANG === 'es' ? 'Golpes ' : 'Hits ') + g.dmg, 16, 29, 15, g.batt < 25 ? '#ff6b6b' : '#eef3ff', 'left');
+        if (g.lost) txt(c, LANG === 'es' ? 'Señal perdida: sensores reducidos' : 'Signal lost: reduced sensors', GW / 2, 60, 16, '#ffc24a');
         if (g.got >= g.target) txt(c, LANG === 'es' ? '¡Vuelve a la base!' : 'Return to base!', GW / 2, GH - 86, 18, '#5fe39a');
       },
       pointer(g, type, x, y) { g.px = x; g.py = y; if (type === 'down') g.pdown = true; if (type === 'up') g.pdown = false; },
@@ -3176,7 +3551,7 @@ const MG = (function () {
         c.fillStyle = '#6b4226'; c.fillRect(px - 50, py, 100, 40);
         c.strokeStyle = g.hp > 50 ? '#3ddc84' : '#b59a3a'; c.lineWidth = 6; c.beginPath(); c.moveTo(px, py); c.lineTo(px, py - hh); c.stroke();
         c.fillStyle = g.hp > 50 ? '#3ddc84' : '#b59a3a'; for (let k = 1; k < 5; k++) { if (hh > k * 30) { c.beginPath(); c.ellipse(px + (k % 2 ? 18 : -18), py - k * 30, 18, 8, k % 2 ? -0.4 : 0.4, 0, 7); c.fill(); } }
-        txt(c, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(g.hp) + ' %  · 💧 ' + g.water, px, 30, 15, g.hp >= g.need ? '#5fe39a' : '#ffc24a');
+        txt(c, (LANG === 'es' ? 'Salud: ' : 'Health: ') + Math.round(g.hp) + ' %  ·  ' + (LANG === 'es' ? 'Agua usada ' : 'Water used ') + g.water, px, 30, 15, g.hp >= g.need ? '#5fe39a' : '#ffc24a');
       },
       key(g, k, down) { if (!down) return; const m = { q: [0, 1], a: [0, -1], w: [1, 1], s: [1, -1], e: [2, 1], d: [2, -1] }[k.toLowerCase()]; if (m) defs.gh.adj(g, m[0], m[1]); },
       controls(g) {
@@ -3203,7 +3578,7 @@ const Game = (function () {
   const SIMH_PER_S = 0.4; // G: 1 s real = 0,4 h simuladas a velocidad x1 (1 día ≈ 60 s)
   let S = null, running = false, paused = false, speed = 1, stack = [], lastN = 0, dpr = 1, hudT = 0, saveT = 0, isTouch = false, mgRun = null;
   let donkiLive = null, onlineTried = false;
-  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', tutDone: false }, Store.get('settings', {}));
+  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', mode: 'junior', tutDone: false }, Store.get('settings', {}));
   const stats = Object.assign({ runs: 0, wins: 0, missions: 0, repairs: 0, harvest: 0, quizOk: 0 }, Store.get('stats', {}));
   const ach = Store.get('ach', {});
 
@@ -3216,22 +3591,26 @@ const Game = (function () {
       if (k === 'class') e.className = v; else if (k === 'html') e.innerHTML = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
       else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v); else e.setAttribute(k, v === true ? '' : v);
     }
-    for (const c of kids.flat(5)) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(String(c))); }
+    for (const c of kids.flat(5)) {
+      if (c == null || c === false) continue;
+      if (c.nodeType) e.append(c); else for (const n of Icons.decor(c)) e.append(n.nodeType ? n : document.createTextNode(n));
+    }
     return e;
   }
   const btn = (label, fn, cls, extra) => h('button', Object.assign({ class: 'btn ' + (cls || ''), type: 'button', onclick: (e) => { Sfx.play('click'); fn(e); } }, extra || {}), label);
   const bar = (f, col) => h('div', { class: 'pbar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(f * 100) }, h('i', { style: { width: Math.round(clampN(f, 0, 1) * 100) + '%', background: col || '' } }));
   const tag = (txt, sev) => h('span', { class: 'tag ' + (sev || '') }, txt);
   const SEVI = { crit: '⛔', warn: '⚠', info: 'ℹ', ok: '✔' };
+  const recentToast = {};
 
   /* ---------- Ajustes ---------- */
   function applySettings() {
-    LANG = settings.lang; document.documentElement.lang = LANG;
+    LANG = settings.lang; document.documentElement.lang = LANG; MODE = S ? S.mode : settings.mode;
     Sfx.setVol(settings.vol); Sfx.setMuted(settings.muted);
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    $('#bMute').textContent = settings.muted ? '🔇' : '🔊';
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMenu'), '☰');
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -3260,7 +3639,9 @@ const Game = (function () {
 
   /* ---------- Toasts ---------- */
   function toast(title, body, sev, onClick) {
-    const box = $('#toasts');
+    const box = $('#toasts'), key = title + '|' + (body || ''), now = performance.now();
+    if (recentToast[key] && now - recentToast[key] < 20000) return; // sin avisos repetidos
+    recentToast[key] = now;
     const t = h('div', { class: 'toast ' + (sev || 'info'), role: sev === 'crit' ? 'alert' : 'status' }, h('b', null, (SEVI[sev] || 'ℹ') + ' ' + title), body ? h('span', { class: 'small' }, body) : null);
     if (onClick) { t.style.cursor = 'pointer'; t.addEventListener('click', onClick); t.title = _('why'); }
     box.prepend(t);
@@ -3313,44 +3694,83 @@ const Game = (function () {
   function unlock(k) { if (ach[k]) return; ach[k] = Date.now(); Store.set('ach', ach); toast('🏅 ' + tr(DATA.ACH[k]), '', 'ok'); }
 
   /* ---------- HUD ---------- */
-  const METERS = [
-    { k: 'o2', i: '🫁', f: () => S.d.o2, v: () => fmt(S.r.o2.v) + ' kg', st: () => Sim.status(S, 'o2') },
-    { k: 'water', i: '💧', f: () => S.d.water, v: () => fmt(S.r.water.v, 0) + ' L', st: () => Sim.status(S, 'water') },
-    { k: 'power', i: '🔋', f: () => S.d.power, v: () => (S.d.net >= 0 ? '+' : '') + fmt(S.d.net) + ' kW', st: () => Sim.status(S, 'power') },
-    { k: 'rad', i: '🛡️', f: () => S.d.rad, v: () => fmt(S.d.dose) + ' mSv', st: () => { const a = Sim.status(S, 'rad'), b = Sim.status(S, 'dose'); return a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' || (S.mods && S.mods.spe > 0) ? 'warn' : 'ok'; } },
-    { k: 'food', i: '🥗', f: () => S.d.food, v: () => fmt(S.r.food.v) + ' kg', st: () => Sim.status(S, 'food') },
-    { k: 'well', i: '😊', f: () => S.d.well, v: () => Math.round(S.r.well.v) + ' %', st: () => Sim.status(S, 'well') }
-  ];
+  /* Junior: 4 indicadores simples (barra + palabra). Ingeniero: 5 indicadores con valores, unidades y tendencia. */
+  const radSt = () => { const a = Sim.status(S, 'rad'), b = Sim.status(S, 'dose'); return a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' || (S.mods && S.mods.spe > 0) ? 'warn' : 'ok'; };
+  const M_ALL = {
+    o2: { i: '🫁', f: () => S.d.o2, v: () => fmt(S.r.o2.v) + ' kg · ' + fmt(S.sys.o2.conc) + ' %', st: () => Sim.status(S, 'o2'), h: 0 },
+    water: { i: '💧', f: () => S.d.water, v: () => fmt(S.r.water.v, 0) + ' L', st: () => Sim.status(S, 'water'), h: 1 },
+    power: { i: '🔋', f: () => S.d.power, v: () => fmt(S.r.power.v, 0) + ' kWh · ' + (S.d.net >= 0 ? '+' : '') + fmt(S.d.net) + ' kW', st: () => Sim.status(S, 'power'), h: 2 },
+    rad: { i: '🛡️', f: () => S.d.rad, v: () => fmt(S.d.dose) + '/' + S.limit + ' mSv', st: radSt, h: 4, inv: true },
+    food: { i: '🥗', f: () => S.d.food, v: () => fmt(S.r.food.v) + ' kg', st: () => Sim.status(S, 'food'), h: 3 },
+    well: { i: '😊', f: () => S.d.well, v: () => Math.round(S.r.well.v) + ' %', st: () => Sim.status(S, 'well'), h: 5 }
+  };
+  const worstSt = (a, b) => (a === 'crit' || b === 'crit' ? 'crit' : a === 'warn' || b === 'warn' ? 'warn' : 'ok');
+  const stWord = (st) => (st === 'ok' ? _('good') : st === 'warn' ? _('careful') : _('urgent'));
+  function trend(idx, inv) {
+    const hh = S.hist || []; if (hh.length < 7) return '→';
+    const d = hh[hh.length - 1][idx] - hh[hh.length - 7][idx]; if (Math.abs(d) < 0.006) return '→';
+    return (d > 0) !== !!inv ? '↑' : '↓';
+  }
   function buildHud() {
     const m = $('#meters'); m.innerHTML = '';
-    for (const x of METERS) {
-      const el = h('button', { class: 'meter', id: 'm_' + x.k, type: 'button', onclick: () => openCmd('resources') },
-        h('div', { class: 'lbl' }, h('span', null, x.i + ' ' + _(x.k)), h('span', { class: 'pct' }, '')), h('div', { class: 'bar' }, h('i')), h('div', { class: 'st' }, ''));
-      m.append(el);
+    const open = () => openCmd('resources');
+    if (MODE === 'junior') {
+      for (const k of ['o2', 'water', 'power', 'food']) m.append(h('button', { class: 'meter', id: 'm_' + k, type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, M_ALL[k].i + ' ' + _(k)), h('span', { class: 'pct sev-word' }, '')), h('div', { class: 'bar' }, h('i'))));
+      m.append(h('button', { class: 'meter hidden', id: 'm_storm', type: 'button', onclick: () => openConsole({ id: 'shield' }) }, h('div', { class: 'lbl' }, h('span', null, '🛡️ ' + (LANG === 'es' ? 'Tormenta solar: ¡al refugio!' : 'Solar storm: go to the shelter!')))));
+    } else {
+      m.append(h('button', { class: 'meter', id: 'm_life', type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, '🫁 ' + _('life')), h('span', { class: 'pct' }, '')),
+        h('div', { class: 'sub' }, h('div', { class: 'bar' }, h('i', { id: 'b_o2' })), h('div', { class: 'bar' }, h('i', { id: 'b_water' }))), h('div', { class: 'st' }, '')));
+      for (const k of ['power', 'rad', 'food', 'well']) m.append(h('button', { class: 'meter', id: 'm_' + k, type: 'button', onclick: open },
+        h('div', { class: 'lbl' }, h('span', null, M_ALL[k].i + ' ' + _(k === 'rad' ? 'radA' : k)), h('span', { class: 'pct' }, '')), h('div', { class: 'bar' }, h('i')), h('div', { class: 'st' }, '')));
     }
+  }
+  function paintMeter(el, st, f, pctTxt, valTxt, aria) {
+    el.className = 'meter ' + (st === 'ok' ? '' : st);
+    const pe = el.querySelector('.pct'); if (pe) Icons.setText(pe, pctTxt);
+    const bi = el.querySelector('.bar i'); if (bi) bi.style.width = clampN(f, 0, 1) * 100 + '%';
+    const se = el.querySelector('.st'); if (se) se.textContent = valTxt || '';
+    el.setAttribute('aria-label', aria);
   }
   function updateHud() {
     if (!S) return;
-    for (const x of METERS) {
-      const el = $('#m_' + x.k); if (!el) continue;
-      const st = x.st(), f = clampN(x.f(), 0, 1);
-      el.className = 'meter ' + (st === 'ok' ? '' : st);
-      el.querySelector('.pct').textContent = (st !== 'ok' ? SEVI[st] + ' ' : '') + Math.round(f * 100) + '%';
-      el.querySelector('i').style.width = f * 100 + '%';
-      el.querySelector('.st').textContent = x.v();
-      el.setAttribute('aria-label', _(x.k) + ' ' + Math.round(f * 100) + '% ' + _(st));
+    if (MODE === 'junior') {
+      for (const k of ['o2', 'water', 'power', 'food']) {
+        const el = $('#m_' + k); if (!el) continue;
+        const st = M_ALL[k].st(), f = clampN(M_ALL[k].f(), 0, 1);
+        paintMeter(el, st, f, (st !== 'ok' ? SEVI[st] + ' ' : '') + stWord(st), '', _(k) + ' ' + Math.round(f * 100) + '% ' + stWord(st));
+      }
+      const storm = $('#m_storm'); if (storm) storm.classList.toggle('hidden', !(S.mods && S.mods.spe > 0));
+    } else {
+      const lf = $('#m_life');
+      if (lf) {
+        const st = worstSt(M_ALL.o2.st(), M_ALL.water.st());
+        lf.className = 'meter ' + (st === 'ok' ? '' : st);
+        $('#b_o2').style.width = clampN(S.d.o2, 0, 1) * 100 + '%'; $('#b_water').style.width = clampN(S.d.water, 0, 1) * 100 + '%';
+        Icons.setText(lf.querySelector('.pct'), (st !== 'ok' ? SEVI[st] + ' ' : '') + 'O₂ ' + Math.round(S.d.o2 * 100) + ' · H₂O ' + Math.round(S.d.water * 100));
+        lf.querySelector('.st').textContent = fmt(S.r.o2.v) + ' kg · ' + fmt(S.r.water.v, 0) + ' L · ' + fmt(S.sys.o2.conc) + '% O₂ ' + trend(0) + trend(1);
+        lf.setAttribute('aria-label', _('life') + ' O2 ' + Math.round(S.d.o2 * 100) + '% H2O ' + Math.round(S.d.water * 100) + '% ' + _(st));
+      }
+      for (const k of ['power', 'rad', 'food', 'well']) {
+        const el = $('#m_' + k); if (!el) continue;
+        const x = M_ALL[k], st = x.st(), f = clampN(x.f(), 0, 1);
+        paintMeter(el, st, f, (st !== 'ok' ? SEVI[st] + ' ' : '') + Math.round(f * 100) + '%', x.v() + ' ' + trend(x.h, x.inv), _(k === 'rad' ? 'radA' : k) + ' ' + Math.round(f * 100) + '% ' + _(st));
+      }
     }
     const hh = Math.floor(S.d.hour), mm = Math.floor((S.d.hour - hh) * 60);
-    $('#clock').textContent = (S.scen === 'mars' ? '🔴 ' : '🌙 ') + _('day') + ' ' + S.d.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    Icons.setText($('#clock'), (S.scen === 'mars' ? '🔴 ' : '🌙 ') + _('day') + ' ' + S.d.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'));
     const act = Sim.activeInc(S).filter((i) => S.t >= i.from);
     const warnSoon = S.inc.filter((i) => !i.res && S.t < i.from).length;
-    $('#bAlerts').textContent = (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon);
+    Icons.setText($('#bAlerts'), (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon));
     $('#bSpeed').textContent = 'x' + speed;
-    $('#bPause').textContent = paused ? '▶' : '❚❚';
-    // pista
+    Icons.setText($('#bPause'), paused ? '▶' : '⏸');
     const hint = $('#hint');
     const hi = settings.hints ? nextHint() : null;
-    if (hi) { hint.textContent = '🧭 ' + hi.t; hint.classList.remove('hidden'); } else hint.classList.add('hidden');
+    if (hi) { Icons.setText(hint, hi.t); hint.classList.remove('hidden'); } else hint.classList.add('hidden');
+    // En pantallas estrechas el HUD puede ocupar dos filas: minimapa y pista se colocan debajo de él
+    const narrow = innerWidth <= 600, hb = $('#hud').getBoundingClientRect().bottom + 6;
+    $('#mini').style.top = narrow ? hb + 'px' : ''; hint.style.top = narrow ? hb + 'px' : '';
   }
 
   /* ---------- Pistas y objetivo de la flecha ---------- */
@@ -3471,13 +3891,13 @@ const Game = (function () {
     const lockRoom = !near && running && !modalOpen() ? World.lockedNear() : null;
     if (lockRoom) {
       const es = LANG === 'es', cs = Sim.campStatus(S);
-      $('#actBtn').textContent = '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : '');
+      Icons.setText($('#actBtn'), '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : ''));
       p.classList.remove('hidden'); return;
     }
     if (near) {
       const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
       const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
-      $('#actBtn').textContent = (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name;
+      Icons.setText($('#actBtn'), (isTouch ? '' : '[E] ') + near.icon + ' ' + _(near.verb) + ' · ' + name);
       p.classList.remove('hidden');
     } else p.classList.add('hidden');
   }
@@ -3498,14 +3918,16 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = Sim.migrate(r.S); speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; lastRoom = null;
+    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
     beginPlay();
     return true;
   }
   function newRun(scen, diff, opts) {
+    opts = opts || {};
+    const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, seed, skipCamp: !!(opts && opts.skipCamp) }); speed = 1; lastN = 0; radio.q = []; radio.cur = null; lastRoom = null; for (const k in resState) delete resState[k];
-    settings.scen = scen; settings.diff = diff; if (diff === 'explorer') settings.hints = true; Store.set('settings', settings);
+    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp }); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
+    settings.scen = scen; settings.mode = S.mode; settings.diff = S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = S.mode === 'junior'; Store.set('settings', settings);
     World.init(scen); stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
@@ -3530,7 +3952,7 @@ const Game = (function () {
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
-        has ? btn('▶ ' + _('cont'), () => loadRun() || mainMenu()) : null,
+        has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
@@ -3539,18 +3961,24 @@ const Game = (function () {
     showScreen(body);
   }
   function setupScreen() {
-    let sc = settings.scen, df = settings.diff;
+    let md = settings.mode || 'junior', sc = settings.scen, ch = settings.diff === 'commander' ? 'commander' : 'engineer';
     const wrap = h('div');
     const render = () => {
       wrap.innerHTML = '';
-      const choice = (sel, v, title, desc, set) => h('button', { class: 'choice', type: 'button', 'aria-pressed': sel === v ? 'true' : 'false', onclick: () => { set(v); Sfx.play('click'); render(); } }, h('b', null, title), h('div', { class: 'small muted' }, desc));
-      wrap.append(
+      const prevMode = MODE; MODE = md; // los textos de esta pantalla se muestran en el nivel elegido
+      const card = (pressed, title, meta, desc, fn, ico) => h('button', { class: 'choice', type: 'button', 'aria-pressed': pressed ? 'true' : 'false', onclick: () => { fn(); Sfx.play('click'); render(); } },
+        h('div', { class: 'row', style: { gap: '6px' } }, ico ? Icons.el(ico) : null, h('b', null, title)), meta ? h('div', { class: 'small', style: { color: 'var(--accent)' } }, meta) : null, h('div', { class: 'small muted' }, desc));
+      wrap.append(...[
+        h('h3', null, _('modeT')),
+        h('div', { class: 'mt' },
+          card(md === 'junior', DATA.U[LANG].modeJ, DATA.U[LANG].modeJage, DATA.U[LANG].modeJd, () => (md = 'junior'), 'leaf'),
+          card(md === 'adv', DATA.U[LANG].modeA, DATA.U[LANG].modeAage, DATA.U[LANG].modeAd, () => (md = 'adv'), 'chart')),
         h('h3', null, _('scen')),
-        h('div', { class: 'grid2' }, choice(sc, 'moon', '🌙 ' + _('moon'), _('moonD'), (v) => (sc = v)), choice(sc, 'mars', '🔴 ' + _('mars'), _('marsD'), (v) => (sc = v))),
-        h('h3', null, _('diff')),
-        h('div', { class: 'grid2' }, ['explorer', 'engineer', 'commander'].map((d) => choice(df, d, _(d), _(d + 'D'), (v) => (df = v)))),
-        h('p', { class: 'small muted' }, LANG === 'es' ? 'Los sitios son escenarios educativos: no significa que sean lugares aprobados para una base humana.' : 'Sites are educational scenarios: they are not approved locations for a human base.'),
-        h('div', { class: 'row', style: { marginTop: '12px' } }, btn('🚀 ' + _('go'), () => newRun(sc, df), 'primary'), btn(_('back'), mainMenu)));
+        h('div', { class: 'mt' }, card(sc === 'moon', _('moon'), '', _('moonD'), () => (sc = 'moon'), 'moon'), card(sc === 'mars', _('mars'), '', _('marsD'), () => (sc = 'mars'), 'dot')),
+        md === 'adv' ? h('div', null, h('h3', null, _('challenge')), h('div', { class: 'mt' }, card(ch === 'engineer', _('chStd'), '', _('chStdD'), () => (ch = 'engineer')), card(ch === 'commander', _('chHard'), '', _('chHardD'), () => (ch = 'commander')))) : null,
+        h('p', { class: 'small muted' }, LANG === 'es' ? 'Mismo mapa, misiones y ciencia en las dos modalidades. Cambian la profundidad, las explicaciones y las herramientas. Los sitios son escenarios educativos, no lugares aprobados para una base.' : 'Same map, missions and science in both modes. Depth, explanations and tools change. Sites are educational scenarios, not approved base locations.'),
+        h('div', { class: 'row', style: { marginTop: '12px' } }, btn(_('go'), () => { MODE = prevMode; newRun(sc, ch, { mode: md }); }, 'primary'), btn(_('back'), () => { MODE = prevMode; mainMenu(); }))].filter(Boolean));
+      MODE = prevMode;
     };
     render();
     showScreen(h('div', { class: 'panel' }, h('h2', null, _('start')), wrap));
@@ -3639,7 +4067,7 @@ const Game = (function () {
       list.map((i) => h('div', { class: 'row', style: { margin: '6px 0' } }, tag(SEVI[i.sev] + ' ' + _(i.sev), i.sev), h('b', null, tr(DATA.EVT[i.type].t)),
         S.t < i.from ? h('span', { class: 'small' }, (LANG === 'es' ? 'llega en ' : 'arrives in ') + fmt(i.from - S.t) + ' h') : null,
         i.fix ? h('span', { class: 'small muted' }, Math.round(i.prog) + '%') : null,
-        i.fix && S.t >= i.from ? btn('🔧 ' + _('repair'), () => miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id }), 'primary sm') : null,
+        i.fix && S.t >= i.from ? btn('🔧 ' + (S.adv && Sim.DIAG_OK[i.type] != null && !i.diag ? _('diagDo') : _('repair')), () => repairFlow(i), 'primary sm') : null,
         btn('❓ ' + _('why'), () => whyPanel(i.type), 'sm'))), body || null);
   }
   const statRow = (label, val, st) => h('tr', null, h('th', null, label), h('td', null, st ? tag(SEVI[st] + ' ' + val, st) : val));
@@ -3677,58 +4105,57 @@ const Game = (function () {
   };
   const DKEYS = [['o2', 'kg', 2], ['water', 'L', 1], ['power', 'kWh', 1], ['food', 'kg', 2], ['mat', 'kg', 1], ['dose', 'mSv', 2], ['well', '%', 1], ['rad', '%', 0], ['shelter', '', 0]];
   const DLABEL = { o2: 'o2', water: 'water', power: 'power', food: 'food', mat: 'mat', dose: null, well: 'well', rad: 'rad', shelter: null };
+  const DICON = { o2: '🫁', water: '💧', power: '🔋', food: '🥗', mat: '🛠', dose: '🛡', well: '😊', rad: '🛡', shelter: '🛡' };
+  const DMAX = { o2: 36, water: 200, power: 200, food: 80, mat: 120, dose: 80, well: 100, rad: 100, shelter: 5 };
   function confirmDecision(id, params, title, after) {
     const pv = Sim.preview(S, id, params);
-    const meta = DMETA[id] || {};
-    const ups = [], downs = [];
+    const meta = DMETA[id] || {}, es = LANG === 'es', adv = MODE === 'adv';
+    const nameOf = (k) => (DLABEL[k] ? _(DLABEL[k]) : k === 'dose' ? (es ? 'Radiación recibida' : 'Radiation received') : (es ? 'Plazas del refugio' : 'Shelter places'));
+    const rows = [];
     for (const [k, u, d] of DKEYS) {
       const delta = pv.b[k] - pv.a[k];
-      if (!Number.isFinite(delta) || Math.abs(delta) < Math.pow(10, -d) * 0.5 || Math.abs(delta) < 0.05) continue;
-      const name = DLABEL[k] ? _(DLABEL[k]) : k === 'dose' ? (LANG === 'es' ? 'Dosis estimada' : 'Estimated dose') : (LANG === 'es' ? 'Plazas de refugio' : 'Shelter places');
-      const good = k === 'dose' ? delta < 0 : delta > 0;
-      (good ? ups : downs).push(h('li', { class: good ? 'delta-up' : 'delta-down' }, (delta > 0 ? '▲ ' : '▼ ') + name + ': ' + (delta > 0 ? '+' : '') + fmt(delta, d) + ' ' + u));
+      const big = Number.isFinite(delta) && Math.abs(delta) >= Math.max(Math.pow(10, -d) * 0.5, 0.05);
+      rows.push({ k, u, d, delta, big, good: k === 'dose' ? delta < 0 : delta > 0 });
     }
-    const now = pv.now;
-    const body = h('div', null,
-      h('p', { class: 'small muted' }, _('in12', { h: fmt(pv.hours) }) + ' · ' + (LANG === 'es' ? 'estimación del modelo del juego' : 'game model estimate')),
-      h('div', { class: 'grid2' },
-        h('div', { class: 'card' }, h('h3', null, '📍 ' + _('current')), h('ul', null, h('li', null, _('o2') + ': ' + fmt(now.o2) + ' kg'), h('li', null, _('water') + ': ' + fmt(now.water, 0) + ' L'), h('li', null, _('power') + ': ' + fmt(now.power, 0) + ' kWh (' + (now.net >= 0 ? '+' : '') + fmt(now.net) + ' kW)'), h('li', null, _('food') + ': ' + fmt(now.food) + ' kg'), h('li', null, _('mat') + ': ' + fmt(now.mat) + ' kg'))),
-        h('div', { class: 'card' }, h('h3', null, '🧰 ' + _('uses')), h('p', null, tr(meta.u) || '—'))),
-      h('div', { class: 'grid2' },
-        h('div', { class: 'card' }, h('h3', null, '▲ ' + _('up')), ups.length ? h('ul', null, ups) : h('p', { class: 'muted' }, _('noChange', { h: fmt(pv.hours) }))),
-        h('div', { class: 'card' }, h('h3', null, '▼ ' + _('down')), downs.length ? h('ul', null, downs) : h('p', { class: 'muted' }, _('noChange', { h: fmt(pv.hours) })))),
-      h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h3', null, '⚠ ' + _('risks')), h('p', null, tr(meta.r) || '—')), h('div', { class: 'card' }, h('h3', null, '✔ ' + _('benefits')), h('p', null, tr(meta.b) || '—'))),
-      !pv.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _(pv.err) ) : null,
+    const changed = rows.filter((r) => r.big);
+    const word = (r) => { const f = Math.abs(r.delta) / ((k) => (k === 'dose' ? S.limit : DMAX[k]))(r.k); return f < 0.02 ? (es ? 'un poco' : 'a little') : f < 0.08 ? (es ? 'bastante' : 'quite a bit') : (es ? 'mucho' : 'a lot'); };
+    let body;
+    if (!adv) {
+      const ups = changed.filter((r) => r.good), downs = changed.filter((r) => !r.good);
+      const li = (r) => h('li', { class: r.good ? 'delta-up' : 'delta-down' }, (r.delta > 0 ? '▲ ' : '▼ ') + DICON[r.k] + ' ' + nameOf(r.k) + ': ' + (r.delta > 0 ? (es ? 'sube ' : 'goes up ') : (es ? 'baja ' : 'goes down ')) + word(r));
+      body = h('div', null,
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, '▲ ' + (es ? 'Lo que mejora' : 'What gets better')), ups.length ? h('ul', null, ups.map(li)) : h('p', { class: 'muted' }, es ? 'Nada cambia mucho.' : 'Nothing changes much.')),
+          h('div', { class: 'card' }, h('h3', null, '▼ ' + (es ? 'Lo que se gasta o empeora' : 'What gets used or worse')), downs.length ? h('ul', null, downs.map(li)) : h('p', { class: 'muted' }, es ? 'Nada cambia mucho.' : 'Nothing changes much.'))),
+        h('div', { class: 'grid2' }, h('div', { class: 'card' }, h('h3', null, '⚠ ' + (es ? 'Ojo con esto' : 'Careful')), h('p', null, tr(meta.r) || '—')), h('div', { class: 'card' }, h('h3', null, '✔ ' + (es ? 'Lo bueno' : 'The good part')), h('p', null, tr(meta.b) || '—'))),
+        h('p', { class: 'small muted' }, es ? 'Es una predicción del juego para las próximas ' + fmt(pv.hours) + ' horas.' : 'This is a game prediction for the next ' + fmt(pv.hours) + ' hours.'));
+    } else {
+      const fmtv = (k, v, d) => (k === 'dose' ? fmt(v, 2) : fmt(v, d));
+      const tbl = h('table', null, h('thead', null, h('tr', null, h('th', null, es ? 'Variable' : 'Variable'), h('th', null, es ? 'Ahora' : 'Now'), h('th', null, (es ? 'En ' : 'In ') + fmt(pv.hours) + ' h ' + (es ? 'sin actuar' : 'no action')), h('th', null, (es ? 'En ' : 'In ') + fmt(pv.hours) + ' h ' + (es ? 'con la decisión' : 'with decision')), h('th', null, 'Δ'))),
+        h('tbody', null, rows.filter((r) => r.big || ['o2', 'water', 'power', 'food'].includes(r.k)).map((r) => h('tr', { class: r.big ? (r.good ? 'delta-up' : 'delta-down') : '' }, h('th', null, nameOf(r.k)), h('td', null, fmtv(r.k, pv.now[r.k], r.d) + ' ' + r.u), h('td', null, fmtv(r.k, pv.a[r.k], r.d) + ' ' + r.u), h('td', null, fmtv(r.k, pv.b[r.k], r.d) + ' ' + r.u), h('td', null, r.big ? (r.delta > 0 ? '+' : '') + fmtv(r.k, r.delta, r.d) + ' ' + r.u : '—')))));
+      body = h('div', null,
+        h('p', { class: 'small muted' }, _('in12', { h: fmt(pv.hours) }) + ' · ' + (es ? 'balance de potencia ahora: ' : 'power balance now: ') + (pv.now.net >= 0 ? '+' : '') + fmt(pv.now.net) + ' kW'),
+        h('div', { style: { overflowX: 'auto' } }, tbl),
+        h('div', { class: 'grid2', style: { marginTop: '8px' } },
+          h('div', { class: 'card' }, h('h3', null, '🧰 ' + _('uses')), h('p', null, tr(meta.u) || '—')),
+          h('div', { class: 'card' }, h('h3', null, '⚠ ' + _('risks')), h('p', null, tr(meta.r) || '—')),
+          h('div', { class: 'card' }, h('h3', null, '✔ ' + _('benefits')), h('p', null, tr(meta.b) || '—'))));
+    }
+    body.append(
+      !pv.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _(pv.err)) : null,
       h('div', { class: 'row', style: { marginTop: '10px' } },
         btn('✔ ' + _('confirm'), () => {
           const r = Sim.decide(S, id, params);
           pop();
-          if (!r.ok) toast(_('err'), _(r.err), 'warn'); else { processLogs(); updateHud(); if (after) after(); stack.forEach((s) => s._refresh && s._refresh()); }
+          if (!r.ok) toast(_('err'), _(r.err), 'warn'); else { processLogs(); updateHud(); if (after) after(); stack.forEach((z) => z._refresh && z._refresh()); }
         }, 'primary', { disabled: !pv.ok ? true : null, autofocus: true }),
         btn(_('cancel'), () => pop())));
-    push(panel('⚖️ ' + _('consequences') + ' · ' + title, body));
+    push(panel('⚖️ ' + (adv ? _('consequences') : (es ? '¿Qué pasará?' : 'What will happen?')) + ' · ' + title, body));
   }
   function livePanel(builder) { // modal que se reconstruye tras cada decisión
     const s = push(builder());
     s._refresh = () => { if (s.isConnected) refresh(s, builder); };
     return s;
-  }
-
-  /* ---------- ¿Por qué ocurrió? ---------- */
-  function whyPanel(type) {
-    const T = DATA.EVT[type]; if (!T) return;
-    const inc = S && S.inc.find((i) => i.type === type && !i.res);
-    const sysK = inc ? inc.sys : null;
-    const live = type === 'solar_storm' && donkiLive && donkiLive.items.length ? h('p', { class: 'small' }, '🛰️ ' + _('liveData') + ': ' + donkiLive.items.slice(0, 3).map((x) => x.cls + ' ' + x.date).join(' · ') + ' (' + donkiLive.fetched + ')') : null;
-    const donki = type === 'solar_storm' && inc && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
-    push(panel('❓ ' + _('why') + ' · ' + tr(T.t), h('div', { class: 'col' },
-      h('div', { class: 'why' }, h('h3', null, '1. ' + _('whatH')), h('p', null, tr(T.what))),
-      h('div', { class: 'why' }, h('h3', null, '2. ' + _('sysH')), h('p', null, sysK ? tr(DATA.SYS_T[sysK]) : '—')),
-      h('div', { class: 'why' }, h('h3', null, '3. ' + _('causeH')), h('p', null, tr(T.cause))),
-      h('div', { class: 'why' }, h('h3', null, '4. ' + _('doH')), h('p', null, tr(T.act))),
-      h('div', { class: 'why' }, h('h3', null, '5. ' + _('dataH')), h('p', null, tr(T.data)), donki ? h('p', { class: 'small' }, (LANG === 'es' ? 'Inspirado en: ' : 'Inspired by: ') + donki.cls + ' · ' + donki.date + ' — ' + tr(donki)) : null, live),
-      h('div', { class: 'why' }, h('h3', null, '6. ' + _('srcH')), h('p', { class: 'small' }, T.src)),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Los valores numéricos del juego son un modelo simplificado; el dato científico citado es real.' : 'In-game numbers are a simplified model; the cited science fact is real.')), { narrow: true }));
   }
 
   /* ---------- Consola de mando ---------- */
@@ -3775,7 +4202,7 @@ const Game = (function () {
     return h('div', null, campaignCard(), h('p', { class: 'small muted' }, LANG === 'es' ? 'Solo una misión a la vez (la 6, de cultivo, puede ir en paralelo). Puedes repetir las fallidas con condiciones distintas.' : 'One mission at a time (6, farming, can run in parallel). Failed ones can be retried with different conditions.'),
       h('div', { class: 'grid2' }, list), h('div', { class: 'row', style: { marginTop: '12px' } }, btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }, 'danger')));
   }
-  function resourcesTab() {
+  function resourcesTabRaw() {
     const R = S.r, rows = [];
     const res = [['o2', 'kg'], ['water', 'L'], ['power', 'kWh'], ['food', 'kg'], ['mat', 'kg'], ['waste', 'kg']];
     for (const [k, u] of res) {
@@ -3800,7 +4227,7 @@ const Game = (function () {
           statRow(LANG === 'es' ? 'Plazas en refugio' : 'Shelter places', S.sys.shield.cap + ' / ' + S.N), statRow(LANG === 'es' ? 'Actividad solar' : 'Solar activity', S.mods && S.mods.spe > 0 ? (LANG === 'es' ? 'TORMENTA' : 'STORM') : (LANG === 'es' ? 'tranquila' : 'quiet'), S.mods && S.mods.spe > 0 ? 'crit' : 'ok')))),
         h('div', { class: 'card' }, h('h3', null, '🔧 ' + (LANG === 'es' ? 'Sistemas' : 'Systems')), h('table', null, h('tbody', null, ['reactor', 'solar', 'o2', 'rec', 'thermal', 'press', 'comms', 'shield', 'isru'].map(sysRow))))),
       h('div', { class: 'row', style: { marginTop: '10px' } }, btn('⏩ ' + _('wait1'), () => confirmDecision('wait', { h: 1 }, _('wait1'))), btn('⏩ ' + _('wait6'), () => confirmDecision('wait', { h: 6 }, _('wait6')))),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Los parámetros del modelo están documentados en el README: R = dato real, M = estimación de modelo, G = simplificación para jugar.' : 'Model parameters are documented in the README: R = real data, M = model estimate, G = gameplay simplification.'));
+      null);
   }
   function crewTab() {
     return h('div', { class: 'grid2' }, S.crew.map((c) => h('div', { class: 'card' }, h('h3', null, c.role === S.playerRole ? (LANG === 'es' ? '🧑‍🚀 Tú · ' : '🧑‍🚀 You · ') + tr(Chars.ROLES[c.role].name) : tr(DATA.ROLE_T[c.role])), h('p', { class: 'small' }, tr(DATA.ROLE_T[c.role].b)),
@@ -3857,7 +4284,7 @@ const Game = (function () {
         down ? h('p', { class: 'tag crit' }, '⛔ ' + (LANG === 'es' ? 'Sin enlace: los mensajes esperan en la antena hasta que se repare.' : 'No link: messages wait at the antenna until it is repaired.')) : null,
         incHere(['bridge']),
         h('table', null, h('tbody', null, statRow(_('delayReal'), realTxt), statRow(_('delayOne'), fmt(ow) + ' h ' + (LANG === 'es' ? '(escala del juego: 1 min-luz ≈ 1 h)' : '(game scale: 1 light-min ≈ 1 h)')), statRow(LANG === 'es' ? 'Ida y vuelta mínima' : 'Minimum round trip', fmt(ow * 2 + 0.5) + ' h'))),
-        h('p', { class: 'small muted' }, LANG === 'es' ? 'La Tierra responde con los datos que le llegaron, no con los de ahora. Si algo urge, actúa con tus protocolos.' : 'Earth replies using the data it received, not the current data. If something is urgent, follow your protocols.'),
+        more(null, h('p', null, LANG === 'es' ? 'La Tierra responde con los datos que le llegaron, no con los de ahora. Si algo urge, actúa con tus protocolos.' : 'Earth replies using the data it received, not the current data. If something is urgent, follow your protocols.'), !isAdv() ? h('p', { class: 'small' }, LANG === 'es' ? 'En este modo el retraso es más corto que el real para que el juego sea ágil.' : 'In this mode the delay is shorter than the real one to keep the game lively.') : null),
         h('div', { class: 'row' }, btn('📤 ' + _('reqStatus'), () => { Sim.send(S, 'status'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqForecast'), () => { Sim.send(S, 'forecast'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqRoute'), () => { Sim.send(S, 'route'); processLogs(); s._refresh(); })),
         h('h3', null, _('transit')), q.length ? h('ul', null, q) : h('p', { class: 'muted' }, _('none')),
         h('div', { class: 'row' }, btn('⏩ ' + _('wait1'), () => { Sim.decide(S, 'wait', { h: 1 }); processLogs(); s._refresh(); }), btn('⏩ ' + _('wait6'), () => confirmDecision('wait', { h: 6 }, _('wait6')))),
@@ -3900,7 +4327,7 @@ const Game = (function () {
           h('div', { class: 'card' }, h('h3', null, '🧪 ' + (es ? 'Solución nutritiva' : 'Nutrient solution')), h('p', null, fmt(S.r.nutr.v, 1) + ' / ' + S.r.nutr.max + ' L'),
             btn('♻️ ' + (es ? 'Preparar con residuos orgánicos' : 'Make from organic waste'), () => confirmDecision('mixnutr', {}, es ? 'Solución nutritiva' : 'Nutrient solution'), 'sm'),
             h('p', { class: 'small muted' }, '🌰 ' + Object.keys(S.seeds).map((k) => tr(Flora.SPECIES[k].name).split(' ')[0] + ' ' + S.seeds[k]).join(' · ')))),
-        h('p', { class: 'small muted' }, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C · ' + (es ? 'El ciclo de 7 días es una simplificación de jugabilidad, no la duración biológica real de cada cultivo.' : 'The 7-day cycle is a gameplay simplification, not each crop\'s real biological duration.')),
+        more(null, h('p', null, (es ? 'Temperatura: ' : 'Temperature: ') + fmt(S.sys.thermal.T) + ' °C. ' + (es ? 'El ciclo de 7 días es una simplificación del juego, no lo que tarda cada cultivo en la vida real.' : 'The 7-day cycle is a game simplification, not how long each crop takes in real life.'))),
         btn('🎮 ' + _('play') + ': ' + tr(MG.defs.gh.t), () => miniIntro('gh', { inc: (Sim.activeInc(S).find((i) => i.type === 'crop_fail') || {}).id }), 'primary')));
     });
   }
@@ -3916,7 +4343,8 @@ const Game = (function () {
         btn('🛠️ ' + (LANG === 'es' ? 'Mantenimiento solar' : 'Solar maintenance'), () => confirmDecision('maint', { sys: 'solar' }, LANG === 'es' ? 'Mantenimiento' : 'Maintenance')),
         btn('🔌 ' + tr(MG.defs.wiring.t), () => miniIntro('wiring', { sys: S.sys.reactor.h <= S.sys.solar.h ? 'reactor' : 'solar' })),
         btn('☀️ ' + tr(MG.defs.solar.t), () => miniIntro('solar', {})), btn('⚖️ ' + tr(MG.defs.balance.t), () => miniIntro('balance', {}))),
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Prioridades: 1) soporte vital, 2) comunicaciones y blindaje, 3) laboratorio, rover, obras y extractor de hielo, 4) luces y bombas del invernadero. Si falta energía, se apaga primero lo de prioridad 4.' : 'Priorities: 1) life support, 2) comms and shielding, 3) lab, rover, jobs and ice extractor, 4) greenhouse lights and pumps. When power is short, priority 4 goes first.'))));
+      isAdv() ? prioCard() : null,
+      more(null, h('p', null, LANG === 'es' ? (isAdv() ? 'Prioridades por defecto: 1) soporte vital, 2) comunicaciones y blindaje, 3) laboratorio, rover, obras y extractor de hielo, 4) luces y bombas del invernadero. Si falta energía, se recorta primero el número más alto.' : 'Si falta energía, se apagan primero las luces de las plantas y al final lo que mantiene vivas a las personas.') : (isAdv() ? 'Default priorities: 1) life support, 2) comms and shielding, 3) lab, rover, jobs and ice extractor, 4) greenhouse lights and pumps. When power is short, the highest number is shed first.' : 'When power is short, plant lights go off first and what keeps people alive goes off last.'))))));
   }
   function waterPanel() {
     livePanel(() => panel('💧 ' + consoleName('water'), h('div', null, incHere(['water']),
@@ -3929,7 +4357,7 @@ const Game = (function () {
         btn(S.sys.o2.auto ? (LANG === 'es' ? '🎛️ Pasar O₂ a manual' : '🎛️ Switch O₂ to manual') : (LANG === 'es' ? '🤖 Volver a automático' : '🤖 Back to automatic'), () => confirmDecision('o2lvl', { auto: !S.sys.o2.auto, v: S.sys.o2.lvl }, LANG === 'es' ? 'Generador de O₂' : 'O₂ generator')),
         btn('🔌 ' + tr(MG.defs.wiring.t), () => miniIntro('wiring', { sys: 'rec' })), btn('🫧 ' + tr(MG.defs.o2.t), () => miniIntro('o2', {}))),
       !S.sys.o2.auto ? slider(LANG === 'es' ? 'Producción manual de O₂' : 'Manual O₂ production', S.sys.o2.lvl, (v) => confirmDecision('o2lvl', { auto: false, v }, 'O₂'), (v) => Math.round(v * 100) + '%') : null,
-      h('p', { class: 'small muted' }, LANG === 'es' ? 'Electrólisis: 2 H₂O → 2 H₂ + O₂. Para 1 kg de oxígeno se necesitan 1,125 L de agua: ¡el oxígeno y el agua están conectados!' : 'Electrolysis: 2 H₂O → 2 H₂ + O₂. 1 kg of oxygen needs 1.125 L of water: oxygen and water are connected!'))));
+      more(null, h('p', null, isAdv() ? (LANG === 'es' ? 'Electrólisis: 2 H₂O → 2 H₂ + O₂. Para 1 kg de oxígeno se necesitan 1,125 L de agua y electricidad.' : 'Electrolysis: 2 H₂O → 2 H₂ + O₂. 1 kg of oxygen needs 1.125 L of water plus electricity.') : (LANG === 'es' ? 'Para hacer aire hace falta agua y electricidad: el aire y el agua están conectados.' : 'Making air needs water and electricity: air and water are connected.'))))));
   }
   function shieldPanel() {
     livePanel(() => {
@@ -3944,8 +4372,8 @@ const Game = (function () {
           btn((S.proto ? '🟢 ' : '🚨 ') + (LANG === 'es' ? (S.proto ? 'Desactivar protocolo' : 'Activar protocolo de refugio') : (S.proto ? 'Turn off protocol' : 'Turn on shelter protocol')), () => confirmDecision('proto', { v: !S.proto }, LANG === 'es' ? 'Protocolo de refugio' : 'Shelter protocol'), S.proto ? '' : 'primary'),
           btn('🧱 ' + (LANG === 'es' ? 'Reforzar blindaje' : 'Reinforce shield'), () => confirmDecision('shield', {}, LANG === 'es' ? 'Reforzar blindaje' : 'Reinforce shield')),
           btn('➕ ' + (LANG === 'es' ? 'Ampliar refugio' : 'Expand shelter'), () => confirmDecision('shelter', {}, LANG === 'es' ? 'Ampliar refugio' : 'Expand shelter'))),
-        h('div', { class: 'card', style: { marginTop: '10px' } }, h('h3', null, '📚 RadLab · ISS'),
-          h('p', { class: 'small' }, LANG === 'es' ? 'RadLab (NASA OSDR) publica mediciones de dosímetros de la Estación Espacial Internacional. La ISS orbita dentro del campo magnético de la Tierra, que la protege en parte: sus valores sirven como referencia educativa, NO son mediciones de la Luna ni de Marte. En el juego usamos un modelo simplificado: el blindaje frena mucho mejor las partículas de una tormenta solar que los rayos cósmicos galácticos, que son más energéticos.' : 'RadLab (NASA OSDR) publishes dosimeter measurements from the International Space Station. The ISS orbits inside Earth\'s magnetic field, which partly protects it: its values are an educational reference, NOT Moon or Mars measurements. The game uses a simplified model: shielding stops solar-storm particles much better than galactic cosmic rays, which are more energetic.'),
+        more(isAdv() ? 'RadLab · ISS' : (LANG === 'es' ? 'Más información: la radiación' : 'More information: radiation'),
+          h('p', { class: 'small' }, isAdv() ? (LANG === 'es' ? 'RadLab (NASA OSDR) publica mediciones de dosímetros de la ISS. La ISS orbita dentro del campo magnético terrestre, que la protege en parte: sus valores son una referencia, NO mediciones de la Luna ni de Marte. El modelo del juego es simplificado: el blindaje frena mucho mejor las partículas de una tormenta solar que los rayos cósmicos galácticos.' : 'RadLab (NASA OSDR) publishes dosimeter measurements from the ISS. The ISS orbits inside Earth\'s magnetic field, which partly protects it: its values are a reference, NOT Moon or Mars measurements. The game model is simplified: shielding stops solar-storm particles much better than galactic cosmic rays.') : (LANG === 'es' ? 'Los astronautas de la Estación Espacial miden su radiación, pero allí la Tierra los protege un poco. En la Luna y en Marte hace falta más protección. Aquí usamos números inventados para el juego.' : 'Astronauts on the Space Station measure their radiation, but there Earth protects them a little. On the Moon and Mars more protection is needed. Here we use made-up numbers for the game.')),
           h('a', { href: 'https://visualization.osdr.nasa.gov/radlab/gui/data-api/', target: '_blank', rel: 'noopener' }, 'RadLab'), ' · ', h('a', { href: 'https://osdr.nasa.gov/bio/repo/', target: '_blank', rel: 'noopener' }, 'OSDR'))));
     });
   }
@@ -4085,8 +4513,8 @@ const Game = (function () {
       const room = inc.room || 'hall', cons = ND.INC_CONSOLE[ty] || (inc.sys === 'reactor' || inc.sys === 'solar' ? 'reactor' : inc.sys === 'shield' ? 'shield' : inc.sys === 'o2' ? 'o2' : null);
       let loc = roomLoc(room, inc.sys), tgt = consoleTarget(cons, room);
       if (ty === 'crop_fail') { const sick = Sim.plantsList(S).filter((x) => x.p.pest); if (sick.length) { loc = tr(DATA.ROOMS.gh) + ' · ' + (es ? 'jardineras ' : 'planters ') + [...new Set(sick.map((x) => x.bi + 1))].join(', '); tgt = World.plantPos(sick[0].bi, sick[0].k); } }
-      call({ key: 'inc' + (inc.id || ty), sev: e.sev, who: ND.INC_NPC[ty], title: (k === 'esc' ? (es ? '¡Empeoró! ' : 'Getting worse! ') : (e.sev === 'crit' ? (es ? '¡Atención! ' : 'Attention! ') : '')) + tr(T.t),
-        desc: tr(T.what) + (p.lead ? ' ' + (es ? 'Llegará en ' : 'Arrives in ') + fmt(p.lead) + ' h.' : ''), loc, act: tr(T.act), cons: tr(ND.CONSEQ[ty]), target: tgt, console: cons, why: ty });
+      call({ key: 'inc' + (inc.id || ty), sev: e.sev, who: ND.INC_NPC[ty], title: (k === 'esc' ? (es ? 'Empeoró: ' : 'Getting worse: ') : (e.sev === 'crit' && !isAdv() ? (es ? '¡Atención! ' : 'Attention! ') : '')) + tr(T.t),
+        desc: tr(T.what) + (p.lead ? ' ' + (es ? 'Llegará en ' : 'Arrives in ') + fmt(p.lead) + (es ? ' horas.' : ' hours.') : '') + (isAdv() && techLine(ty, inc) ? ' · ' + techLine(ty, inc) : ''), loc, act: tr(T.act), cons: tr(ND.CONSEQ[ty]), target: tgt, console: cons, why: ty });
       return true;
     }
     if (k.startsWith('res.')) {
@@ -4123,7 +4551,8 @@ const Game = (function () {
 
   /* ---------- Conversaciones de bienvenida ---------- */
   function talk(room, replay) {
-    const lines = ND.TALK[room]; if (!lines) return;
+    const lines = (ND.TALK[room] || []).slice(); if (!lines.length) return;
+    if (isAdv()) lines.push({ es: 'Datos ahora mismo: ' + talkData(room), en: 'Live data: ' + talkData(room) });
     const who = speaker(ND.GUIDE[room] === 'commander' ? 'commander' : ND.GUIDE[room]);
     let i = 0;
     const s = push(h('div'), { sticky: true });
@@ -4140,6 +4569,19 @@ const Game = (function () {
     };
     function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
+  }
+  function talkData(room) {
+    const f = (v, d) => fmt(v, d == null ? 1 : d), pw = S.pw, es = LANG === 'es';
+    const m = {
+      bridge: () => (es ? 'O₂ ' : 'O₂ ') + f(S.r.o2.v) + ' kg, H₂O ' + f(S.r.water.v, 0) + ' L, ' + (es ? 'batería ' : 'battery ') + f(S.r.power.v, 0) + ' kWh, ' + (es ? 'alimentos ' : 'food ') + f(S.r.food.v) + ' kg.',
+      life: () => (es ? 'Temperatura ' : 'Temperature ') + f(S.sys.thermal.T) + ' °C, ' + (es ? 'presión ' : 'pressure ') + f(S.sys.press.P) + ' kPa, O₂ ' + f(S.sys.o2.conc) + ' %, ' + (es ? 'moral ' : 'morale ') + Math.round(S.morale) + ' %.',
+      reactor: () => (es ? 'Generación ' : 'Generation ') + f(pw.gen) + ' kW (' + (es ? 'solar ' : 'solar ') + f(pw.sol) + ' + ' + (es ? 'reactor ' : 'reactor ') + f(pw.rea) + '), ' + (es ? 'demanda ' : 'demand ') + f(pw.demand) + ' kW.',
+      water: () => (es ? 'Reciclaje efectivo ' : 'Effective recycling ') + Math.round(S.d.rec * 100) + ' %, ' + (es ? 'O₂ producido ' : 'O₂ produced ') + f(S.r.o2.prod, 2) + ' kg/h, ' + (es ? 'agua ' : 'water ') + f(S.r.water.prod - S.r.water.cons) + ' L/h.',
+      gh: () => (es ? 'Plantas ' : 'Plants ') + Sim.plantsList(S).length + '/18, ' + (es ? 'nutrientes ' : 'nutrients ') + f(S.r.nutr.v) + ' L, ' + (es ? 'LED ' : 'LED ') + f(S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? Sim.P.LIGHT_KW_PER_BED * b.light : 0), 0)) + ' kW.',
+      lab: () => (es ? 'Muestras sin analizar ' : 'Unanalyzed samples ') + S.samples + ', ' + (es ? 'ciencia ' : 'science ') + S.science + ' pts.',
+      rad: () => (es ? 'Blindaje nivel ' : 'Shield level ') + S.sys.shield.lvl + ' (' + Math.round(S.d.rad * 100) + ' %), ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ', ' + (es ? 'dosis ' : 'dose ') + f(S.d.dose, 2) + '/' + S.limit + ' mSv.'
+    };
+    return (m[room] || (() => ''))();
   }
   function talksPanel() {
     const es = LANG === 'es';
@@ -4193,7 +4635,7 @@ const Game = (function () {
       h('p', null, (es ? 'Esta operación la realiza: ' : 'This operation is done by: ') + need.map((r) => tr(Chars.ROLES[r].name)).join(es ? ' o ' : ' or ') + '.'),
       h('p', { class: 'small muted' }, (es ? 'Llevas el traje de ' : 'You are wearing the ') + tr(Chars.ROLES[S.playerRole].name) + (es ? '. Cámbialo en el vestuario 🧥 del puente de mando.' : ' suit. Change it at the 🧥 wardrobe on the bridge.')),
       h('div', { class: 'row' }, btn('📍 ' + (es ? 'Marcar el vestuario' : 'Mark the wardrobe'), () => { World.setMarker(World.consolePos('wardrobe'), 'wardrobe'); pop(); }, 'primary'),
-        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id }); }, 'danger')),
+        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); repairFlow(i); }, 'danger')),
         storm ? btn('🚨 ' + (es ? 'Activar protocolo de refugio (emergencia)' : 'Turn on shelter protocol (emergency)'), () => { pop(); confirmDecision('proto', { v: true }, es ? 'Protocolo de refugio' : 'Shelter protocol'); }, 'danger') : null)), { narrow: true }));
   }
 
@@ -4292,6 +4734,142 @@ const Game = (function () {
       processLogs(); updateHud(); stack.forEach((z) => z._refresh && z._refresh());
     }
   }
+  /* =================== MODALIDADES: Explorador Junior · Ingeniero de Misión =================== */
+  const more = (summary, ...kids) => h('details', { class: 'more' }, h('summary', null, summary || _('more')), ...kids);
+  const isAdv = () => MODE === 'adv';
+
+  /* Explicaciones científicas de los minijuegos por nivel (el texto técnico original pasa al modo Ingeniero) */
+  (function () {
+    const J = {
+      wiring: ['La electricidad solo pasa si el camino está completo y bien conectado. Un cable mal puesto puede estropear las máquinas.', 'Electricity only flows if the path is complete and well connected. A wrongly placed wire can damage machines.'],
+      balance: ['La energía es limitada: primero se cuida lo que mantiene vivas a las personas y luego lo demás.', 'Energy is limited: first protect what keeps people alive, then everything else.'],
+      o2: ['Una máquina mide cuánto oxígeno hay y lo corrige. Con poco oxígeno no se puede respirar y con demasiado hay riesgo de fuego.', 'A machine measures how much oxygen there is and corrects it. Too little and we cannot breathe; too much and fire is a risk.'],
+      solar: ['Un panel da más energía cuando mira de frente al Sol.', 'A panel gives more energy when it faces the Sun head-on.'],
+      rover: ['Los robots de Marte siguen planes enviados antes y usan sensores para esquivar rocas, porque los mensajes tardan en llegar.', 'Mars robots follow plans sent earlier and use sensors to dodge rocks, because messages take time to arrive.'],
+      gh: ['Las plantas necesitan agua, luz y calor a la vez. Regar gota a gota gasta menos agua.', 'Plants need water, light and warmth at the same time. Drip watering uses less water.']
+    };
+    for (const k in J) { const o = MG.defs[k].sci; o.esA = o.es; o.enA = o.en; o.es = J[k][0]; o.en = J[k][1]; }
+  })();
+  (function () { // nombres y textos de consola/decisiones por nivel
+    const j = (o, es, en) => { o.esA = o.es; o.enA = o.en; o.es = es; o.en = en; };
+    j(CNAME.spec, 'Lector de colores', 'Color reader');
+    j(DMETA.reactor.b, 'Más energía disponible.', 'More energy available.');
+    j(DMETA.recmode.r, 'El modo máximo gasta algo más de energía.', 'Max mode uses a bit more energy.');
+  })();
+  const mgDur = (D, lvl) => Math.round(D.dur(lvl) * (isAdv() ? 1 : 1.4)); // Junior: más tiempo de respuesta
+
+  /* ---------- Datos en vivo por evento (modo Ingeniero) ---------- */
+  function techLine(type, inc) {
+    if (!S || !isAdv()) return '';
+    const es = LANG === 'es', pw = S.pw, d = S.d, f1 = (v) => fmt(v, 1);
+    const L = {
+      solar_storm: () => (es ? 'Flujo modelado ' : 'Modeled flux ') + f1((inc && inc.data.rate) || 0) + ' mSv/h ' + (es ? 'sin blindaje' : 'unshielded') + ' · ' + (es ? 'eficacia del blindaje ' : 'shield effectiveness ') + Math.round(d.rad * 100) + ' % · ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(d.dose, 2) + '/' + S.limit + ' mSv',
+      power_drop: () => (es ? 'Generación ' : 'Generation ') + f1(pw.gen) + ' kW (' + (es ? 'solar ' : 'solar ') + f1(pw.sol) + ', ' + (es ? 'reactor ' : 'reactor ') + f1(pw.rea) + ') · ' + (es ? 'demanda ' : 'demand ') + f1(pw.demand) + ' kW · ' + (es ? 'batería ' : 'battery ') + fmt(S.r.power.v, 0) + ' kWh' + (pw.demand > pw.gen ? ' · ' + (es ? 'autonomía ≈ ' : 'endurance ≈ ') + fmt(S.r.power.v / (pw.demand - pw.gen), 0) + ' h' : ''),
+      water_fail: () => (es ? 'Reciclaje efectivo ' : 'Effective recycling ') + Math.round(d.rec * 100) + ' % · ' + (es ? 'alimentación del reciclador ' : 'recycler supply ') + Math.round(((S.lf && S.lf.rec) == null ? 1 : S.lf.rec) * 100) + ' % · ' + (es ? 'agua ' : 'water ') + fmt(S.r.water.v, 0) + ' L (' + f1(S.r.water.prod - S.r.water.cons) + ' L/h)',
+      pressure_leak: () => (es ? 'Presión ' : 'Pressure ') + f1(S.sys.press.P) + ' kPa · ' + (es ? 'caída ' : 'drop ') + '0,6 kPa/h · ' + (es ? 'compresor alimentado ' : 'compressor supplied ') + Math.round(((S.lf && S.lf.press) == null ? 1 : S.lf.press) * 100) + ' %',
+      comms_blackout: () => (es ? 'Enlace caído · mensajes en cola ' : 'Link down · queued messages ') + S.cm.q.length + ' · ' + (es ? 'retraso de ida ' : 'one-way delay ') + f1(Sim.oneWay(S)) + ' h · ' + (es ? 'alimentación de la antena ' : 'antenna supply ') + Math.round(((S.lf && S.lf.comms) == null ? 1 : S.lf.comms) * 100) + ' %',
+      crop_fail: () => { const l = Sim.plantsList(S), n = l.filter((x) => x.p.pest).length; return (es ? 'Plantas con plaga ' : 'Plants with pests ') + n + '/' + l.length + ' · ' + (es ? 'salud media ' : 'mean health ') + Math.round(l.reduce((a, x) => a + x.p.hp, 0) / Math.max(1, l.length)) + ' %'; },
+      thermal_fail: () => (es ? 'Temperatura ' : 'Temperature ') + f1(S.sys.thermal.T) + ' °C (' + (es ? 'objetivo 21' : 'target 21') + ') · ' + (es ? 'alimentación térmica ' : 'thermal supply ') + Math.round(((S.lf && S.lf.therm) == null ? 1 : S.lf.therm) * 100) + ' %',
+      wear: () => tr(DATA.SYS_T[(inc && inc.sys) || 'reactor']) + ': ' + (es ? 'salud ' : 'health ') + Math.round(S.sys[(inc && inc.sys) || 'reactor'].h) + ' %',
+      sensor_drift: () => (es ? 'Error del sensor ' : 'Sensor error ') + fmt(S.sys.o2.calib, 2) + ' pp · O₂ ' + (es ? 'real ' : 'actual ') + f1(S.sys.o2.conc) + ' % · ' + (es ? 'generador ' : 'generator ') + Math.round(S.sys.o2.lvl * 100) + ' %'
+    };
+    L.dust_storm = L.power_drop;
+    return L[type] ? L[type]() : '';
+  }
+
+  /* ---------- Diagnóstico previo a la reparación (modo Ingeniero) ---------- */
+  function repairFlow(i) {
+    if (isAdv() && Sim.DIAG_OK[i.type] != null && !i.diag) diagPanel(i);
+    else miniIntro(i.fix === 'o2' ? 'o2' : i.fix === 'gh' ? 'gh' : 'wiring', { inc: i.id });
+  }
+  function diagPanel(inc) {
+    const es = LANG === 'es', D = NPCDATA.DIAG[inc.type]; if (!D) return;
+    let msg = null;
+    const s = push(h('div'));
+    const draw = () => panel(_('diagT') + ' · ' + tr(DATA.EVT[inc.type].t), h('div', null,
+      h('table', null, h('tbody', null, h('tr', null, h('th', null, es ? 'Telemetría' : 'Telemetry'), h('td', null, techLine(inc.type, inc))), h('tr', null, h('th', null, es ? 'Ubicación' : 'Location'), h('td', null, tr(DATA.ROOMS[inc.room]))))),
+      h('p', { style: { marginTop: '10px' } }, h('b', null, _('diagAsk'))),
+      h('div', { class: 'col' }, D.opts.map((o, k) => btn(tr(o), () => {
+        const r = Sim.diagnose(S, inc.id, k); processLogs();
+        if (r.ok) { pop(); toast(_('diagOk'), '', 'ok'); stack.forEach((z) => z._refresh && z._refresh()); miniIntro(inc.fix === 'o2' ? 'o2' : inc.fix === 'gh' ? 'gh' : 'wiring', { inc: inc.id }); }
+        else { msg = _('diagBad'); s.replaceChild(draw(), s.firstChild); focusFirst(s); updateHud(); }
+      }, '', { style: { textAlign: 'left' } }))),
+      msg ? h('p', { class: 'tag warn' }, msg) : null,
+      h('p', { class: 'small muted' }, es ? 'Un buen diagnóstico compara los valores medidos con los esperados. Acertar desbloquea la reparación y adelanta un 20 %.' : 'A good diagnosis compares measured values with expected ones. A correct call unlocks the repair and advances it 20%.')));
+    s.replaceChild(draw(), s.firstChild); focusFirst(s);
+  }
+
+  /* ---------- ¿Por qué ocurrió? por nivel ---------- */
+  function whyPanel(type) {
+    const T = DATA.EVT[type]; if (!T) return;
+    const es = LANG === 'es', inc = S && S.inc.find((i) => i.type === type && !i.res);
+    const sysK = inc ? inc.sys : null;
+    const donki = type === 'solar_storm' && inc && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
+    const live = type === 'solar_storm' && donkiLive && donkiLive.items.length ? h('p', { class: 'small' }, _('liveData') + ': ' + donkiLive.items.slice(0, 3).map((x) => x.cls + ' ' + x.date).join(' · ') + ' (' + donkiLive.fetched + ')') : null;
+    const why = (n, t, kids) => h('div', { class: 'why' }, h('h3', null, (n ? n + '. ' : '') + t), kids);
+    const kind = h('p', { class: 'small muted' }, es ? 'Tipo de dato: el hecho científico citado es real; los números del juego son un modelo simplificado.' : 'Data type: the cited science fact is real; the game numbers are a simplified model.');
+    let kids;
+    if (!isAdv()) {
+      kids = [why('', es ? 'Qué pasó' : 'What happened', h('p', null, tr(T.what))), why('', es ? 'Por qué pasa' : 'Why it happens', h('p', null, tr(T.cause))), why('', es ? 'Qué puedes hacer' : 'What you can do', h('p', null, tr(T.act))),
+        more(es ? 'Dato real y fuente' : 'Real fact and source', h('p', null, tr(T.data)), h('p', { class: 'small' }, T.src), donki ? h('p', { class: 'small' }, (es ? 'Inspirado en: ' : 'Inspired by: ') + donki.date + ' · ' + tr(donki)) : null, live)];
+    } else {
+      const tl = techLine(type, inc);
+      kids = [why(1, _('whatH'), [h('p', null, tr(T.what)), tl ? h('p', { class: 'small' }, tl) : null]), why(2, _('sysH'), h('p', null, sysK ? tr(DATA.SYS_T[sysK]) : '—')), why(3, _('causeH'), h('p', null, tr(T.cause))), why(4, _('doH'), h('p', null, tr(T.act))),
+        why(5, _('dataH'), [h('p', null, tr(T.data)), donki ? h('p', { class: 'small' }, (es ? 'Registro: ' : 'Record: ') + donki.cls + ' · ' + donki.date + ' — ' + tr(donki)) : null, live]), why(6, _('srcH'), h('p', { class: 'small' }, T.src)), kind];
+    }
+    push(panel(_('why') + ' · ' + tr(T.t), h('div', { class: 'col' }, kids), { narrow: true }));
+  }
+
+  /* ---------- Recursos: simple (Junior) o con series y parámetros (Ingeniero) ---------- */
+  function resourcesTabJ() {
+    const es = LANG === 'es';
+    const card = (ico, name, f, st, txt) => h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('h3', null, ico + ' ' + name), tag((st !== 'ok' ? SEVI[st] + ' ' : '') + stWord(st), st === 'ok' ? 'ok' : st)), bar(f, st === 'crit' ? 'var(--danger)' : st === 'warn' ? 'var(--warning)' : 'var(--success)'), h('p', { class: 'small muted' }, txt));
+    return h('div', null,
+      h('div', { class: 'grid2' },
+        card('🫁', _('o2'), S.d.o2, Sim.status(S, 'o2'), es ? 'Lo que respiramos. Una máquina lo fabrica con agua y electricidad.' : 'What we breathe. A machine makes it from water and electricity.'),
+        card('💧', _('water'), S.d.water, Sim.status(S, 'water'), es ? 'Para beber, regar y hacer aire. Una máquina la limpia para usarla otra vez.' : 'For drinking, watering and making air. A machine cleans it to use again.'),
+        card('🔋', _('power'), S.d.power, Sim.status(S, 'power'), es ? 'Viene del Sol y del reactor y se guarda en baterías.' : 'It comes from the Sun and the reactor and is saved in batteries.'),
+        card('🥗', _('food'), S.d.food, Sim.status(S, 'food'), es ? 'Se come cada día. Las plantas ayudan a tener más.' : 'It is eaten every day. Plants help us have more.'),
+        card('🛡️', _('rad'), S.d.rad, radSt(), es ? 'Las paredes y el refugio nos protegen de las partículas del Sol.' : 'Walls and the shelter protect us from particles from the Sun.'),
+        card('😊', _('well'), S.d.well, Sim.status(S, 'well'), es ? 'Cómo se siente la tripulación: descansa y cuida el ambiente.' : 'How the crew feels: they rest and the environment matters.')),
+      h('div', { class: 'row', style: { marginTop: '10px' } }, btn('⏩ ' + _('wait1'), () => confirmDecision('wait', { h: 1 }, _('wait1'))), btn('⏩ ' + _('wait6'), () => confirmDecision('wait', { h: 6 }, _('wait6')))),
+      more(es ? 'Qué significan los colores' : 'What the colors mean', h('p', null, es ? 'Verde: todo bien. Amarillo: ten cuidado. Rojo: es urgente. Las cifras del juego son una simulación y no la vida real.' : 'Green: all good. Yellow: be careful. Red: urgent. Game numbers are a simulation, not real life.')));
+  }
+  function spark(label, idx, warn, col) {
+    const cv = h('canvas', { class: 'spark', width: 360, height: 56, 'aria-label': label });
+    setTimeout(() => {
+      const c = cv.getContext('2d'), H = S.hist || []; c.clearRect(0, 0, 360, 56);
+      c.strokeStyle = 'rgba(255,194,74,.5)'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(0, 52 - warn * 48); c.lineTo(360, 52 - warn * 48); c.stroke(); c.setLineDash([]);
+      if (H.length < 2) return;
+      c.strokeStyle = col; c.lineWidth = 2; c.beginPath();
+      H.forEach((p, i) => { const x = (i / Math.max(1, H.length - 1)) * 358 + 1, y = 52 - clampN(p[idx], 0, 1) * 48; i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+    }, 10);
+    return cv;
+  }
+  function resourcesTabAdv() {
+    const es = LANG === 'es', base = resourcesTabRaw();
+    const charts = h('div', { class: 'card', style: { marginTop: '10px' } }, h('h3', null, '📈 ' + (es ? 'Tendencias (últimas horas simuladas)' : 'Trends (last simulated hours)')),
+      h('div', { class: 'grid2' }, [[es ? 'O₂ (% del depósito)' : 'O₂ (% of tank)', 0, 0.35, '#38d6ff'], [es ? 'Agua (% del depósito)' : 'Water (% of tank)', 1, 0.35, '#6fb3ff'], [es ? 'Batería (%)' : 'Battery (%)', 2, 0.3, '#ffd36b'], [es ? 'Alimentos (%)' : 'Food (%)', 3, 0.3, '#5fe39a'], [es ? 'Dosis / límite' : 'Dose / limit', 4, 0.6, '#ff8a65']].map(([l, i, w, c]) => h('div', null, h('span', { class: 'small' }, l), spark(l, i, w, c)))),
+      h('p', { class: 'small muted' }, es ? 'Línea discontinua: umbral de advertencia.' : 'Dashed line: warning threshold.'));
+    const KIND = { real: [es ? 'Real (NASA)' : 'Real (NASA)', 'ok'], hist: [es ? 'Histórico' : 'Historical', 'info'], model: [es ? 'Modelo simplificado' : 'Simplified model', 'warn'], game: [es ? 'Valor de jugabilidad' : 'Gameplay value', '']};
+    const params = more(es ? 'Datos y parámetros del modelo (fuente y tipo)' : 'Data and model parameters (source and type)', h('div', { style: { overflowX: 'auto' } }, h('table', null, h('tbody', null, NPCDATA.PARAMS.map((p) => h('tr', null, h('td', null, tag(KIND[p.k][0], KIND[p.k][1])), h('th', null, tr(p.n)), h('td', null, p.v), h('td', { class: 'small muted' }, p.s)))))));
+    base.append(charts, params);
+    return base;
+  }
+  const resourcesTab = () => (isAdv() ? resourcesTabAdv() : resourcesTabJ());
+
+  /* ---------- Prioridades eléctricas configurables (modo Ingeniero) ---------- */
+  function prioCard() {
+    const es = LANG === 'es', NAMES = { lab: es ? 'Laboratorio' : 'Lab', rover: es ? 'Carga del rover' : 'Rover charging', isru: es ? 'Extractor de hielo' : 'Ice extractor', jobs: es ? 'Obras y mantenimiento' : 'Jobs and maintenance', lights: es ? 'Luces LED' : 'LED lights', pumps: es ? 'Bombas de riego' : 'Irrigation pumps' };
+    const def = { lab: 3, rover: 3, isru: 3, jobs: 3, lights: 4, pumps: 4 };
+    return h('div', { class: 'card', style: { marginTop: '10px' } }, h('h3', null, '⚡ ' + (es ? 'Prioridades de reparto' : 'Distribution priorities')),
+      h('p', { class: 'small muted' }, es ? 'La prioridad 1 está reservada al soporte vital. Si la demanda supera la generación y la batería, se recorta primero el número más alto.' : 'Priority 1 is reserved for life support. If demand exceeds generation and battery, the highest number is shed first.'),
+      h('div', { class: 'grid2' }, Sim.PRIO_IDS.map((id) => { const cur = S.prioOv[id] || def[id]; return h('label', { class: 'row', style: { justifyContent: 'space-between' } }, h('span', null, NAMES[id]), h('select', { 'aria-label': NAMES[id], onchange: (e) => confirmDecision('prio', { id, v: +e.target.value }, NAMES[id]) }, [2, 3, 4].map((v) => { const o = h('option', { value: v }, (es ? 'Prioridad ' : 'Priority ') + v); if (v === cur) o.selected = true; return o; }))); })));
+  }
+
+  /* ---------- Pregunta de comprensión por nivel ---------- */
+  const QV = { 1: ['drop', 'door', 'bolt'], 2: ['air', 'leaf', 'thermo'], 3: ['sun', 'shield', 'earth'], 4: ['rover', 'gear', 'thermo'], 5: ['shield', 'earth', 'moon'], 6: ['bolt', 'leaf', 'air'], 7: ['antenna', 'clock', 'rover'] };
+  const quizOf = (id) => (isAdv() ? DATA.QUIZ_A[id] : DATA.QUIZ[id]);
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind];
@@ -4309,12 +4887,12 @@ const Game = (function () {
     drawLv();
     push(panel(D.icon + ' ' + tr(D.t), h('div', null,
       h('h3', null, _('instructions')), h('p', null, tr(D.how)), D.hintKeys ? h('p', { class: 'small muted' }, tr(D.hintKeys)) : null,
-      h('p', { class: 'small' }, '⏱ ' + D.dur(lvl) + ' s · 🎯 ' + effTxt), lvSel,
+      h('p', { class: 'small' }, '⏱ ' + mgDur(D, lvl) + ' s · 🎯 ' + effTxt), lvSel,
       h('div', { class: 'row', style: { marginTop: '12px' } }, btn('▶ ' + _('real'), () => { pop(); miniPlay(kind, opts, lvl, false); }, 'primary', { autofocus: true, disabled: !S || S.ended ? true : null }), btn('🧪 ' + _('practice'), () => { pop(); miniPlay(kind, opts, lvl, true); }), btn(_('cancel'), () => pop())))));
   }
   function miniPlay(kind, opts, lvl, practice) {
     const D = MG.defs[kind];
-    const g = { lvl, t: 0, dur: D.dur(lvl), keys: {}, opts: opts || {}, done: false };
+    const g = { lvl, t: 0, dur: mgDur(D, lvl), keys: {}, opts: opts || {}, done: false };
     D.setup(g);
     const c = h('canvas', { width: MG.GW, height: MG.GH, 'aria-label': tr(D.t) });
     const cx = c.getContext('2d');
@@ -4362,18 +4940,22 @@ const Game = (function () {
   function earthCard(id, fresh) {
     const E = DATA.EARTH[id];
     const cards = Store.get('cards', {}); cards[id] = 1; Store.set('cards', cards);
-    const Q = DATA.QUIZ[id];
+    const Q = quizOf(id);
     const quizBox = h('div', { class: 'card' }, h('h3', null, '❓ ' + _('quiz')), h('p', null, tr(Q.q)));
     const answered = S && S.quiz[id] != null;
-    Q.o.forEach((o, i) => quizBox.append(btn(tr(o), (e) => {
+    const jun = !isAdv();
+    if (jun) quizBox.append(h('p', { class: 'small muted' }, LANG === 'es' ? 'Toca la respuesta que creas correcta.' : 'Tap the answer you think is right.'));
+    const optBox = h('div', { class: jun ? 'mt' : 'col' });
+    quizBox.append(optBox);
+    Q.o.forEach((o, i) => optBox.append(btn([jun ? Icons.el(QV[id][i], 'ico-lg') : null, jun ? h('div', null, tr(o)) : tr(o)], (e) => {
       const ok = i === Q.a;
       if (S) Sim.reportQuiz(S, id, ok);
       if (ok) { stats.quizOk++; Store.set('stats', stats); if (stats.quizOk >= 5) unlock('quiz'); }
       quizBox.querySelectorAll('button').forEach((b) => (b.disabled = true));
-      e.target.style.borderColor = ok ? 'var(--success)' : 'var(--danger)';
+      e.currentTarget.style.borderColor = ok ? 'var(--success)' : 'var(--danger)';
       quizBox.append(h('p', { class: ok ? 'delta-up' : 'delta-down' }, (ok ? '✔ ' + _('correct') : '✖ ' + _('wrong')) + ' '), h('p', null, tr(Q.why)));
       Sfx.play(ok ? 'ok' : 'bad');
-    }, 'sm', { style: { display: 'block', margin: '6px 0', width: '100%', textAlign: 'left' } })));
+    }, jun ? '' : 'sm', { style: { display: 'block', width: '100%', textAlign: 'left', minHeight: jun ? '72px' : '' } })));
     if (answered) quizBox.append(h('p', { class: 'small muted' }, (LANG === 'es' ? 'Ya respondiste en esta partida. ' : 'Already answered this game. ') + tr(Q.why)));
     const body = h('div', null,
       fresh ? h('p', { class: 'tag ok' }, '✔ ' + (LANG === 'es' ? '¡Misión completada! Nueva ficha desbloqueada.' : 'Mission completed! New card unlocked.')) : null,
@@ -4455,11 +5037,12 @@ const Game = (function () {
     const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
     const tbl = (rows) => h('table', null, h('tbody', null, rows.map(([a, b]) => h('tr', null, h('th', null, a), h('td', null, b)))));
     const body = h('div', { class: 'panel' },
-      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + _(S.diff) + ' · ' + (es ? 'semilla ' : 'seed ') + S.seed),
+      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + (isAdv() ? DATA.U[LANG].modeA + ' · ' + (S.diff === 'commander' ? _('chHard') : _('chStd')) : DATA.U[LANG].modeJ) + (isAdv() ? ' · ' + (es ? 'semilla ' : 'seed ') + S.seed : '')),
       h('p', { class: 'small' }, es ? 'Este informe no te califica solo por ganar o perder: cada error es información para la próxima misión.' : 'This report does not grade you only on winning or losing: every mistake is information for the next mission.'),
       h('div', { class: 'grid2' },
         h('div', { class: 'card' }, h('h3', null, _('r1')), tbl([[es ? 'Tiempo de supervivencia' : 'Survival time', fmt(R.days) + (es ? ' días' : ' days') + ' (' + fmt(R.hours, 0) + ' h)'], [es ? 'Objetivos completados' : 'Goals completed', R.done.length + ' / 7 · ' + '★'.repeat(R.stars)], [es ? 'Sistemas mantenidos (≥50 %)' : 'Systems kept (≥50%)', R.sysOk + ' / 8'], [es ? 'Problemas resueltos' : 'Problems solved', R.incRes + ' / ' + R.incTot], [es ? 'Puntos' : 'Points', R.pts]])),
-        h('div', { class: 'card' }, h('h3', null, _('r2')), tbl([[es ? 'Agua usada / recuperada' : 'Water used / recovered', fmt(R.waterUsed, 0) + ' / ' + fmt(R.waterRec, 0) + ' L (' + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + ' %)'], [es ? 'Energía generada / consumida' : 'Energy generated / used', fmt(R.eGen, 0) + ' / ' + fmt(R.eUsed, 0) + ' kWh'], [es ? 'Protección radiológica' : 'Radiation protection', (es ? 'nivel ' : 'level ') + R.shield + ' · ' + (es ? 'refugio ' : 'shelter ') + R.cap + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(R.dose, 1) + ' / ' + R.limit + ' mSv'], [es ? 'Alimentos producidos / consumidos' : 'Food produced / eaten', fmt(R.foodProd) + ' / ' + fmt(R.foodCons) + ' kg'], [es ? 'Tripulación' : 'Crew', (es ? 'bienestar ' : 'wellbeing ') + Math.round(R.well) + ' %']])),
+        h('div', { class: 'card' }, h('h3', null, _('r2')), isAdv() ? tbl([[es ? 'Agua usada / recuperada' : 'Water used / recovered', fmt(R.waterUsed, 0) + ' / ' + fmt(R.waterRec, 0) + ' L (' + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + ' %)'], [es ? 'Energía generada / consumida' : 'Energy generated / used', fmt(R.eGen, 0) + ' / ' + fmt(R.eUsed, 0) + ' kWh'], [es ? 'Protección radiológica' : 'Radiation protection', (es ? 'nivel ' : 'level ') + R.shield + ' · ' + (es ? 'refugio ' : 'shelter ') + R.cap + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(R.dose, 1) + ' / ' + R.limit + ' mSv'], [es ? 'Alimentos producidos / consumidos' : 'Food produced / eaten', fmt(R.foodProd) + ' / ' + fmt(R.foodCons) + ' kg'], [es ? 'Tripulación' : 'Crew', (es ? 'bienestar ' : 'wellbeing ') + Math.round(R.well) + ' %']])
+          : tbl([[es ? 'Agua' : 'Water', (es ? 'Volviste a usar ' : 'You reused ') + Math.round(R.waterRec / Math.max(1, R.waterUsed) * 100) + (es ? ' de cada 100 litros' : ' of every 100 liters')], [es ? 'Energía' : 'Energy', (es ? 'Generaste ' : 'You made ') + Math.round(R.eGen / Math.max(1, R.eUsed) * 100) + (es ? ' por cada 100 que gastaste' : ' for every 100 you used')], [es ? 'Protección' : 'Protection', R.dose < R.limit * 0.5 ? (es ? 'La tripulación estuvo bien protegida' : 'The crew was well protected') : (es ? 'Faltó protección: usa el refugio antes' : 'Protection was low: use the shelter earlier')], [es ? 'Comida' : 'Food', (es ? 'Cosechaste ' : 'You harvested ') + Math.round(R.foodProd) + (es ? ' kilos' : ' kilos')], [es ? 'Tripulación' : 'Crew', R.well > 60 ? (es ? 'Contenta' : 'Happy') : R.well > 35 ? (es ? 'Cansada' : 'Tired') : (es ? 'Muy cansada' : 'Very tired')]])),
         h('div', { class: 'card' }, h('h3', null, _('r3')),
           h('p', null, h('b', null, es ? 'Conceptos trabajados: ' : 'Concepts practiced: '), R.done.length ? R.done.map((id) => tr(DATA.MIS[id].learn)).join(' ') : (es ? 'Exploración inicial de la base.' : 'Initial base exploration.')),
           h('p', null, h('b', null, es ? 'Preguntas correctas: ' : 'Correct answers: '), R.quizOk + ' / ' + R.quizTot),
@@ -4612,7 +5195,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

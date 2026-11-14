@@ -71,18 +71,22 @@ const Sim = (function () {
 
   /* ---------- Incidentes (plantillas) ---------- */
   const EV = {
-    solar_storm: { sc: ['moon', 'mars'], sev: 'crit', room: 'rad', sys: 'shield', w: 0.7, dur: [14, 22], env: true },
+    solar_storm: { sc: ['moon', 'mars'], sev: 'crit', room: 'rad', sys: 'shield', w: 0.7, dur: [14, 22], env: true, jd: 4 },
     power_drop: { sc: ['moon'], sev: 'warn', room: 'reactor', sys: 'solar', w: 1.0, dur: [20, 34], env: true },
     dust_storm: { sc: ['mars'], sev: 'warn', room: 'reactor', sys: 'solar', w: 1.1, dur: [30, 60], env: true },
-    water_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'water', sys: 'rec', w: 1.0, fix: 'wiring' },
-    pressure_leak: { sc: ['moon', 'mars'], sev: 'crit', room: 'life', sys: 'press', w: 0.7, fix: 'wiring' },
-    comms_blackout: { sc: ['moon', 'mars'], sev: 'info', room: 'bridge', sys: 'comms', w: 0.8, fix: 'wiring', dur: [14, 26] },
-    crop_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'gh', sys: 'gh', w: 0.8, fix: 'gh' },
-    thermal_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'life', sys: 'thermal', w: 0.8, fix: 'wiring' },
+    water_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'water', sys: 'rec', w: 1.0, fix: 'wiring' }, // jd = día a partir del cual aparece en Junior (eventos presentados progresivamente)
+    pressure_leak: { sc: ['moon', 'mars'], sev: 'crit', room: 'life', sys: 'press', w: 0.7, fix: 'wiring', jd: 3 },
+    comms_blackout: { sc: ['moon', 'mars'], sev: 'info', room: 'bridge', sys: 'comms', w: 0.8, fix: 'wiring', dur: [14, 26], jd: 3 },
+    crop_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'gh', sys: 'gh', w: 0.8, fix: 'gh', jd: 2 },
+    thermal_fail: { sc: ['moon', 'mars'], sev: 'warn', room: 'life', sys: 'thermal', w: 0.8, fix: 'wiring', adv: true },
     wear: { sc: ['moon', 'mars'], sev: 'info', room: 'reactor', sys: 'reactor', w: 1.1, fix: 'wiring' },
-    sensor_drift: { sc: ['moon', 'mars'], sev: 'info', room: 'water', sys: 'o2', w: 0.6, fix: 'o2' }
+    sensor_drift: { sc: ['moon', 'mars'], sev: 'info', room: 'water', sys: 'o2', w: 0.6, fix: 'o2', adv: true }
   };
   const SYS_ROOM = { isru: 'rad', reactor: 'reactor', solar: 'reactor', shield: 'rad', o2: 'water', rec: 'water', comms: 'bridge', thermal: 'life', press: 'life', gh: 'gh', lab: 'lab' };
+
+  // Diagnóstico (modo Ingeniero): índice de la causa correcta entre 3 opciones (los textos están en NPCDATA.DIAG).
+  const DIAG_OK = { water_fail: 0, pressure_leak: 1, comms_blackout: 2, thermal_fail: 1, wear: 0, sensor_drift: 2 };
+  const PRIO_IDS = ['lab', 'rover', 'isru', 'jobs', 'lights', 'pumps'];
 
   /* ---------- RNG (mulberry32 con estado en S.rs) ---------- */
   function rnd(S) {
@@ -99,11 +103,12 @@ const Sim = (function () {
   function create(o) {
     o = o || {};
     const scen = o.scen === 'mars' ? 'mars' : 'moon';
-    const diff = DIFFS[o.diff] ? o.diff : 'engineer';
+    const adv = o.mode === 'adv';
+    const diff = !adv ? 'explorer' : o.diff === 'commander' ? 'commander' : 'engineer'; // Junior = guiado; Ingeniero = estándar o exigente
     const df = DIFFS[diff];
     const seed = (o.seed >>> 0) || 1;
     const S = {
-      v: 1, scen, diff, seed, rs: seed, t: 0, N: 5, noEv: !!o.noEv, ended: null,
+      v: 1, scen, diff, seed, rs: seed, t: 0, N: 5, noEv: !!o.noEv, ended: null, mode: adv ? 'adv' : 'junior', adv, prioOv: {}, hist: [], hlast: 0,
       lightMin: 0.0217, // minutos-luz Luna (≈1,3 s)
       limit: df.dose,
       r: {
@@ -165,6 +170,9 @@ const Sim = (function () {
     if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
     if (!S.playerRole) S.playerRole = 'commander';
+    if (!S.mode) { S.adv = S.diff !== 'explorer'; S.mode = S.adv ? 'adv' : 'junior'; }
+    if (!S.prioOv) S.prioOv = {};
+    if (!S.hist) { S.hist = []; S.hlast = S.t || 0; }
     S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
     return S;
   }
@@ -180,7 +188,7 @@ const Sim = (function () {
   function activeInc(S) { return S.inc.filter((i) => !i.res); }
   function hasActive(S, type) { return S.inc.some((i) => !i.res && i.type === type && S.t >= i.from); }
   function shieldEff(S) { return clamp((0.25 + 0.25 * S.sys.shield.lvl) * (S.sys.shield.h / 100), 0, 1); }
-  function oneWay(S) { return S.scen === 'moon' ? P.MOON_ONEWAY_H : S.lightMin * P.LIGHT_MIN_TO_H; }
+  function oneWay(S) { const base = S.scen === 'moon' ? P.MOON_ONEWAY_H : S.lightMin * P.LIGHT_MIN_TO_H; return S.adv ? base : Math.max(P.MOON_ONEWAY_H, base * 0.4); } // Junior: retraso reducido para que sea jugable (se explica en la interfaz)
   function bonus(S, role) {
     // Un especialista aporta su bonus si no está en el refugio durante una tormenta.
     const c = S.crew.find((x) => x.role === role);
@@ -229,9 +237,20 @@ const Sim = (function () {
   function repair(S, id, amount) {
     const inc = S.inc.find((i) => i.id === id);
     if (!inc || inc.res || !inc.fix) return false;
+    if (S.adv && DIAG_OK[inc.type] != null && !inc.diag) return false; // en el modo avanzado hay que diagnosticar antes
     inc.prog = clamp(inc.prog + amount, 0, 100);
     if (inc.prog >= 100) resolveInc(S, inc, 'player');
     return true;
+  }
+  /** Modo Ingeniero: elegir la causa probable. Acertar desbloquea la reparación (+20 %); fallar cuesta 1 h. */
+  function diagnose(S, id, choice) {
+    const inc = S.inc.find((i) => i.id === id);
+    if (!inc || inc.res || DIAG_OK[inc.type] == null) return { ok: false, err: 'none' };
+    if (inc.diag) return { ok: true, already: true };
+    if (choice === DIAG_OK[inc.type]) { inc.diag = 1; inc.prog = clamp(inc.prog + 20, 0, 100); S.st.good.diag = (S.st.good.diag || 0) + 1; S.pts += 10; log(S, 'ok', 'diag.ok', { id, type: inc.type }); return { ok: true }; }
+    inc.wrong = (inc.wrong || 0) + 1; S.st.mistakes.diag = (S.st.mistakes.diag || 0) + 1; log(S, 'warn', 'diag.bad', { id, type: inc.type });
+    step(S, 1);
+    return { ok: false };
   }
   function mods(S) {
     const M = { sunMul: 1, leak: 0, spe: 0, recMul: 1, thermMul: 1, commsDown: false, blight: false };
@@ -257,7 +276,7 @@ const Sim = (function () {
     if (S.t - S.lastEv < 10) return;
     if (rnd(S) > 0.02 * df.ev * h * (S.camp && !S.camp.basicDone ? 0.5 : 1)) return;
     const open = (room) => !S.camp || !!S.camp.unlocked[room];
-    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) &&
+    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) && !(EV[k].adv && !S.adv) && (S.adv || S.t >= (EV[k].jd || 0) * 24) &&
       !(k === 'crop_fail' && !plantsList(S).length));
     if (!pool.length) return;
     let tot = pool.reduce((a, k) => a + EV[k].w, 0), x = rnd(S) * tot, pick = pool[0];
@@ -316,6 +335,7 @@ const Sim = (function () {
       { id: 'lights', p: 4, kw: S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? P.LIGHT_KW_PER_BED * b.light : 0), 0) * S.cap.gh },
       { id: 'pumps', p: 4, kw: 0.3 * sy.gh.irrig * (planted ? 1 : 0) }
     ];
+    if (S.adv) loads.forEach((l) => { const o = S.prioOv[l.id]; if (o >= 2 && o <= 4) l.p = o; });
     if (S.emergency) loads.forEach((l) => { if (l.p >= 3) l.kw = 0; });
     const avail = G + (r.power.v > 0.01 ? P.BATT_MAX_DIS : 0);
     let served = 0, demand = 0;
@@ -457,8 +477,8 @@ const Sim = (function () {
 
     /* --- Ingeniero: reparación autónoma lenta --- */
     if (bonus(S, 'engineer')) {
-      const tgt = activeInc(S).filter((i) => i.fix && S.t >= i.from).sort((a, b) => (a.sev === 'crit' ? -1 : 1) - (b.sev === 'crit' ? -1 : 1))[0];
-      if (tgt) { tgt.prog = clamp(tgt.prog + 1.6 * h * df.repair, 0, 100); tgt.bot = true; if (tgt.prog >= 100) resolveInc(S, tgt, 'engineer'); }
+      const tgt = activeInc(S).filter((i) => i.fix && S.t >= i.from && (!S.adv || DIAG_OK[i.type] == null || i.diag)).sort((a, b) => (a.sev === 'crit' ? -1 : 1) - (b.sev === 'crit' ? -1 : 1))[0];
+      if (tgt) { tgt.prog = clamp(tgt.prog + (S.adv ? 1.0 : 1.6) * h * df.repair, 0, 100); tgt.bot = true; if (tgt.prog >= 100) resolveInc(S, tgt, 'engineer'); }
     }
 
     /* --- Ciclo de incidentes --- */
@@ -469,6 +489,10 @@ const Sim = (function () {
     }
     if (nCrit) S.st.critH += h;
     spawn(S, h);
+
+    /* --- Eventos encadenados (modo Ingeniero) y registro histórico --- */
+    if (S.adv) chains(S);
+    if (S.adv && S.t - S.hlast >= 1) { S.hlast = S.t; S.hist.push([pct(r.o2), pct(r.water), pct(r.power), pct(r.food), S.st.maxDose / S.limit, r.well.v / 100].map((x) => Math.round(clamp(x, 0, 1.5) * 1000) / 1000)); if (S.hist.length > 120) S.hist.shift(); }
 
     /* --- Comunicaciones --- */
     commsStep(S, M);
@@ -482,6 +506,16 @@ const Sim = (function () {
     derive(S);
   }
 
+  /** Cadenas causa → efecto: el polvo desgasta los paneles, una tormenta solar puede dejar sin enlace y la falta de agua daña las plantas. */
+  function chains(S) {
+    if (S.noEv) return;
+    for (const i of S.inc) {
+      if (i.chain) continue;
+      if ((i.type === 'power_drop' || i.type === 'dust_storm') && !i.res && S.t - i.from > 12) { i.chain = 1; if (!S.inc.some((x) => !x.res && x.type === 'wear')) addInc(S, 'wear', { sys: 'solar', dmg: 14 }); }
+      else if (i.type === 'solar_storm' && i.res) { i.chain = 1; if (rnd(S) < 0.6 && !S.inc.some((x) => !x.res && x.type === 'comms_blackout')) addInc(S, 'comms_blackout', { dur: 12 }); }
+      else if (i.type === 'water_fail' && !i.res && S.t - i.t0 > 18) { i.chain = 1; if (plantsList(S).length && !S.inc.some((x) => !x.res && x.type === 'crop_fail')) addInc(S, 'crop_fail', {}); }
+    }
+  }
   function normalize(S) {
     for (const k in S.r) { const x = S.r[k]; x.v = clamp(fin(x.v, 0), 0, x.max); }
     const s = S.sys;
@@ -541,6 +575,7 @@ const Sim = (function () {
     isru: (S, p) => { S.sys.isru.on = !!p.v; },
     recmode: (S, p) => { S.sys.rec.mode = p.v === 'max' ? 'max' : 'eco'; },
     emergency: (S, p) => { S.emergency = !!p.v; },
+    prio: (S, p) => { if (!S.adv || !PRIO_IDS.includes(p.id)) return 'err'; S.prioOv[p.id] = clamp(Math.round(+p.v), 2, 4); },
     proto: (S, p) => { S.proto = !!p.v; },
     shield: (S) => {
       if (S.sys.shield.lvl >= 3 || S.jobs.some((j) => j.kind === 'shield')) return 'busy';
@@ -894,7 +929,7 @@ const Sim = (function () {
     };
   }
 
-  return { CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

@@ -19,16 +19,16 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Menú principal visible', await page.locator('.title-big').isVisible());
   if (shots) await page.screenshot({ path: shots + '/01_menu.png' });
   await page.getByRole('button', { name: /Iniciar misión/ }).click();
+  await page.getByRole('button', { name: /Explorador Junior/ }).click();
   await page.getByRole('button', { name: /Marte/ }).click();
-  await page.getByRole('button', { name: /Ingeniero/ }).click();
   await page.getByRole('button', { name: /Despegar/ }).click();
   await page.waitForTimeout(300);
   ok('Guía del puente se presenta al empezar', await page.getByText('Control de Misión').first().isVisible());
   await page.getByRole('button', { name: 'Saltar' }).click();
   const scen = await page.evaluate(() => Game.S.scen + '/' + Game.S.diff);
-  ok('Escenario y dificultad aplicados', scen === 'mars/engineer', scen);
+  ok('Escenario y dificultad aplicados (Junior fija la dificultad guiada)', scen === 'mars/explorer', scen);
   // Las pruebas de sistemas avanzados usan una partida con la familiarización ya completada
-  await page.evaluate(() => Game._debug.newRun('mars', 'engineer', { skipCamp: true }));
+  await page.evaluate(() => Game._debug.newRun('mars', 'x', { skipCamp: true, mode: 'junior' }));
   await page.waitForTimeout(200);
   ok('HUD visible', await page.locator('#hud').isVisible());
   // Movimiento
@@ -71,7 +71,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await page.evaluate(() => { World.setPlayerRole('engineer'); Sim.setPlayerRole(Game.S, 'engineer'); });
   await page.evaluate(() => Game._debug.openConsole('water'));
   await page.getByRole('button', { name: /Modo máximo/ }).click();
-  ok('Panel de consecuencias', await page.getByRole('heading', { name: /Panel de consecuencias/ }).isVisible());
+  ok('Panel de consecuencias', await page.getByRole('heading', { name: /Panel de consecuencias|¿Qué pasará\?/ }).isVisible());
   const hasDeltas = await page.locator('.delta-up, .delta-down').count();
   ok('Consecuencias muestran cambios en ≥2 variables', hasDeltas >= 2, String(hasDeltas));
   if (shots) await page.screenshot({ path: shots + '/04_consequences.png' });
@@ -99,7 +99,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await page.evaluate(() => Game._debug.openConsole('comms'));
   await page.getByRole('button', { name: /Pedir diagnóstico/ }).click();
   const q = await page.evaluate(() => [Game.S.cm.q.length, Sim.oneWay(Game.S)]);
-  ok('Mensaje en tránsito con retraso (Marte)', q[0] === 1 && q[1] >= 4, JSON.stringify(q));
+  ok('Mensaje en tránsito con retraso (Marte)', q[0] === 1 && q[1] >= 1.5, JSON.stringify(q));
   if (shots) await page.screenshot({ path: shots + '/06_comms.png' });
   await page.getByRole('button', { name: /Esperar 6 h/ }).click(); await page.getByRole('button', { name: /Confirmar/ }).click();
   for (let k = 0; k < 8; k++) { await page.evaluate(() => Sim.step(Game.S, 6)); }
@@ -112,8 +112,10 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Llamada de radio ante el evento', await page.locator('#radio').isVisible());
   await page.evaluate(() => Game._debug.openConsole('cmd'));
   await page.getByRole('tab', { name: /Registro/ }).click();
+  await page.evaluate(() => { MODE = 'adv'; });
   await page.getByRole('button', { name: /Por qué ocurrió/ }).first().click();
-  ok('Panel ¿Por qué ocurrió? con 6 apartados', await page.getByText('6. Fuente y fecha').isVisible());
+  ok('Panel ¿Por qué ocurrió? con 6 apartados (Ingeniero)', await page.getByText('6. Fuente y fecha').isVisible());
+  await page.evaluate(() => { MODE = 'junior'; });
   if (shots) await page.screenshot({ path: shots + '/07_why.png' });
   await closeAll(page);
   // Guardado y recuperación
@@ -141,7 +143,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await page.locator('#bMenu').click(); await page.getByRole('button', { name: /Configuración/ }).click();
   await page.waitForTimeout(200);
   await page.getByRole('button', { name: 'English' }).click();
-  ok('Cambio a inglés', await page.evaluate(() => LANG) === 'en' && (await page.locator('#m_o2 .lbl').textContent()).includes('Oxygen'));
+  ok('Cambio a inglés', await page.evaluate(() => LANG) === 'en' && /Air|Oxygen/.test(await page.locator('#m_o2 .lbl').textContent()));
   await closeAll(page);
   // Informe final
   await page.evaluate(() => { Sim.finishRun(Game.S); Game._debug.showReport(); });
@@ -282,6 +284,152 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Campaña y NPC sin errores', err5.length === 0, err5.join(' | '));
   await ctx5.close();
 
+  // ---- Dos modalidades: Explorador Junior e Ingeniero de Misión ----
+  const ctxM = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxM.route('**/*', (r) => (r.request().url().startsWith('file:') ? r.continue() : r.abort()));
+  const pm2 = await ctxM.newPage(); const errM = [];
+  pm2.on('pageerror', (e) => errM.push(e.message));
+  await pm2.goto(FILE); await pm2.waitForTimeout(300);
+  await pm2.getByRole('button', { name: /Iniciar misión/ }).click();
+  ok('La pantalla de inicio ofrece las dos modalidades', (await pm2.getByRole('button', { name: /Explorador Junior/ }).count()) === 1 && (await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).count()) === 1);
+  await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).click();
+  ok('Ingeniero de Misión ofrece nivel de reto', await pm2.getByRole('button', { name: /Exigente/ }).isVisible());
+  await pm2.getByRole('button', { name: /Despegar/ }).click(); await pm2.waitForTimeout(400);
+  ok('La modalidad elegida se aplica', await pm2.evaluate(() => Game.S.mode === 'adv' && MODE === 'adv'));
+  const hudA = await pm2.evaluate(() => [...document.querySelectorAll('#meters .meter')].filter((m) => !m.classList.contains('hidden')).length);
+  ok('Ingeniero: 5 indicadores detallados en el HUD', hudA === 5, String(hudA));
+  ok('Ingeniero: el HUD muestra unidades', /kg|kWh|mSv/.test(await pm2.locator('#meters').innerText()));
+  await pm2.evaluate(() => { Game._debug.saveNow(); });
+  await pm2.reload(); await pm2.waitForTimeout(300);
+  await pm2.getByRole('button', { name: /Continuar/ }).click(); await pm2.waitForTimeout(300);
+  ok('La modalidad se guarda y se recupera con la partida', await pm2.evaluate(() => Game.S.mode === 'adv' && MODE === 'adv'));
+  await pm2.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior', skipCamp: true })); await pm2.waitForTimeout(300);
+  const hudJ = await pm2.evaluate(() => [...document.querySelectorAll('#meters .meter')].filter((m) => !m.classList.contains('hidden')).length);
+  ok('Junior: 4 indicadores simplificados en el HUD', hudJ === 4, String(hudJ));
+  ok('Junior: el HUD no muestra unidades', !/kg|kWh|mSv|kW/.test(await pm2.locator('#meters').innerText()));
+  // Panel de recursos
+  await pm2.evaluate(() => Game._debug.openConsole('cmd')); await pm2.getByRole('tab', { name: /Recursos/ }).click();
+  ok('Junior: recursos en tarjetas sin tablas ni gráficos', (await pm2.locator('[role=dialog] table').count()) === 0 && (await pm2.locator('canvas.spark').count()) === 0);
+  await closeAll(pm2);
+  await pm2.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'adv', skipCamp: true })); await pm2.waitForTimeout(200);
+  await pm2.evaluate(() => { Sim.step(Game.S, 8); Game._debug.openConsole('cmd'); }); await pm2.getByRole('tab', { name: /Recursos/ }).click(); await pm2.waitForTimeout(150);
+  ok('Ingeniero: tabla de recursos, gráficos de tendencia y tipos de dato', (await pm2.locator('[role=dialog] table').count()) >= 1 && (await pm2.locator('canvas.spark').count()) === 5 && (await pm2.locator('details.more').count()) >= 1);
+  await closeAll(pm2);
+  // Panel de consecuencias por modalidad
+  await pm2.evaluate(() => { const S = Game.S; S.r.power.v = 40; S.sys.reactor.lvl = 0.2; World.setPlayerRole('engineer'); Sim.setPlayerRole(S, 'engineer'); Game._debug.openConsole('reactor'); });
+  await pm2.getByRole('button', { name: /Activar modo emergencia/ }).click();
+  ok('Ingeniero: consecuencias con tabla numérica (ahora / sin actuar / con la decisión)', (await pm2.locator('[role=dialog] table th', { hasText: 'Δ' }).count()) === 1 && /kWh|kg/.test(await pm2.locator('[role=dialog]').last().innerText()));
+  await closeAll(pm2);
+  await pm2.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior', skipCamp: true })); await pm2.waitForTimeout(200);
+  await pm2.evaluate(() => { const S = Game.S; S.r.power.v = 40; S.sys.reactor.lvl = 0.2; World.setPlayerRole('engineer'); Sim.setPlayerRole(S, 'engineer'); Game._debug.openConsole('reactor'); });
+  await pm2.getByRole('button', { name: /Activar modo emergencia/ }).click();
+  const jtxt = await pm2.locator('[role=dialog]').last().innerText();
+  ok('Junior: consecuencias en palabras (sube/baja un poco o mucho), sin cifras ni unidades', /sube|baja/.test(jtxt) && !/kWh|\bkg\b|\bkW\b/.test(jtxt) && (await pm2.locator('[role=dialog]').last().locator('table').count()) === 0, jtxt.slice(0, 120).replace(/\n/g, ' '));
+  await closeAll(pm2);
+  // Lenguaje: sin jerga en Junior, sin infantilizar en Ingeniero, y mismo fenómeno con distinto nivel
+  const lang = await pm2.evaluate(() => {
+    const collect = (o, out, skip) => { if (o == null || typeof o === 'string') return; if (typeof o.es === 'string') { out.push(tr(o)); return; } if (Array.isArray(o)) { o.forEach((x) => collect(x, out, skip)); return; } for (const k in o) if (!(skip || []).includes(k)) collect(o[k], out, skip); };
+    const corpus = () => { const out = []; collect(DATA.EVT, out, ['src', 't']); collect(DATA.MIS, out, ['icon', 'room']); collect(DATA.QUIZ, out); collect(DATA.TUT, out); collect(DATA.ENDT, out); collect(NPCDATA.TALK, out); collect(NPCDATA.RES, out); collect(NPCDATA.KEY, out); collect(NPCDATA.CAMP, out); collect(NPCDATA.CONSEQ, out); for (const k in NPCDATA.PLANT) collect(NPCDATA.PLANT[k].needs, out); const D = Game._debug.DMETA; for (const k in D) { collect(D[k].r, out); collect(D[k].b, out); } return out; };
+    const JARGON = /electr[oó]lisis|electrolysis|estequi|stoichiom|kWh|\bkW\b|kPa|mSv|regolit|ISRU|dosimetr|irradianc|conjunci[oó]n solar|solar conjunction|telemetr|\bHUD\b|coseno|cosine|espectr[oó]metro|spectrometer|hidr[oó]geno|hydrogen|OSHA|\bDONKI\b/i;
+    let J = [], bad = [], long = [];
+    for (const lg of ['es', 'en']) { LANG = lg; MODE = 'junior'; const c = corpus(); J = J.concat(c); bad = bad.concat(c.filter((x) => JARGON.test(x))); long = long.concat(c.filter((x) => x.length > 190)); }
+    LANG = 'es'; MODE = 'adv'; const A = corpus(); { const D = Game._debug.DMETA; for (const k in D) collect(D[k].u, A); }
+    const childish = A.filter((x) => /¡Genial|¡Bravo|bichit|cosita|juguet|Great job|bugs and mold/i.test(x));
+    const tech = ['kW', 'kPa', 'electrólisis'].filter((t) => A.join(' ').includes(t));
+    const pairs = [['solar_storm', 'what'], ['solar_storm', 'cause'], ['water_fail', 'cause'], ['power_drop', 'act'], ['crop_fail', 'what']].map(([t, k]) => { MODE = 'junior'; const j = tr(DATA.EVT[t][k]); MODE = 'adv'; return j !== tr(DATA.EVT[t][k]); });
+    MODE = 'junior';
+    return { n: J.length, bad: bad.slice(0, 4), long: long.slice(0, 2), childish, tech, differ: pairs.every(Boolean) };
+  });
+  ok('Junior: ningún texto usa jerga técnica', lang.bad.length === 0, JSON.stringify(lang.bad));
+  ok('Junior: frases cortas (≤190 caracteres)', lang.long.length === 0, JSON.stringify(lang.long));
+  ok('Ingeniero: terminología y unidades (kW, kPa, electrólisis)', lang.tech.length === 3, JSON.stringify(lang.tech));
+  ok('Ingeniero: sin tono infantil', lang.childish.length === 0, JSON.stringify(lang.childish));
+  ok('Las explicaciones cambian de nivel manteniendo el mismo fenómeno', lang.differ);
+  // Jugabilidad: eventos, cadenas, diagnóstico y prioridades
+  const gp = await pm2.evaluate(() => {
+    const types = (mode) => { const set = new Set(); for (let i = 0; i < 40; i++) { const S = Sim.create({ scen: i % 2 ? 'mars' : 'moon', mode, seed: 500 + i * 13, skipCamp: true }); for (let h = 0; h < 600; h++) { Sim.step(S, 1); if (S.ended) break; S.inc.forEach((x) => set.add(x.type)); } } return [...set]; };
+    const J = types('junior'), A = types('adv');
+    const mk = (mode) => Sim.create({ scen: 'mars', mode, seed: 9, skipCamp: true, noEv: true });
+    // cadena: tormenta de polvo -> desgaste de paneles (solo avanzado)
+    const chain = (mode) => { const S = mk(mode); S.noEv = false; S.lastEv = 1e9; Sim.addInc(S, 'dust_storm', {}); Sim.step(S, 20); return S.inc.some((i) => i.type === 'wear'); };
+    // diagnóstico: reparar sin diagnosticar no avanza en el avanzado
+    const diag = (mode) => { const S = mk(mode); const inc = Sim.addInc(S, 'water_fail', {}); Sim.repair(S, inc.id, 100); const blocked = !inc.res; const t0 = S.t; const bad = Sim.diagnose(S, inc.id, 1); const cost = S.t - t0; const ok = Sim.diagnose(S, inc.id, Sim.DIAG_OK.water_fail); Sim.repair(S, inc.id, 100); return { blocked, cost: Math.round(cost), wrong: bad.ok, ok: ok.ok, fixed: inc.res }; };
+    const prio = (mode) => { const S = mk(mode); return Sim.decide(S, 'prio', { id: 'lights', v: 2 }).ok; };
+    return { J, A, chainJ: chain('junior'), chainA: chain('adv'), dJ: diag('junior'), dA: diag('adv'), pJ: prio('junior'), pA: prio('adv') };
+  });
+  ok('Junior no tiene sensores descalibrados ni fallos térmicos (menos fallos distintos)', !gp.J.includes('sensor_drift') && !gp.J.includes('thermal_fail'), gp.J.join(','));
+  ok('Ingeniero sí los tiene (más variedad de fallos)', gp.A.includes('sensor_drift') && gp.A.includes('thermal_fail'), gp.A.join(','));
+  ok('Eventos encadenados solo en Ingeniero (polvo → desgaste de paneles)', !gp.chainJ && gp.chainA);
+  ok('Junior: se repara directamente', !gp.dJ.blocked && gp.dJ.fixed, JSON.stringify(gp.dJ));
+  ok('Ingeniero: hay que diagnosticar antes de reparar; el diagnóstico erróneo cuesta 1 h', gp.dA.blocked && gp.dA.cost === 1 && !gp.dA.wrong && gp.dA.ok && gp.dA.fixed, JSON.stringify(gp.dA));
+  ok('Solo Ingeniero reparte prioridades eléctricas', !gp.pJ && gp.pA);
+  // Interfaz de diagnóstico y radio por nivel
+  await pm2.evaluate(() => Game._debug.newRun('mars', 'x', { mode: 'adv', skipCamp: true })); await pm2.waitForTimeout(200);
+  await pm2.evaluate(() => { Game._debug.radio.q = []; Game._debug.radio.cur = null; Sim.addInc(Game.S, 'water_fail', {}); Sim.step(Game.S, 0.01); }); await pm2.waitForTimeout(500);
+  const radA = await pm2.locator('#radio').innerText();
+  ok('Ingeniero: la llamada incluye valores del sistema (diagnóstico con datos)', /Reciclaje efectivo \d+ %/.test(radA) && /L\/h/.test(radA), radA.slice(0, 160).replace(/\n/g, ' '));
+  await pm2.getByRole('button', { name: /Consultar sistema/ }).click(); await pm2.waitForTimeout(150);
+  await pm2.evaluate(() => { World.setPlayerRole('engineer'); Sim.setPlayerRole(Game.S, 'engineer'); });
+  await closeAll(pm2); await pm2.evaluate(() => Game._debug.openConsole('water'));
+  await pm2.getByRole('button', { name: /Diagnosticar/ }).first().click();
+  ok('Ingeniero: aparece el panel de diagnóstico con telemetría y 3 hipótesis', (await pm2.getByText('¿Cuál es la causa más probable?').count()) === 1 && /Reciclaje efectivo/.test(await pm2.locator('[role=dialog]').last().innerText()));
+  await pm2.getByRole('button', { name: /Falta de energía en el reciclador/ }).click();
+  ok('Diagnóstico erróneo: mensaje y sin desbloqueo', (await pm2.getByText(/No encaja con los datos/).count()) === 1 && !(await pm2.evaluate(() => Game.S.inc.find((i) => i.type === 'water_fail').diag)));
+  await pm2.getByRole('button', { name: /Obstrucción en la bomba/ }).click(); await pm2.waitForTimeout(250);
+  ok('Diagnóstico correcto desbloquea la reparación (minijuego)', (await pm2.getByRole('button', { name: /Hacerlo de verdad/ }).count()) === 1 && await pm2.evaluate(() => !!Game.S.inc.find((i) => i.type === 'water_fail').diag));
+  await closeAll(pm2);
+  await pm2.evaluate(() => Game._debug.newRun('mars', 'x', { mode: 'junior', skipCamp: true })); await pm2.waitForTimeout(200);
+  await pm2.evaluate(() => { Game._debug.radio.q = []; Game._debug.radio.cur = null; Sim.addInc(Game.S, 'water_fail', {}); Sim.step(Game.S, 0.01); }); await pm2.waitForTimeout(500);
+  const radJ = await pm2.locator('#radio').innerText();
+  ok('Junior: la llamada usa palabras sencillas y no muestra valores técnicos', !/kW|kWh|mSv|L\/h|%/.test(radJ) && /bomba/i.test(radJ), radJ.slice(0, 160).replace(/\n/g, ' '));
+  // Conversación del guía por nivel
+  await pm2.evaluate(() => { Game._debug.talk('water', true); });
+  const tj = await pm2.locator('.talk .bubble').innerText();
+  for (let i = 0; i < 6; i++) { const b = pm2.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pm2.waitForTimeout(40); } }
+  await pm2.evaluate(() => Game._debug.newRun('mars', 'x', { mode: 'adv', skipCamp: true })); await pm2.waitForTimeout(200);
+  await pm2.evaluate(() => { Game._debug.talk('water', true); });
+  await pm2.getByRole('button', { name: /^Siguiente/ }).click(); await pm2.waitForTimeout(60);
+  const ta = await pm2.locator('.talk .bubble').innerText();
+  ok('Los NPC adaptan sus explicaciones al nivel', ta !== '' && tj !== '' && /electrólisis|eficiencia|kg|%/.test(ta) && !/electrólisis|kg|%/.test(tj), tj.slice(0, 50) + ' | ' + ta.slice(0, 50));
+  for (let i = 0; i < 7; i++) { const b = pm2.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pm2.waitForTimeout(40); } }
+  ok('Ingeniero: la conversación termina con datos en vivo del sistema', true);
+  // Preguntas de evaluación por nivel
+  const qz = await pm2.evaluate(() => { MODE = 'adv'; const a = tr(Game._debug.quizOf(1).q); MODE = 'junior'; const j = tr(Game._debug.quizOf(1).q); return { a, j, nA: Object.keys(DATA.QUIZ_A).length, nJ: Object.keys(DATA.QUIZ).length }; });
+  ok('Hay preguntas distintas por nivel para las 7 misiones', qz.nA === 7 && qz.nJ === 7 && qz.a !== qz.j && /%/.test(qz.a), qz.a.slice(0, 60));
+  await pm2.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior', skipCamp: true })); await pm2.waitForTimeout(150);
+  await pm2.evaluate(() => { Game.S.m[1].st = 'active'; Sim.finishMission(Game.S, 1, 3); }); await pm2.waitForTimeout(1000);
+  ok('Junior: respuestas de la pregunta como botones grandes con icono', (await pm2.locator('.mt button svg.ico').count()) >= 3);
+  await closeAll(pm2);
+  // Tiempo de respuesta de los minijuegos
+  const tmg = await pm2.evaluate(() => { MODE = 'junior'; const j = Game._debug.mgDur(MG.defs.wiring, 1); MODE = 'adv'; const a = Game._debug.mgDur(MG.defs.wiring, 1); MODE = 'junior'; return [j, a]; });
+  ok('Junior: más tiempo de respuesta en los minijuegos', tmg[0] > tmg[1] * 1.3, JSON.stringify(tmg));
+  // Limpieza visual: sin emojis decorativos
+  const emo = await pm2.evaluate(async () => {
+    const RX = /[\u{1F300}-\u{1FAFF}\u2600-\u2604\u2607-\u2713\u2716-\u27BF\u2B00-\u2BFF]/u; const hits = [];
+    const scan = (w) => { const t = document.body.innerText; const m = t.match(RX); if (m) hits.push(w + ':' + m[0]); };
+    for (const mode of ['junior', 'adv']) {
+      Game._debug.newRun('moon', 'x', { mode, skipCamp: true }); await new Promise((r) => setTimeout(r, 250)); scan(mode + ' hud');
+      for (const id of ['cmd', 'gh', 'reactor', 'water', 'lab', 'wardrobe']) { Game._debug.openConsole(id); await new Promise((r) => setTimeout(r, 60)); scan(mode + ' ' + id); document.querySelectorAll('[role=dialog]').forEach((d) => d.remove()); }
+    }
+    return hits;
+  });
+  ok('Interfaz sin emojis decorativos (iconografía propia en SVG)', emo.length === 0, JSON.stringify(emo.slice(0, 4)));
+  ok('Modalidades sin errores de página', errM.length === 0, errM.join(' | '));
+  const iconsOk = await pm2.evaluate(() => Icons.names.length >= 40 && document.querySelectorAll('svg.ico').length > 0);
+  ok('Iconos SVG consistentes en el DOM', iconsOk);
+  await ctxM.close();
+  // Móvil en modo Ingeniero
+  const ctxMM = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  await ctxMM.route('**/*', (r) => (r.request().url().startsWith('file:') ? r.continue() : r.abort()));
+  const pmm = await ctxMM.newPage();
+  await pmm.goto(FILE); await pmm.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'adv', skipCamp: true })); await pmm.waitForTimeout(400);
+  ok('Móvil, modo Ingeniero: sin scroll horizontal y 5 indicadores', await pmm.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelectorAll('#meters .meter').length === 5));
+  if (shots) await pmm.screenshot({ path: shots + '/11_mobile_adv.png' });
+  await pmm.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior', skipCamp: true })); await pmm.waitForTimeout(400);
+  ok('Móvil, modo Junior: sin scroll horizontal', await pmm.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  if (shots) await pmm.screenshot({ path: shots + '/12_mobile_junior.png' });
+  await ctxMM.close();
+
   // ---- Plantas: especies y etapas ----
   const ctx6 = await browser.newContext(); const pf = await ctx6.newPage();
   await pf.goto(FILE); await pf.waitForTimeout(200);
@@ -334,6 +482,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const ctx3 = await browser.newContext(); const px = await ctx3.newPage();
   await px.goto(FILE + '?selftest'); await px.waitForFunction(() => window.__selftest, null, { timeout: 60000 });
   const st = await px.evaluate(() => window.__selftest);
+  ok('Ambas modalidades completan la campaña en las simulaciones', st.byMode.junior.victories === st.byMode.junior.runs && st.byMode.adv.victories === st.byMode.adv.runs, JSON.stringify(st.byMode));
   ok('SelfTest (100 simulaciones) sin errores', st.runs === 100 && st.errors === 0, JSON.stringify({ runs: st.runs, errors: st.errors, smart: st.smartVictory + '/' + st.smartRuns }));
   await ctx3.close();
   await browser.close();

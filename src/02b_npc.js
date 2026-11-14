@@ -137,5 +137,32 @@ const NPCDATA = (function () {
   const ACCESS = { cmd: ['commander'], comms: ['commander'], med: ['medic'], gh: ['agri'], plant: ['agri'], reactor: ['engineer'], solar: ['engineer'], balance: ['engineer'],
     water: ['engineer', 'medic'], o2: ['medic', 'engineer'], shield: ['scientist', 'engineer'], rover: ['engineer'], isru: ['engineer'], lab: ['scientist'], spec: ['scientist'], log: ['scientist'] };
 
-  return { PEOPLE, GUIDE, TALK, CAMP, KEY, KEYTARGET, INC_NPC, INC_CONSOLE, CONSEQ, RES, RES_ROOM, PLANT, ACCESS };
+  // Opciones de diagnóstico (modo Ingeniero). El orden debe coincidir con Sim.DIAG_OK.
+  const DIAG = {
+    water_fail: { opts: [{ es: 'Obstrucción en la bomba o el filtro (cae el caudal con alimentación normal)', en: 'Pump or filter blockage (flow drops with normal power)' }, { es: 'Falta de energía en el reciclador', en: 'Lack of power to the recycler' }, { es: 'Sensor de nivel del depósito descalibrado', en: 'Tank level sensor out of calibration' }] },
+    pressure_leak: { opts: [{ es: 'Fallo del compresor', en: 'Compressor failure' }, { es: 'Fuga en una junta (la presión cae aunque el compresor está alimentado)', en: 'Seal leak (pressure drops even though the compressor is powered)' }, { es: 'Sensor de presión averiado', en: 'Faulty pressure sensor' }] },
+    comms_blackout: { opts: [{ es: 'Conjunción solar: el Sol queda entre la Tierra y la base', en: 'Solar conjunction: the Sun sits between Earth and the base' }, { es: 'Falta de energía en la antena', en: 'Lack of power to the antenna' }, { es: 'Fallo del equipo de la antena (la alimentación es normal)', en: 'Antenna hardware fault (power is normal)' }] },
+    thermal_fail: { opts: [{ es: 'Falta de energía para la calefacción', en: 'Not enough power for heating' }, { es: 'Circuito térmico degradado (alimentación normal, eficacia baja)', en: 'Degraded thermal loop (normal supply, low effectiveness)' }, { es: 'Temperatura exterior inusualmente baja', en: 'Unusually low outside temperature' }] },
+    wear: { opts: [{ es: 'Desgaste del equipo: la salud del sistema bajó', en: 'Equipment wear: system health dropped' }, { es: 'Falta de materiales de repuesto', en: 'Lack of spare materials' }, { es: 'Error de operación de la tripulación', en: 'Crew operating error' }] },
+    sensor_drift: { opts: [{ es: 'Fallo del generador de O₂', en: 'O₂ generator failure' }, { es: 'Fuga de gas', en: 'Gas leak' }, { es: 'Deriva del sensor: la lectura se desvía y la producción es normal', en: 'Sensor drift: the reading deviates while production is normal' }] }
+  };
+  // Datos del modelo clasificados: real (medición NASA/normas), hist (registro histórico), model (modelo simplificado), game (valor de jugabilidad)
+  const PARAMS = [
+    { k: 'real', n: { es: 'O₂ consumido por persona', en: 'O₂ used per person' }, v: '0,84 kg/día', s: 'NASA' },
+    { k: 'real', n: { es: 'Agua por kg de O₂ (electrólisis)', en: 'Water per kg of O₂ (electrolysis)' }, v: '1,125 L/kg', s: '2 H₂O → 2 H₂ + O₂' },
+    { k: 'real', n: { es: 'Rango seguro de O₂ en cabina', en: 'Safe cabin O₂ range' }, v: '19,5–23,5 %', s: 'OSHA 29 CFR 1910.146' },
+    { k: 'real', n: { es: 'Dosis de fondo Marte', en: 'Mars background dose' }, v: '≈ 0,64 mSv/día', s: 'MSL/RAD (Hassler et al., Science 2014)' },
+    { k: 'real', n: { es: 'Dosis de fondo Luna', en: 'Moon background dose' }, v: '≈ 1,37 mSv/día', s: "Chang'e-4 LND (Zhang et al., Sci. Adv. 2020)" },
+    { k: 'real', n: { es: 'Retraso de la luz Tierra–Marte', en: 'Earth–Mars light delay' }, v: '≈ 3–22 min', s: 'NASA' },
+    { k: 'hist', n: { es: 'Eventos solares usados', en: 'Solar events used' }, v: '2003-10-28 X17 · 2017-09-06 X9.3 · 2024-05-10 G5', s: 'NASA DONKI' },
+    { k: 'hist', n: { es: 'Opportunity deja de comunicar', en: 'Opportunity stops communicating' }, v: '2018-06-10', s: 'NASA JPL' },
+    { k: 'model', n: { es: 'Eficiencia del reciclador de agua', en: 'Water recycler efficiency' }, v: '85 % eco · 93 % máx.', s: es0('Menor que el mejor valor de la ISS (>90 %)', 'Below the ISS best (>90%)') },
+    { k: 'model', n: { es: 'Tormenta solar sin blindaje', en: 'Unshielded solar storm' }, v: '2,0–2,8 mSv/h, 14–22 h', s: es0('Modelo, no medición', 'Model, not a measurement') },
+    { k: 'model', n: { es: 'Reactor / paneles', en: 'Reactor / panels' }, v: '6–10 kW / 12–18 kW', s: es0('Reducido respecto a diseños de NASA (~40 kWe)', 'Scaled down from NASA designs (~40 kWe)') },
+    { k: 'game', n: { es: 'Ciclo de cultivo', en: 'Crop cycle' }, v: es0('7 días simulados', '7 simulated days'), s: es0('Compresión educativa', 'Educational compression') },
+    { k: 'game', n: { es: 'Escala de comunicaciones', en: 'Communication scale' }, v: es0('1 min-luz ≈ 1 h simulada', '1 light-min ≈ 1 simulated h'), s: es0('Para que el retraso se note', 'So the delay is noticeable') },
+    { k: 'game', n: { es: 'Límite de dosis de la partida', en: 'Game dose limit' }, v: '120 / 80 / 60 mSv', s: es0('Umbral del juego, no límite médico', 'Game threshold, not a medical limit') }
+  ];
+  function es0(a, b) { return (typeof LANG !== 'undefined' && LANG === 'en') ? b : a; }
+  return { DIAG, PARAMS, PEOPLE, GUIDE, TALK, CAMP, KEY, KEYTARGET, INC_NPC, INC_CONSOLE, CONSEQ, RES, RES_ROOM, PLANT, ACCESS };
 })();
