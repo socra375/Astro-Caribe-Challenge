@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Junior Astronaut Mission Trainer: simulador educativo 2D para aprender a gestionar un puesto avanzado en la Luna o Marte.">
+<title>Junior Astronaut Mission Trainer</title>
+<style>
+/* ===== Design tokens (roles). Contrast checked with tests/contrast.js ===== */
+:root{
+  --bg:#070b1a; --surface:#111a33; --surface-2:#18244a; --border:#2c3d70; --border-input:#5a73b8;
+  --text:#eef3ff; --text-muted:#b4c0e0; --accent:#38d6ff; --on-accent:#04121c;
+  --danger:#ff6b6b; --warning:#ffc24a; --info:#6fb3ff; --success:#5fe39a;
+  --radius:10px; --radius-lg:16px; --shadow:0 8px 30px rgba(0,0,0,.45);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Noto Sans",sans-serif;
+  --fs-sm:14px; --fs-md:16px; --fs-lg:20px; --fs-xl:28px; --fs-xxl:40px;
+  --scale:1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:calc(var(--fs-md)*var(--scale));overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#app{position:fixed;inset:0}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block;background:#02040c}
+.hidden{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ===== Buttons ===== */
+.btn{appearance:none;border:2px solid var(--border-input);background:var(--surface-2);border-radius:var(--radius);padding:10px 14px;min-height:44px;cursor:pointer;font-weight:600;line-height:1.2;transition:transform .08s,background .15s}
+.btn:hover{background:#22315f}
+.btn:active{transform:scale(.97)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.primary:hover{background:#7fe6ff}
+.btn.danger{border-color:var(--danger);color:#ffd9d9}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:var(--fs-sm)}
+.btn.ghost{background:transparent}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.col{display:flex;flex-direction:column;gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.muted{color:var(--text-muted)}
+.small{font-size:var(--fs-sm)}
+.tag{display:inline-flex;gap:4px;align-items:center;border-radius:999px;padding:2px 10px;font-size:var(--fs-sm);border:1px solid var(--border-input);background:var(--surface)}
+.tag.crit{border-color:var(--danger);color:#ffd2d2}
+.tag.warn{border-color:var(--warning);color:#ffe7b3}
+.tag.info{border-color:var(--info);color:#d6e8ff}
+.tag.ok{border-color:var(--success);color:#cbf7dd}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.card h3{margin:0 0 8px;font-size:var(--fs-lg)}
+h2{font-size:var(--fs-xl);margin:0 0 10px}
+p{line-height:1.45;margin:6px 0}
+ul{margin:6px 0;padding-left:20px;line-height:1.45}
+label{cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
+select{background:var(--surface-2);border:2px solid var(--border-input);border-radius:var(--radius);padding:8px;min-height:44px}
+
+/* ===== HUD ===== */
+#hud{position:absolute;left:0;right:0;top:0;padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left));display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;pointer-events:none}
+#hud .meters{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
+.meter{background:rgba(10,16,36,.88);border:1px solid var(--border);border-radius:12px;padding:5px 8px;min-width:104px;cursor:pointer}
+.meter .lbl{display:flex;justify-content:space-between;gap:6px;font-size:13px;font-weight:700}
+.meter .bar{height:8px;background:#26345e;border-radius:6px;overflow:hidden;margin-top:4px}
+.meter .bar i{display:block;height:100%;background:var(--success);border-radius:6px;transition:width .3s}
+.meter.warn{border-color:var(--warning)} .meter.warn .bar i{background:var(--warning)}
+.meter.crit{border-color:var(--danger);animation:pulse 1s infinite} .meter.crit .bar i{background:var(--danger)}
+.meter .st{font-size:11px;color:var(--text-muted)}
+@keyframes pulse{50%{box-shadow:0 0 0 3px rgba(255,107,107,.35)}}
+#hudR{margin-left:auto;display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+.chip{background:rgba(10,16,36,.88);border:1px solid var(--border);border-radius:12px;padding:6px 10px;font-weight:700;font-size:14px;min-height:40px;display:flex;align-items:center;gap:6px}
+.chip.btn{padding:6px 10px}
+#mini{position:absolute;right:8px;bottom:8px;width:190px;height:150px;border:1px solid var(--border);border-radius:12px;background:rgba(5,8,20,.85)}
+#hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:min(560px,80vw);background:rgba(10,16,36,.92);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;font-size:15px;text-align:center;pointer-events:none}
+#prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:64px}
+#prompt .btn{font-size:18px;box-shadow:var(--shadow)}
+#toasts{position:absolute;left:8px;top:120px;display:flex;flex-direction:column;gap:6px;max-width:min(380px,70vw);pointer-events:none}
+.toast{background:rgba(10,16,36,.95);border-left:6px solid var(--info);border-radius:10px;padding:8px 10px;font-size:14px;box-shadow:var(--shadow);pointer-events:auto;animation:slidein .25s}
+.toast.crit{border-color:var(--danger)} .toast.warn{border-color:var(--warning)} .toast.ok{border-color:var(--success)}
+.toast b{display:block}
+@keyframes slidein{from{transform:translateX(-20px);opacity:0}}
+
+/* ===== Touch ===== */
+#touch{position:absolute;inset:auto 0 0 0;height:0}
+#joy{position:absolute;left:24px;bottom:24px;width:140px;height:140px;border-radius:50%;background:rgba(56,214,255,.12);border:2px solid rgba(56,214,255,.5)}
+#knob{position:absolute;left:45px;top:45px;width:50px;height:50px;border-radius:50%;background:rgba(56,214,255,.6)}
+#btnE{position:absolute;right:24px;bottom:180px;width:84px;height:84px;border-radius:50%;font-size:24px}
+
+/* ===== Screens & modals ===== */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 30% 20%,#1a2a5c 0,#070b1a 60%);overflow:auto}
+.screen.dim{background:rgba(3,6,16,.72)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);width:min(980px,100%);max-height:calc(100% - 8px);overflow:auto;padding:18px;position:relative}
+.panel.narrow{width:min(560px,100%)}
+.panel .close{position:absolute;right:10px;top:10px}
+.title-big{font-size:clamp(28px,6vw,48px);font-weight:900;letter-spacing:.5px;margin:0;background:linear-gradient(90deg,#38d6ff,#a98bff,#5fe39a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
+.choice{border:2px solid var(--border-input);background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;text-align:left;cursor:pointer;min-height:44px}
+.choice[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,214,255,.25)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px;padding-right:44px}
+.tabs .btn[aria-selected=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.pbar{height:12px;background:#26345e;border-radius:8px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.delta-up{color:var(--success)} .delta-down{color:var(--danger)}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-sm)}
+th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical-align:top}
+.mg-wrap{position:relative;width:100%;max-width:720px;margin:0 auto}
+.mg-wrap canvas{width:100%;height:auto;background:#050915;border-radius:12px;border:1px solid var(--border);display:block;touch-action:none}
+.why{border-left:4px solid var(--info);padding-left:10px}
+.earth3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.earth3 .card{border-top:4px solid var(--accent)}
+.earth3 .card.rd{border-top-color:#ff8a65}
+.earth3 .card.gl{border-top-color:var(--success)}
+.sdg{display:inline-block;border-radius:8px;padding:2px 8px;margin:2px;font-weight:700;font-size:13px;color:#fff}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:13px}
+@media (max-width:600px){
+  #hud{padding:4px 6px 0}
+  #hud .meters{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:100%}
+  .meter{min-width:0;padding:3px 6px;border-radius:9px}.meter .lbl{font-size:11px}.meter .bar{height:5px;margin-top:2px}.meter .st{display:none}
+  #hudR{margin-left:0;width:100%;justify-content:space-between;gap:4px}
+  .chip{min-height:38px;padding:4px 8px;font-size:13px}
+  #mini{width:112px;height:90px;top:128px;right:6px;bottom:auto}
+  #hint{top:128px;bottom:auto;left:6px;transform:none;max-width:calc(100% - 132px);font-size:13px;padding:6px 8px}
+  #toasts{top:auto;bottom:200px;left:6px}
+  #prompt{bottom:190px}
+  #btnE{bottom:40px;right:20px}
+  #joy{left:16px;bottom:24px}
+  .panel{padding:12px}
+}
+html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="Vista cenital del puesto avanzado"></canvas>
+  <div id="hud" class="hidden">
+    <div class="meters" id="meters"></div>
+    <div id="hudR">
+      <div class="chip" id="clock" aria-live="off">D1 00:00</div>
+      <button class="chip btn" id="bSpeed" title="Velocidad">x1</button>
+      <button class="chip btn" id="bAlerts" title="Alertas">🔔 0</button>
+      <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa">❚❚</button>
+      <button class="chip btn" id="bMute" title="Silencio (M)">🔊</button>
+      <button class="chip btn" id="bMenu" title="Menú">☰</button>
+    </div>
+  </div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="hint" class="hidden"></div>
+  <div id="prompt" class="hidden"><button class="btn primary" id="actBtn"></button></div>
+  <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button class="btn primary" id="btnE" aria-label="Interactuar">E</button></div>
+  <canvas id="mini" class="hidden" width="380" height="300" aria-hidden="true"></canvas>
+  <div id="layer"></div>
+</div>
+<script>
