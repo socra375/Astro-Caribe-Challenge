@@ -20,7 +20,7 @@ const World = (function () {
   const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff' };
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [];
   let staticCv = null, scen = 'moon';
-  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0 };
+  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0 };
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
   /* ---------- Construcción del mapa ---------- */
@@ -100,11 +100,11 @@ const World = (function () {
   }
   function nearestNode(x, y) { let best = null, bd = 1e9; for (const k in N) { const d = (N[k][0] - x) ** 2 + (N[k][1] - y) ** 2; if (d < bd) { bd = d; best = k; } } return best; }
 
-  const BOTCOL = { engineer: '#ff9a3d', scientist: '#9a8cff', medic: '#ff6b9a', agri: '#3ddc84' };
+  const BOTCOL = { engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
   function init(sc) {
     scen = sc; build(); staticCv = null;
     player.x = 30; player.y = 9.5; player.dir = 2;
-    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => { const n = HOME[role][0]; return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + i, dir: 2, anim: 0, task: 'wander' }; });
+    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => { const n = HOME[role][0]; return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + i, dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false }; });
     airlock = { st: 'in', t: 0 }; parts = [];
   }
 
@@ -140,6 +140,9 @@ const World = (function () {
       player.anim += dt * 8; player.stepT += dt;
       if (player.stepT > 0.32) { player.stepT = 0; Sfx.play('step'); }
     }
+    if (!player.moving) player.anim += dt * 8;
+    if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
+    for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
     // Bots
     for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S, i + 1);
     // Puertas
@@ -201,7 +204,7 @@ const World = (function () {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role]; const tgt = h[Math.floor(Math.random() * h.length)]; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; }
+        if (b.wait <= 0) { const h = HOME[b.role]; const tgt = h[Math.floor(Math.random() * h.length)]; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -288,40 +291,34 @@ const World = (function () {
     c.restore();
   }
 
-  function drawAstro(c, x, y, col, dir, anim, moving, label, task) {
-    const bob = moving ? Math.sin(anim) * (scen === 'moon' ? 4 : 2) : 0;
-    c.save(); c.translate(x, y - Math.abs(bob));
-    c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(0, 14 + Math.abs(bob), 12, 5, 0, 0, 7); c.fill();
-    // mochila
-    const bx = dir === 1 ? -10 : dir === 3 ? 10 : 0;
-    if (dir !== 2) { c.fillStyle = '#c8ced9'; rr(c, -9 + bx * 0.6, -12, 18, 20, 5); c.fill(); }
-    // piernas
-    const leg = moving ? Math.sin(anim) * 4 : 0;
-    c.fillStyle = col; rr(c, -9, 4 + leg, 7, 11, 3); c.fill(); rr(c, 2, 4 - leg, 7, 11, 3); c.fill();
-    // cuerpo
-    c.fillStyle = col; rr(c, -12, -14, 24, 24, 10); c.fill();
-    c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.stroke();
-    // visor
-    if (dir !== 0) {
-      const vx = dir === 1 ? 3 : dir === 3 ? -3 : 0;
-      c.fillStyle = '#0b1830'; rr(c, -8 + vx, -10, 16, 10, 5); c.fill();
-      c.fillStyle = 'rgba(160,230,255,.85)'; rr(c, -5 + vx, -9, 6, 3, 2); c.fill();
-    } else { c.fillStyle = '#c8ced9'; rr(c, -9, -12, 18, 16, 5); c.fill(); }
-    c.restore();
+  function botPose(b, S) {
+    if (b.act) return b.act;
+    if (b.moving) return b.carry ? 'carry' : 'walk';
+    if (b.task === 'repair') return 'repair';
+    if (b.task === 'shelter') return 'idle';
+    return b.work ? 'interact' : 'idle';
+  }
+  function drawChar(c, role, x, y, dir, t, pose, moving, label) {
+    const sc = 0.82;
+    Chars.draw(c, role, x, y, { dir, t, pose, moving, scale: sc, rm: reduced });
     if (label) {
       c.font = 'bold 11px system-ui'; c.textAlign = 'center';
-      const tw = c.measureText(label).width + 10;
-      c.fillStyle = 'rgba(5,8,20,.75)'; rr(c, x - tw / 2, y - 36, tw, 15, 6); c.fill();
-      c.fillStyle = '#eef3ff'; c.fillText(label, x, y - 25);
+      const tw = c.measureText(label).width + 10, ly = y - Chars.HEIGHT * sc - 14;
+      c.fillStyle = 'rgba(5,8,20,.75)'; rr(c, x - tw / 2, ly - 11, tw, 15, 6); c.fill();
+      c.fillStyle = '#eef3ff'; c.fillText(label, x, ly);
     }
-    if (task === 'repair') { c.font = '14px system-ui'; c.fillText('🔧', x + 14, y - 14); }
+  }
+  function setAct(who, act, dur) {
+    const list = who === 'all' ? [player].concat(bots) : who === 'player' ? [player] : bots.filter((b) => b.role === who);
+    for (const e of list) { e.act = act; e.actT = dur || 3; }
   }
 
   function render(ctx, S, o) {
     o = o || {};
     if (!staticCv) buildStatic();
     const cw = ctx.canvas.width, ch = ctx.canvas.height, dpr = o.dpr || 1;
-    const zoom = clampN((cw / dpr) / (18 * TS), 0.62, 1.5) * dpr;
+    const across = clampN((cw / dpr) / 40, 11, 18); // pantallas estrechas: cámara más cercana para que los personajes se lean
+    const zoom = clampN((cw / dpr) / (across * TS), 0.62, 1.5) * dpr;
     cam.z = zoom;
     const vw = cw / zoom, vh = ch / zoom;
     cam.x = clampN(player.x * TS - vw / 2, -TS * 2, W * TS - vw + TS * 2);
@@ -363,8 +360,9 @@ const World = (function () {
     // Muestras
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
     // Entidades (orden por y)
-    const ents = bots.map((b) => ({ y: b.y, f: () => drawAstro(ctx, b.x * TS, b.y * TS, BOTCOL[b.role], b.dir, b.anim, b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop(), b.task) }));
-    ents.push({ y: player.y, f: () => drawAstro(ctx, player.x * TS, player.y * TS, '#38d6ff', player.dir, player.anim, player.moving, o.youLabel || '', '') });
+    const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
+    const ents = bots.map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
+    ents.push({ y: player.y, f: () => drawChar(ctx, 'commander', player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     // Partículas
     for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
@@ -424,6 +422,6 @@ const World = (function () {
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
 
-  return { init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
-    _test: { blocked, canStand, get doors() { return doors; }, bfs, N } };
+  return { setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
+    _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, bfs, N } };
 })();

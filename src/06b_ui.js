@@ -10,7 +10,7 @@
   const consoleName = (id) => tr(CNAME[id]) || id;
   function openConsole(c) {
     if (c.id === 'sample') {
-      return confirmDecision('eva', {}, '🪨 ' + _('collect'), () => { c.s.taken = true; if (World.zone() === 'outside') toast(LANG === 'es' ? 'Muestra recogida' : 'Sample collected', LANG === 'es' ? 'Llévala al laboratorio para analizarla.' : 'Take it to the lab for analysis.', 'ok'); });
+      return confirmDecision('eva', {}, '🪨 ' + _('collect'), () => { c.s.taken = true; World.setAct('player', 'carry', 8); if (World.zone() === 'outside') toast(LANG === 'es' ? 'Muestra recogida' : 'Sample collected', LANG === 'es' ? 'Llévala al laboratorio para analizarla.' : 'Take it to the lab for analysis.', 'ok'); });
     }
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),

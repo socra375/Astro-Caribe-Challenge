@@ -165,6 +165,32 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Móvil sin errores', err2.length === 0, err2.join(' | '));
   await ctx2.close();
 
+  // ---- Personajes: render completo y siluetas distintas ----
+  const ctx4 = await browser.newContext(); const pc = await ctx4.newPage(); const err4 = [];
+  pc.on('pageerror', (e) => err4.push(e.message));
+  await pc.goto(FILE + '?sheet'); await pc.waitForTimeout(600);
+  ok('Hoja de personajes abre', await pc.getByRole('img', { name: /Hoja de presentación/ }).isVisible());
+  const chk = await pc.evaluate(() => {
+    const poses = ['idle', 'walk', 'interact', 'repair', 'carry', 'alert', 'celebrate'];
+    const c = document.createElement('canvas'); c.width = 120; c.height = 140; const x = c.getContext('2d');
+    let n = 0;
+    for (const r of Chars.ORDER) for (let d = 0; d < 4; d++) for (const p of poses) { x.clearRect(0, 0, 120, 140); Chars.draw(x, r, 60, 125, { dir: d, t: 0.7, pose: p, moving: p === 'walk', scale: 1.6 }); n++; }
+    // Máscaras de silueta (solo alfa, sin color) de frente y de perfil
+    const mask = (r, d) => { x.clearRect(0, 0, 120, 140); Chars.draw(x, r, 60, 125, { dir: d, t: 0, pose: 'idle', scale: 1.6, shadow: false }); const a = x.getImageData(0, 0, 120, 140).data; const m = new Uint8Array(120 * 140); for (let i = 0; i < m.length; i++) m[i] = a[i * 4 + 3] > 40 ? 1 : 0; return m; };
+    const iou = (a, b) => { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { i += a[k] & b[k]; u += a[k] | b[k]; } return i / u; };
+    let maxF = 0, maxS = 0;
+    const R = Chars.ORDER;
+    for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) { maxF = Math.max(maxF, iou(mask(R[i], 2), mask(R[j], 2))); maxS = Math.max(maxS, iou(mask(R[i], 1), mask(R[j], 1))); }
+    // Extremidades separadas: debe haber hueco transparente entre las piernas (frente) a la altura de la rodilla
+    const m = mask('commander', 2); const ky = Math.round(125 - 16 * 1.6); const gap = m[ky * 120 + 60] === 0;
+    return { n, maxF: +maxF.toFixed(3), maxS: +maxS.toFixed(3), gap };
+  });
+  ok('140 combinaciones personaje × dirección × pose sin errores', chk.n === 140 && err4.length === 0, chk.n + ' ' + err4.join('|'));
+  ok('Siluetas distintas entre especialidades (IoU frente < 0.9)', chk.maxF < 0.9, 'max IoU frente ' + chk.maxF);
+  ok('Siluetas distintas de perfil (IoU < 0.9)', chk.maxS < 0.9, 'max IoU perfil ' + chk.maxS);
+  ok('Piernas separadas (hueco entre piernas)', chk.gap);
+  await ctx4.close();
+
   // ---- SelfTest en el navegador ----
   const ctx3 = await browser.newContext(); const px = await ctx3.newPage();
   await px.goto(FILE + '?selftest'); await px.waitForFunction(() => window.__selftest, null, { timeout: 60000 });

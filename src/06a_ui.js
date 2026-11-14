@@ -104,7 +104,8 @@ const Game = (function () {
       const [t, b, ty] = logText(e);
       toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
       Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
-      if (e.k === 'm.done') { stats.missions++; unlock('first'); }
+      if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
+      if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
       if (e.k === 'res.solar_storm') unlock('shelter');
       if (e.k === 'crop.harvest') { stats.harvest += e.p.kg; if (stats.harvest >= 10) unlock('farmer'); }
@@ -233,7 +234,7 @@ const Game = (function () {
         if (S.ended) { saveRun(); setTimeout(showReport, 900); }
       }
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
-      World.render(ctx, S, { dpr, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
+      World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
       hudT += dt; if (hudT > 0.25) { hudT = 0; updateHud(); updatePrompt(); }
     } else if (!running) drawMenuBg(now / 1000);
@@ -310,7 +311,7 @@ const Game = (function () {
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn('▶ ' + _('cont'), () => loadRun() || mainMenu()) : null,
-        btn('📘 ' + _('manual'), manual), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
+        btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))

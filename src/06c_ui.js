@@ -193,10 +193,65 @@
       sec('🏁 ' + (es ? 'Ganar y aprender' : 'Winning and learning'), es ? 'Ganas al completar las 7 misiones manteniendo los sistemas. Si se agota un recurso esencial, la tripulación es evacuada sana y salva y recibes un informe para mejorar.' : 'You win by completing all 7 missions while keeping systems running. If an essential resource runs out, the crew is safely evacuated and you get a report to improve.'),
       sec('🧪 ' + (es ? 'Datos y modelo' : 'Data and model'), es ? 'Distinguimos: datos reales medidos (con fuente), estimaciones de modelo y simplificaciones para jugar. Consulta «Fuentes científicas».' : 'We distinguish real measured data (with source), model estimates and gameplay simplifications. See "Science sources".'),
       sec('🏅 ' + _('stats'), (es ? 'Partidas: ' : 'Games: ') + stats.runs + ' · ' + (es ? 'Victorias: ' : 'Wins: ') + stats.wins + ' · ' + (es ? 'Misiones: ' : 'Missions: ') + stats.missions + ' · ' + (es ? 'Reparaciones: ' : 'Repairs: ') + stats.repairs, h('ul', null, Object.keys(DATA.ACH).map((k) => h('li', null, (ach[k] ? '🏅 ' : '⬜ ') + tr(DATA.ACH[k])))))),
-      h('div', { class: 'row', style: { marginTop: '10px' } }, btn('🎓 ' + _('tut'), () => { if (running) tutorial(); else { tutorialStandalone(); } }), btn('🎮 ' + (es ? 'Practicar minijuegos' : 'Practice mini-games'), practiceMenu)));
+      h('div', { class: 'row', style: { marginTop: '10px' } }, btn('🎓 ' + _('tut'), () => { if (running) tutorial(); else { tutorialStandalone(); } }), btn('👩‍🚀 ' + (es ? 'Hoja de personajes' : 'Character sheet'), sheetPanel), btn('🎮 ' + (es ? 'Practicar minijuegos' : 'Practice mini-games'), practiceMenu)));
     if (running) push(panel('📘 ' + _('manual'), body)); else showScreen(h('div', { class: 'panel' }, btn(_('back'), mainMenu, 'sm'), h('h2', null, '📘 ' + _('manual')), body));
   }
   function tutorialStandalone() { tutorial(0); }
+
+  /* =================== HOJA DE PERSONAJES =================== */
+  function sheetPanel() {
+    const es = LANG === 'es', CW = 1200, ROW = 300, HEAD = 70;
+    const cvs = h('canvas', { width: CW, height: HEAD + ROW * 5 + 20, style: { width: '100%', background: '#0b1124', borderRadius: '12px' }, role: 'img', 'aria-label': es ? 'Hoja de presentación de los cinco astronautas' : 'Character sheet of the five astronauts' });
+    const anim = h('canvas', { width: CW, height: 560, style: { width: '100%', background: '#0b1124', borderRadius: '12px', marginTop: '10px' }, role: 'img', 'aria-label': es ? 'Animaciones de los personajes' : 'Character animations' });
+    const POSES = ['idle', 'walk', 'interact', 'repair', 'carry', 'alert', 'celebrate'];
+    const PN = es ? { idle: 'Reposo', walk: 'Caminar', interact: 'Interactuar', repair: 'Reparar', carry: 'Transportar', alert: 'Alerta', celebrate: 'Celebrar' } : { idle: 'Idle', walk: 'Walk', interact: 'Interact', repair: 'Repair', carry: 'Carry', alert: 'Alert', celebrate: 'Celebrate' };
+    const rm = document.documentElement.classList.contains('rm');
+    const wrap = (c, text, x, y, w, lh) => { const words = text.split(' '); let line = ''; for (const wd of words) { if (c.measureText(line + wd).width > w) { c.fillText(line, x, y); y += lh; line = ''; } line += wd + ' '; } c.fillText(line, x, y); return y + lh; };
+    const clipDraw = (c, fn, x, y, w, hh) => { c.save(); c.beginPath(); c.rect(x, y, w, hh); c.clip(); c.fillStyle = '#121a33'; c.fillRect(x, y, w, hh); fn(); c.restore(); c.strokeStyle = '#2c3d70'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, hh - 1); };
+    function drawSheet(t) {
+      const c = cvs.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cvs.width, cvs.height);
+      c.fillStyle = '#eef3ff'; c.font = 'bold 30px system-ui'; c.textAlign = 'left'; c.fillText(es ? 'Tripulación · hoja de personajes' : 'Crew · character sheet', 20, 42);
+      c.font = '14px system-ui'; c.fillStyle = '#b4c0e0'; c.fillText(es ? 'Frente · Espalda · Lateral · Casco · Soporte vital · Accesorio · Paleta' : 'Front · Back · Side · Helmet · Life support · Accessory · Palette', 20, 62);
+      Chars.ORDER.forEach((role, i) => {
+        const R = Chars.ROLES[role], y0 = HEAD + i * ROW;
+        c.fillStyle = i % 2 ? '#0e1630' : '#101a38'; c.fillRect(0, y0, CW, ROW - 6);
+        c.textAlign = 'left'; c.fillStyle = R.pal.acc; c.font = 'bold 22px system-ui'; c.fillText(tr(R.name), 20, y0 + 32);
+        c.fillStyle = '#eef3ff'; c.font = '14px system-ui'; let yy = wrap(c, tr(R.pers), 20, y0 + 56, 230, 18);
+        c.fillStyle = '#b4c0e0'; c.font = '13px system-ui'; yy = wrap(c, '◆ ' + tr(R.acc), 20, yy + 4, 230, 17);
+        const sw = ['suit', 'shade', 'dark', 'acc', 'glow', 'visor'];
+        sw.forEach((k, j) => { const sx = 20 + (j % 3) * 78, sy = y0 + 196 + Math.floor(j / 3) * 44; c.fillStyle = R.pal[k]; c.beginPath(); c.arc(sx + 12, sy, 11, 0, 7); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke(); c.fillStyle = '#b4c0e0'; c.font = '10px monospace'; c.fillText(R.pal[k], sx + 26, sy + 4); });
+        const lab = (txt, x) => { c.fillStyle = '#b4c0e0'; c.font = '12px system-ui'; c.textAlign = 'center'; c.fillText(txt, x, y0 + ROW - 16); };
+        [[2, es ? 'Frente' : 'Front'], [0, es ? 'Espalda' : 'Back'], [1, es ? 'Lateral' : 'Side']].forEach(([d, l], k) => { const x = 320 + k * 120; Chars.draw(c, role, x, y0 + 250, { dir: d, t, pose: 'idle', scale: 3.1, rm }); lab(l, x); });
+        clipDraw(c, () => Chars.draw(c, role, 750, y0 + 26 + 72 * 5.2, { dir: 2, t, pose: 'idle', scale: 5.2, rm, shadow: false }), 680, y0 + 20, 140, 150);
+        clipDraw(c, () => Chars.draw(c, role, 735, y0 + 180 + 72 * 3.2, { dir: 1, t, pose: 'idle', scale: 3.2, rm, shadow: false }), 680, y0 + 176, 140, 96);
+        lab(es ? 'Casco (frente y perfil)' : 'Helmet (front & profile)', 750);
+        clipDraw(c, () => Chars.draw(c, role, 910, y0 + 52 + 64 * 4.2 - 30, { dir: 0, t, pose: 'idle', scale: 4.2, rm, shadow: false }), 840, y0 + 20, 140, 252);
+        lab(es ? 'Soporte vital' : 'Life support', 910);
+        clipDraw(c, () => Chars.drawAccessory(c, role, 1070, y0 + 150, 9, t), 1000, y0 + 20, 180, 200);
+        c.fillStyle = '#eef3ff'; c.font = '11px system-ui'; c.textAlign = 'left'; wrap(c, tr(R.helmetTxt), 1002, y0 + 236, 176, 13);
+        lab(es ? 'Accesorio' : 'Accessory', 1090);
+      });
+    }
+    function drawAnim(t) {
+      const c = anim.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, anim.width, anim.height);
+      c.fillStyle = '#eef3ff'; c.font = 'bold 20px system-ui'; c.textAlign = 'left'; c.fillText(es ? 'Animaciones (en vivo)' : 'Animations (live)', 20, 30);
+      POSES.forEach((p, j) => { c.fillStyle = '#b4c0e0'; c.font = '13px system-ui'; c.textAlign = 'center'; c.fillText(PN[p], 230 + j * 140, 58); });
+      Chars.ORDER.forEach((role, i) => {
+        c.textAlign = 'left'; c.fillStyle = Chars.ROLES[role].pal.acc; c.font = 'bold 15px system-ui'; c.fillText(tr(Chars.ROLES[role].name), 20, 132 + i * 96);
+        POSES.forEach((p, j) => Chars.draw(c, role, 230 + j * 140, 156 + i * 96, { dir: p === 'walk' ? (Math.floor(t / 2) % 4) : p === 'carry' ? 1 : 2, t, pose: p, moving: p === 'walk', scale: 1.25, rm }));
+      });
+    }
+    let t0 = performance.now(), live = true;
+    const loop = (now) => { if (!cvs.isConnected || !live) return; const t = (now - t0) / 1000; drawSheet(t); drawAnim(t); requestAnimationFrame(loop); };
+    const body = h('div', null,
+      h('p', { class: 'small muted' }, es ? 'Cinco astronautas originales dibujados por código (sin imágenes externas). Cada especialidad se reconoce por su casco, su mochila de soporte vital, sus hombreras y su accesorio, no solo por el color.' : 'Five original astronauts drawn by code (no external images). Each specialty is recognizable by its helmet, life-support pack, shoulder pads and accessory, not only by color.'),
+      cvs, anim,
+      h('div', { class: 'grid2', style: { marginTop: '10px' } }, Chars.ORDER.map((role) => { const R = Chars.ROLES[role]; return h('div', { class: 'card' }, h('h3', null, tr(R.name)), h('p', { class: 'small' }, '⛑️ ' + tr(R.helmetTxt)), h('p', { class: 'small' }, '🎒 ' + tr(R.packTxt)), h('p', { class: 'small' }, '◆ ' + tr(R.acc))); })));
+    const s = running ? push(panel('👩‍🚀 ' + (es ? 'Tripulación' : 'Crew'), body), { onclose: () => (live = false) }) : (showScreen(h('div', { class: 'panel' }, btn(_('back'), mainMenu, 'sm'), h('h2', null, '👩‍🚀 ' + (es ? 'Tripulación' : 'Crew')), body)), null);
+    void s;
+    drawSheet(0); drawAnim(0);
+    requestAnimationFrame(loop);
+  }
   function practiceMenu() {
     const body = h('div', { class: 'menu-grid' }, Object.keys(MG.defs).map((k) => btn(MG.defs[k].icon + ' ' + tr(MG.defs[k].t), () => miniPlayPractice(k))));
     push(panel('🎮 ' + _('practice'), body));
@@ -256,11 +311,12 @@
     $('#actBtn').addEventListener('click', () => interact());
     document.addEventListener('pointerdown', () => Sfx.init(), { once: true });
     if (/[?&]selftest\b/.test(location.search)) { mainMenu(); selfTestPanel(); }
+    else if (/[?&]sheet\b/.test(location.search)) sheetPanel();
     else mainMenu();
     fetchDonki();
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

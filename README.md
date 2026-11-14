@@ -46,6 +46,26 @@ El jugador es el comandante. Cuatro bots con especialidades y efectos reales en 
 
 Durante una tormenta solar, si el protocolo de refugio está activo, los bots caminan al refugio y **pierden temporalmente sus bonus**: es una compensación real del modelo.
 
+### Diseño de personajes
+![Hoja de personajes](docs/personajes.png)
+
+Los cinco astronautas son originales y están dibujados por código (módulo `Chars`, archivo `src/04b_chars.js`) con trazados, polígonos y curvas por capas. No hay imágenes externas ni spritesheets. Proporción de unas 3,5 cabezas, casco separado del torso por un anillo de cuello, hombros, brazos con codo articulado y guantes, cinturón técnico, piernas separadas con rodilleras y botas voluminosas. Cada especialidad se reconoce **por la silueta**, no solo por el color:
+
+| Personaje | Casco | Soporte vital | Rasgo de silueta | Accesorio |
+|---|---|---|---|---|
+| Comandante (jugador) | Visor envolvente angular con marco dorado, cresta de navegación, antena | Dos depósitos, regulador central, panel de diagnóstico | Hombreras con alerón | Navegador holográfico en el antebrazo |
+| Ingeniera | Escudo abatible, rejilla y focos de trabajo; visor de rendija segmentado | Bastidor de carga con llave integrada y franjas de seguridad | Más ancha, blindaje en hombros y rodillas, cinturón de herramientas | Herramienta multifunción |
+| Científico | Visor hexagonal con HUD, mástil de sensores | Mochila ligera con carrusel de cápsulas de muestras | Más esbelto, mástil alto | Escáner de muestras con haz |
+| Médica | Cúpula con visor doble y lámpara anular | Mochila redondeada con módulo de primeros auxilios | Cúpula, mochila redonda que asoma, bolsas en las caderas | Escáner biomédico de anillo y banda biométrica |
+| Agrónomo | Ala parasol, visor redondeado, sensor en forma de hoja | Tubos de semillas, depósito de riego y manguera al guante | Ala ancha, bolsas de semillas | Módulo de análisis de plantas |
+
+- **Vistas:** frente, espalda, perfil derecho y perfil izquierdo (espejado), coherentes con la vista cenital del mapa. El rostro se ve parcialmente tras el visor (con expresiones: neutral, concentración, alerta y alegría).
+- **Animaciones:** reposo (respiración), caminar (brazos y piernas independientes, rodillas que se doblan), interactuar, reparar (con chispas), transportar (caja de muestras), alerta (con «!») y celebrar. Con «reducir animaciones», los saltos y vaivenes se eliminan y el balanceo de extremidades se reduce a la mitad.
+- **Pivote y tamaño:** pies en (0,0), altura ≈ 64 unidades; en el juego se dibujan a escala 0,82 (≈1,6 baldosas). La colisión sigue siendo el círculo pequeño de los pies, así que el movimiento, las puertas y los controles no cambian. En pantallas estrechas la cámara se acerca (≈11 baldosas de ancho) para que los personajes sigan siendo legibles.
+- **Cuándo se usa cada pose:** el jugador interactúa mientras hay un panel abierto, repara durante el minijuego de cableado, transporta tras recoger una muestra, se alerta si hay una alerta crítica y celebra al completar una misión. Los bots reparan, interactúan en su sala, transportan muestras o plantas al desplazarse, se alertan en el refugio y celebran con el equipo.
+- **Hoja de presentación:** `index.html?sheet` o «Manual → Hoja de personajes». Muestra las tres vistas, ampliaciones de casco, soporte vital y accesorio, paleta y las 7 animaciones en vivo, todo con el mismo código que se usa en el juego.
+- Los emblemas son originales. La médica usa una pantalla de pulso, no una cruz roja (emblema protegido).
+
 ### Simulación de recursos (el núcleo)
 Motor `Sim` independiente de la interfaz (estado JSON puro, RNG con semilla, tiempo en horas simuladas). Cinco indicadores principales:
 
@@ -176,6 +196,7 @@ Un solo archivo, organizado en módulos internos con responsabilidades separadas
 | `Sfx` | Sonidos originales sintetizados con Web Audio API |
 | `Sim` | Motor de simulación puro (entre los marcadores `/*SIM-START*/` y `/*SIM-END*/`) |
 | `SelfTest` | 100 simulaciones automáticas sobre `Sim` |
+| `Chars` | Los cinco astronautas: dibujo por capas, 4 direcciones y 7 poses |
 | `World` | Mapa, colisiones, puertas, esclusa, bots, cámara, render Canvas, partículas y minimapa |
 | `MG` | Seis minijuegos |
 | `Game` | Bucle principal, entrada, HUD, consolas, panel de consecuencias, comunicaciones, fichas, informe y menús |
@@ -202,7 +223,7 @@ También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar
 **Resultados obtenidos al construir esta versión:**
 - `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos dentro de sus límites y finales coherentes. La política activa gana 72 de 75 partidas; la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
 - `contrast.js`: 14/14 pares de tokens cumplen WCAG AA.
-- `e2e.js` (Chromium, sin Internet): **35/35** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, y SelfTest en el navegador.
+- `e2e.js` (Chromium, sin Internet): **40/40** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9.
 
 **No probado:** Firefox, Edge y Safari reales, tablets o teléfonos físicos y lectores de pantalla. El código usa solo APIs estándar (Canvas 2D, Pointer Events, Web Audio, `fetch`), pero esas plataformas no se han verificado.
 
