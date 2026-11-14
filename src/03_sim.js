@@ -48,11 +48,25 @@ const Sim = (function () {
     engineer: { cons: 1.0, ev: 1.0, maxInc: 2, dose: 80, lead: 5, startPct: 0.75, shelter: 4, repair: 1.0, grace: 1.0, mat: 36, budget: 14, samples: 4 },
     commander: { cons: 1.1, ev: 1.6, maxInc: 3, dose: 60, lead: 3, startPct: 0.62, shelter: 3, repair: 0.85, grace: 0.7, mat: 26, budget: 12, samples: 5 }
   };
+  // Especies cultivadas realmente en la ISS (Veggie / Advanced Plant Habitat). Parámetros de juego (G).
+  // y = kg de alimento por planta · light = luz necesaria (0-1) · nutr = demanda relativa · T = temperatura óptima (°C)
   const CROPS = {
-    micro: { y: 1.3, light: 0.5, water: 0.45, T: 21 },
-    lettuce: { y: 2.1, light: 0.7, water: 0.7, T: 20 },
-    radish: { y: 2.7, light: 0.8, water: 0.8, T: 19 }
+    romaine: { y: 0.7, light: 0.65, nutr: 1.0, T: 20, seeds: 1, mor: 0, prune: false },
+    mizuna: { y: 0.55, light: 0.55, nutr: 0.8, T: 19, seeds: 2, mor: 0, prune: true },
+    radish: { y: 0.9, light: 0.7, nutr: 0.9, T: 18, seeds: 1, mor: 0, prune: false },
+    chili: { y: 0.6, light: 0.85, nutr: 1.3, T: 24, seeds: 2, mor: 2, prune: true },
+    zinnia: { y: 0, light: 0.75, nutr: 1.0, T: 22, seeds: 2, mor: 5, prune: true }
   };
+  const SLOTS = 3;
+  const stageOf = (p) => (p.prog >= 1 ? 4 : p.prog >= 0.6 ? 3 : p.prog >= 0.3 ? 2 : p.prog >= 0.08 ? 1 : 0);
+  function newPlant(S, sp, prog) { return { sp, prog: prog || 0, hp: 100, moist: 60, nutr: 70, light: 0, pest: false, pestKnown: false, prune: 0, seed: Math.floor(rnd(S) * 1e6), inspected: false, age: (prog || 0) * 168 }; }
+  /* Campaña de familiarización: cada etapa desbloquea una sección al cumplir objetivos reales. */
+  const CAMP = [
+    { id: 'c1', unlock: 'water', keys: ['talk_bridge', 'cmd_resources', 'talk_life', 'med_open', 'talk_reactor', 'power_action'] },
+    { id: 'c2', unlock: 'gh', keys: ['talk_water', 'rec_fixed', 'o2_cal', 'water_hold'] },
+    { id: 'c3', unlock: 'lab', keys: ['talk_gh', 'plant3', 'water1', 'feed1', 'harvest1'] },
+    { id: 'c4', unlock: 'rad', keys: ['talk_lab', 'analyze1', 'spec_open', 'log_open'] }
+  ];
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
 
   /* ---------- Incidentes (plantillas) ---------- */
@@ -97,6 +111,7 @@ const Sim = (function () {
         water: R(200, df.startPct, 0.35, 0.15),
         power: R(P.BATT_KWH, df.startPct * 0.9, 0.3, 0.12),
         food: R(80, df.startPct, 0.3, 0.12),
+        nutr: R(30, 0.5, 0.2, 0.07),
         waste: R(40, 0.25, 0.75, 0.9),
         mat: R(120, df.mat / 120, 0.12, 0.05),
         rad: { v: 50, max: 100, warn: 45, crit: 30, cons: 0, prod: 0 },
@@ -126,7 +141,11 @@ const Sim = (function () {
         maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {} }
     };
     if (scen === 'mars') S.lightMin = Math.round(rr(S, 4, 20) * 10) / 10; // real: ~3 a ~22 min según posiciones orbitales
-    for (let i = 0; i < 6; i++) S.beds.push({ crop: i < 2 ? 'lettuce' : null, prog: i < 2 ? 0.35 : 0, hp: 100 });
+    for (let i = 0; i < 6; i++) S.beds.push({ light: 0.7, plants: [null, null, null] });
+    ['romaine', 'mizuna', 'romaine'].forEach((sp, k) => { S.beds[0].plants[k] = newPlant(S, sp, 0.35 + 0.05 * k); });
+    S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
+    S.playerRole = 'commander';
+    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, reactor: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0 };
     for (let i = 0; i < 5; i++) S.crew.push({ role: ROLES[i], zone: 'hab', dose: 0 });
     for (let i = 1; i <= 7; i++) S.m[i] = { st: 'idle', var: 0, stars: 0, hold: 0, t0: 0, att: 0, prog: 0, data: {} };
     derive(S);
@@ -139,6 +158,19 @@ const Sim = (function () {
     S.log.push({ n: S.logN, t: Math.round(S.t * 100) / 100, sev, k, p: p || {} });
     if (S.log.length > 250) S.log.splice(0, S.log.length - 250);
   }
+  function campDone() { return { i: CAMP.length, unlocked: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1 }, basicDone: true, hold: 0, inc: 0 }; }
+  /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
+  function migrate(S) {
+    if (!S.camp) S.camp = campDone();
+    if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
+    if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
+    if (!S.playerRole) S.playerRole = 'commander';
+    S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
+    return S;
+  }
+  function campFlag(S, key) { if (S.camp && !S.camp.basicDone) S.camp.f[key] = 1; }
+  function campCnt(S, key) { if (S.camp && !S.camp.basicDone) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
+  function plantsList(S) { const out = []; S.beds.forEach((b, bi) => b.plants.forEach((p, k) => { if (p) out.push({ p, bi, k }); })); return out; }
   const pct = (r) => (r.max > 0 ? r.v / r.max : 0);
   function status(S, key) {
     if (key === 'dose') { const f = S.st.maxDose / S.limit; return f >= 0.85 ? 'crit' : f >= 0.6 ? 'warn' : 'ok'; }
@@ -165,13 +197,14 @@ const Sim = (function () {
       until: null, prog: 0, fix: T.fix || null, res: false, data: o.data || {}, mission: o.mission || 0 };
     if (T.dur || o.dur) { const d = o.dur || rr(S, T.dur[0], T.dur[1]); inc.until = from + d; }
     if (type === 'wear') {
-      const sys = o.sys || ['reactor', 'solar', 'shield', 'o2'][Math.floor(rnd(S) * 4)];
+      const opts = ['reactor', 'solar', 'shield', 'o2'].filter((x) => !S.camp || S.camp.unlocked[SYS_ROOM[x]]);
+      const sys = o.sys || opts[Math.floor(rnd(S) * opts.length)] || 'reactor';
       inc.sys = sys; inc.room = SYS_ROOM[sys];
       S.sys[sys].h = clamp(S.sys[sys].h - (o.dmg || rr(S, 18, 30)), 5, 100);
     }
-    if (type === 'crop_fail') {
-      const planted = S.beds.map((b, i) => (b.crop ? i : -1)).filter((i) => i >= 0);
-      for (let k = 0; k < Math.min(2, planted.length); k++) { const b = S.beds[planted[Math.floor(rnd(S) * planted.length)]]; b.hp = clamp(b.hp - 40, 1, 100); }
+    if (type === 'crop_fail') { // plaga (pulgones/hongos): afecta a varias plantas; hay que identificarla y podar
+      const list = plantsList(S);
+      for (let k = 0; k < Math.min(3, list.length); k++) { const x = list[Math.floor(rnd(S) * list.length)]; x.p.pest = true; x.p.hp = clamp(x.p.hp - 15, 1, 100); }
     }
     if (type === 'sensor_drift') S.sys.o2.calib += 2.2;
     if (type === 'solar_storm') inc.data.rate = inc.data.rate || rr(S, 2.0, 2.8); // mSv/h sin blindaje (modelo G)
@@ -190,7 +223,7 @@ const Sim = (function () {
     if (inc.type === 'comms_blackout') S.sys.comms.h = Math.max(S.sys.comms.h, 95);
     if (inc.type === 'wear') S.sys[inc.sys].h = Math.max(S.sys[inc.sys].h, Math.min(100, S.sys[inc.sys].h + 45));
     if (inc.type === 'sensor_drift') S.sys.o2.calib = 0;
-    if (inc.type === 'crop_fail') S.beds.forEach((b) => { if (b.crop) b.hp = Math.max(b.hp, 60); });
+    if (inc.type === 'crop_fail') plantsList(S).forEach((x) => { x.p.pest = false; x.p.pestKnown = false; x.p.hp = Math.max(x.p.hp, 50); });
     log(S, 'ok', 'res.' + inc.type, { id: inc.id, how: how || 'auto' });
   }
   function repair(S, id, amount) {
@@ -222,9 +255,10 @@ const Sim = (function () {
     const df = DIFFS[S.diff];
     if (activeInc(S).length >= df.maxInc) return;
     if (S.t - S.lastEv < 10) return;
-    if (rnd(S) > 0.02 * df.ev * h) return;
-    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) &&
-      !(k === 'crop_fail' && !S.beds.some((b) => b.crop)));
+    if (rnd(S) > 0.02 * df.ev * h * (S.camp && !S.camp.basicDone ? 0.5 : 1)) return;
+    const open = (room) => !S.camp || !!S.camp.unlocked[room];
+    const pool = Object.keys(EV).filter((k) => EV[k].sc.includes(S.scen) && !S.inc.some((i) => !i.res && i.type === k) && open(EV[k].room) &&
+      !(k === 'crop_fail' && !plantsList(S).length));
     if (!pool.length) return;
     let tot = pool.reduce((a, k) => a + EV[k].w, 0), x = rnd(S) * tot, pick = pool[0];
     for (const k of pool) { x -= EV[k].w; if (x <= 0) { pick = k; break; } }
@@ -267,7 +301,7 @@ const Sim = (function () {
     sy.o2.calib = clamp(sy.o2.calib + 0.02 * h, -5, 5);
 
     /* --- Cargas eléctricas (prioridad 1 = esencial) --- */
-    const planted = S.beds.filter((b) => b.crop).length;
+    const planted = plantsList(S).length;
     const loads = [
       { id: 'o2', p: 1, kw: P.O2GEN_KW * sy.o2.lvl },
       { id: 'rec', p: 1, kw: sy.rec.mode === 'max' ? P.REC_KW_MAX : P.REC_KW_ECO },
@@ -279,7 +313,7 @@ const Sim = (function () {
       { id: 'rover', p: 3, kw: sy.rover.batt < 100 ? 1.0 : 0 },
       { id: 'isru', p: 3, kw: sy.isru.on ? P.ISRU_KW : 0 },
       { id: 'jobs', p: 3, kw: S.jobs.reduce((a, j) => a + (j.kw || 0), 0) },
-      { id: 'lights', p: 4, kw: P.LIGHT_KW_PER_BED * 6 * sy.gh.lights * S.cap.gh * (planted ? 1 : 0.2) },
+      { id: 'lights', p: 4, kw: S.beds.reduce((a, b) => a + (b.plants.some(Boolean) ? P.LIGHT_KW_PER_BED * b.light : 0), 0) * S.cap.gh },
       { id: 'pumps', p: 4, kw: 0.3 * sy.gh.irrig * (planted ? 1 : 0) }
     ];
     if (S.emergency) loads.forEach((l) => { if (l.p >= 3) l.kw = 0; });
@@ -322,8 +356,10 @@ const Sim = (function () {
     const recEff = (sy.rec.mode === 'max' ? P.REC_EFF_MAX : P.REC_EFF_ECO) * lf.rec * (sy.rec.h / 100) * M.recMul;
     const waterOk = r.water.v > 0.05;
     let o2rate = P.O2GEN_MAX * sy.o2.lvl * lf.o2 * (sy.o2.h / 100) * (waterOk ? 1 : 0);
-    const irrigBase = 0.08 * sy.gh.irrig * (sy.gh.drip ? 0.55 : 1) * planted * (lf.pumps || 0);
-    const irrig = waterOk ? irrigBase : 0;
+    // Riego automático con sensores de humedad: repone hasta el 65 % (1 % de humedad ≈ 0,012 L; goteo ×0,55)
+    let irrigL = 0;
+    if (waterOk && (lf.pumps || 0) > 0) for (const b of S.beds) for (const pl of b.plants) if (pl && pl.moist < 65) { const add = Math.min(65 - pl.moist, sy.gh.irrig * 1.6 * h * lf.pumps); pl.moist += add; irrigL += add * 0.012 * (sy.gh.drip ? 0.55 : 1); }
+    const irrig = irrigL / h;
     const elec = P.O2_STOICH_WATER * o2rate;
     const isruL = sy.isru.on ? P.ISRU_LPH * (lf.isru || 0) * (sy.isru.h / 100) : 0;
     const recovered = W * recEff + irrig * 0.3 * recEff + isruL; // condensación del riego + hielo extraído
@@ -339,21 +375,34 @@ const Sim = (function () {
     sy.o2.conc += (concT - sy.o2.conc) * Math.min(1, 0.2 * h);
     sy.o2.conc = clamp(sy.o2.conc, 10, 30);
 
-    /* --- Cultivos --- */
+    /* --- Cultivos (planta por planta) --- */
     const agri = bonus(S, 'agri') ? 1.15 : 1;
-    const lightSup = clamp(sy.gh.lights * S.cap.gh * (lf.lights || 0), 0, 1);
-    const waterSup = waterOk ? clamp(sy.gh.irrig * (lf.pumps || 0), 0, 1) : 0;
-    for (let i = 0; i < S.beds.length; i++) {
-      const b = S.beds[i];
-      if (!b.crop) continue;
-      const c = CROPS[b.crop];
-      const lF = Math.min(1, lightSup / c.light), wF = Math.min(1, waterSup / c.water);
-      const tF = clamp(1 - Math.abs(sy.thermal.T - c.T) / 9, 0, 1);
-      if (b.prog < 1) b.prog = clamp(b.prog + (h / P.CROP_CYCLE_H) * lF * wF * tF * agri * (0.4 + 0.6 * b.hp / 100), 0, 1);
-      const stress = lF < 0.3 || wF < 0.3 || tF < 0.3;
-      b.hp = clamp(b.hp + (stress ? -0.8 : 0.3) * h - (M.blight ? 0.25 * h : 0) - (b.prog >= 1 ? 0.05 * h : 0), 0, 100);
-      if (b.hp <= 0) { b.crop = null; b.prog = 0; b.hp = 100; log(S, 'warn', 'crop.dead', { bed: i + 1 }); S.st.mistakes.cropDead = (S.st.mistakes.cropDead || 0) + 1; }
-    }
+    let fert = 0;
+    S.beds.forEach((b, bi) => {
+      const light = clamp(b.light * S.cap.gh * (lf.lights == null ? 1 : lf.lights), 0, 1);
+      b.plants.forEach((pl, k) => {
+        if (!pl) return;
+        const c = CROPS[pl.sp], st = stageOf(pl);
+        pl.light = light;
+        pl.moist = clamp(pl.moist - (0.6 + 0.6 * light) * h * (sy.thermal.T > 26 ? 1.3 : 1), 0, 100);
+        const autoN = r.nutr.v > 0.2 ? 0.06 * sy.gh.irrig * (lf.pumps || 0) * h : 0; // fertirrigación lenta
+        fert += autoN * 0.01;
+        pl.nutr = clamp(pl.nutr - 0.2 * c.nutr * (0.5 + st * 0.25) * h + autoN, 0, 100);
+        const lF = Math.min(1, light / c.light);
+        const wF = pl.moist < 35 ? clamp((pl.moist - 10) / 25, 0, 1) : pl.moist > 75 ? clamp((100 - pl.moist) / 25, 0, 1) : 1;
+        const nF = clamp(pl.nutr / 40, 0.15, 1);
+        const tF = clamp(1 - Math.abs(sy.thermal.T - c.T) / 10, 0, 1);
+        const prF = pl.prune > 1 ? 0.8 : 1;
+        if (pl.prog < 1) pl.prog = clamp(pl.prog + (h / P.CROP_CYCLE_H) * lF * wF * nF * tF * agri * prF * (0.4 + 0.6 * pl.hp / 100), 0, 1);
+        pl.age += h;
+        if (c.prune && st >= 2) pl.prune = clamp(pl.prune + 0.012 * h * (pl.nutr > 50 ? 1.4 : 1), 0, 2);
+        let dh = 0.3;
+        if (pl.moist < 20) dh -= 1.4; if (pl.moist > 85) dh -= 0.9; if (lF < 0.4) dh -= 0.35; if (pl.nutr < 15) dh -= 0.6; if (pl.pest) dh -= 1.0; if (tF < 0.4) dh -= 0.5; if (pl.prog >= 1) dh -= 0.05;
+        pl.hp = clamp(pl.hp + dh * h, 0, 100);
+        if (pl.hp <= 0) { b.plants[k] = null; log(S, 'warn', 'crop.dead', { bed: bi + 1, sp: pl.sp }); S.st.mistakes.cropDead = (S.st.mistakes.cropDead || 0) + 1; }
+      });
+    });
+    r.nutr.v -= fert; r.nutr.cons = fert / h;
 
     /* --- Alimentos --- */
     const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons;
@@ -366,10 +415,10 @@ const Sim = (function () {
     r.rad.v = eff * 100;
     const gcr = sc.gcr / 24;
     let cap = sy.shield.cap;
-    const player = S.crew[0];
+    const player = S.crew.find((c) => c.role === (S.playerRole || 'commander')) || S.crew[0];
     if (player.zone === 'shelter') { if (cap > 0) cap--; else player.zone = 'hab'; }
-    for (let i = 1; i < S.crew.length; i++) {
-      const c = S.crew[i];
+    for (const c of S.crew) {
+      if (c === player) continue;
       if (S.proto && cap > 0) { c.zone = 'shelter'; cap--; } else c.zone = 'hab';
     }
     let maxD = 0;
@@ -425,6 +474,7 @@ const Sim = (function () {
     commsStep(S, M);
 
     /* --- Misiones --- */
+    campStep(S, h);
     missionsStep(S, h);
 
     normalize(S);
@@ -475,7 +525,8 @@ const Sim = (function () {
     const sy = S.sys;
     if (j.kind === 'shield') { sy.shield.lvl = Math.min(3, sy.shield.lvl + 1); sy.shield.h = Math.max(sy.shield.h, 90); log(S, 'ok', 'job.shield', { lvl: sy.shield.lvl }); }
     if (j.kind === 'shelter') { sy.shield.cap = Math.min(5, sy.shield.cap + 1); log(S, 'ok', 'job.shelter', { cap: sy.shield.cap }); }
-    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'nutr') { S.r.nutr.v += 4; log(S, 'ok', 'job.nutr', {}); }
     if (j.kind === 'experiment') { S.science += 8; S.morale += 4; log(S, 'ok', 'job.experiment', {}); }
     if (j.kind === 'recycle') { S.r.mat.v += 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
     if (j.kind === 'maint') { sy[j.sys].h = Math.min(100, sy[j.sys].h + 35); log(S, 'ok', 'job.maint', { sys: j.sys }); }
@@ -514,7 +565,7 @@ const Sim = (function () {
     analyze: (S) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      S.samples--; S.jobs.push({ kind: 'analyze', h: 3, kw: 0 });
+      S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0 });
     },
     experiment: (S) => {
       if (S.jobs.some((j) => j.kind === 'experiment')) return 'busy';
@@ -522,9 +573,37 @@ const Sim = (function () {
       S.r.water.v -= 2; S.jobs.push({ kind: 'experiment', h: 5, kw: 0 });
     },
     plant: (S, p) => {
-      const b = S.beds[p.bed]; if (!b || b.crop || !CROPS[p.crop]) return 'busy';
-      if (S.r.water.v < 2) return 'nowater';
-      S.r.water.v -= 1.5; b.crop = p.crop; b.prog = 0; b.hp = 100;
+      const b = S.beds[p.bed]; if (!b || b.plants[p.slot] !== null || !CROPS[p.sp]) return 'busy';
+      if ((S.seeds[p.sp] || 0) < 1) return 'noseed';
+      if (S.r.water.v < 1) return 'nowater';
+      if (S.r.nutr.v < 0.2) return 'nonutr';
+      S.seeds[p.sp]--; S.r.water.v -= 0.5; S.r.nutr.v -= 0.2; b.plants[p.slot] = newPlant(S, p.sp, 0); campCnt(S, 'plant');
+    },
+    water: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      if (S.r.water.v < 0.5) return 'nowater';
+      S.r.water.v -= 0.3; pl.moist = clamp(pl.moist + 25, 0, 100); campCnt(S, 'water');
+    },
+    feed: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      const cost = S.playerRole === 'agri' ? 0.22 : 0.3;
+      if (S.r.nutr.v < cost) return 'nonutr';
+      S.r.nutr.v -= cost; pl.nutr = clamp(pl.nutr + 35, 0, 100); campCnt(S, 'feed');
+    },
+    bedlight: (S, p) => { const b = S.beds[p.bed]; if (!b) return 'err'; b.light = clamp(+p.v, 0, 1); },
+    inspect: (S, p) => { const pl = getP(S, p); if (!pl) return 'noplant'; pl.inspected = true; },
+    identify: (S, p) => { const pl = getP(S, p); if (!pl) return 'noplant'; pl.inspected = true; if (pl.pest) pl.pestKnown = true; },
+    prune: (S, p) => {
+      const pl = getP(S, p); if (!pl) return 'noplant';
+      if (!(pl.prune > 0.6 || (pl.pest && pl.pestKnown) || (pl.hp < 70 && stageOf(pl) >= 2))) return 'noprune';
+      pl.prune = 0; if (pl.pestKnown) { pl.pest = false; pl.pestKnown = false; }
+      pl.hp = clamp(pl.hp + 8, 0, 100); S.r.waste.v += 0.1;
+      if (!plantsList(S).some((x) => x.p.pest)) { const inc = S.inc.find((i) => !i.res && i.type === 'crop_fail'); if (inc) resolveInc(S, inc, 'player'); }
+    },
+    mixnutr: (S) => {
+      if (S.jobs.some((j) => j.kind === 'nutr')) return 'busy';
+      if (S.r.waste.v < 2) return 'nowaste'; if (S.r.water.v < 3) return 'nowater';
+      S.r.waste.v -= 2; S.r.water.v -= 2; S.jobs.push({ kind: 'nutr', h: 2, kw: 0.8 });
     },
     eva: (S) => {
       if (S.r.o2.v < 0.5) return 'err';
@@ -534,10 +613,12 @@ const Sim = (function () {
     rec: (S) => { S.morale = clamp(S.morale + 9, 0, 100); step(S, 2); },
     wait: (S, p) => { step(S, clamp(+p.h || 1, 0.5, 24)); }
   };
+  function getP(S, p) { const b = S.beds[p && p.bed]; return b ? b.plants[p.slot] || null : null; }
   function decide(S, id, p) {
     const f = DEC[id]; if (!f) return { ok: false, err: 'unknown' };
     const err = f(S, p || {});
     if (err) return { ok: false, err };
+    if (id === 'reactor' || id === 'emergency') campFlag(S, 'power_action');
     normalize(S); derive(S);
     S.st.good['dec_' + id] = (S.st.good['dec_' + id] || 0) + 1;
     return { ok: true };
@@ -563,20 +644,27 @@ const Sim = (function () {
     return { ok: res.ok, err: res.err, now, a: snapshot(base), b: snapshot(alt), hours };
   }
 
-  function harvest(S, i) {
-    const b = S.beds[i]; if (!b || !b.crop || b.prog < 1) return 0;
-    const y = CROPS[b.crop].y * (b.hp / 100);
-    S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[b.crop] = (S.st.crops[b.crop] || 0) + 1;
-    const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[b.crop] = 1; }
-    b.crop = null; b.prog = 0; b.hp = 100;
+  /** Cosecha una planta madura. Devuelve { kg, sp, seeds } o null. */
+  function harvest(S, bed, slot) {
+    const b = S.beds[bed], pl = b && b.plants[slot];
+    if (!pl || pl.prog < 1) return null;
+    const c = CROPS[pl.sp], y = c.y * (pl.hp / 100) * (pl.prune > 1 ? 0.8 : 1);
+    S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[pl.sp] = (S.st.crops[pl.sp] || 0) + 1;
+    S.seeds[pl.sp] = (S.seeds[pl.sp] || 0) + c.seeds; S.morale = clamp(S.morale + c.mor, 0, 100); S.r.waste.v += 0.15;
+    const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[pl.sp] = 1; }
+    campCnt(S, 'harvest');
+    b.plants[slot] = null;
     normalize(S); derive(S);
-    log(S, 'ok', 'crop.harvest', { kg: Math.round(y * 100) / 100 });
-    return y;
+    log(S, 'ok', 'crop.harvest', { kg: Math.round(y * 100) / 100, sp: pl.sp });
+    return { kg: y, sp: pl.sp, seeds: c.seeds };
   }
 
   /* ---------- Minijuegos -> sistemas ---------- */
   function mini(S, kind, res) {
     const ok = !!res.ok, sc = clamp(fin(res.score, 0), 0, 1);
+    if (ok && (kind === 'solar' || kind === 'balance')) campFlag(S, 'power_action');
+    if (ok && kind === 'o2') campFlag(S, 'o2_cal');
+    if (res.inc && S.playerRole === 'engineer' && kind === 'wiring') res = Object.assign({}, res, { score: Math.min(1, sc + 0.15) });
     const sy = S.sys;
     if (ok) S.pts += Math.round(20 + 30 * sc);
     S.st[ok ? 'good' : 'mistakes']['mg_' + kind] = (S.st[ok ? 'good' : 'mistakes']['mg_' + kind] || 0) + 1;
@@ -597,7 +685,7 @@ const Sim = (function () {
         if (ok) sy.solar.dust *= 0.3;
         break;
       case 'gh':
-        S.beds.forEach((b) => { if (b.crop) b.hp = Math.min(100, b.hp + (ok ? 25 * sc + 5 : 3)); });
+        plantsList(S).forEach((x) => { x.p.hp = Math.min(100, x.p.hp + (ok ? 25 * sc + 5 : 3)); if (ok) x.p.moist = clamp(x.p.moist, 40, 70); });
         if (ok) { sy.gh.drip = true; if (res.inc) repair(S, res.inc, 100); }
         break;
       case 'rover': {
@@ -643,9 +731,52 @@ const Sim = (function () {
   }
 
   /* ---------- Misiones ---------- */
+  function campStart(S) {
+    const C = S.camp; C.cnt = {}; C.hold = 0;
+    const id = CAMP[C.i] && CAMP[C.i].id;
+    if (id === 'c2') { const inc = S.inc.find((i) => !i.res && i.type === 'water_fail') || addInc(S, 'water_fail', { sev: 'warn' }); C.inc = inc.id; }
+    if (id === 'c3') S.beds[0].plants.forEach((pl) => { if (pl) pl.prog = Math.max(pl.prog, 0.86); });
+    if (id === 'c4') { S.samples += 2; S.st.samplesTot += 2; }
+    if (id) log(S, 'info', 'camp.start', { id });
+  }
+  function campKeyDone(S, key) {
+    const C = S.camp, n = C.cnt;
+    switch (key) {
+      case 'rec_fixed': return !S.inc.some((i) => i.id === C.inc && !i.res);
+      case 'plant3': return (n.plant || 0) >= 3;
+      case 'water1': return (n.water || 0) >= 1;
+      case 'feed1': return (n.feed || 0) >= 1;
+      case 'harvest1': return (n.harvest || 0) >= 1;
+      case 'analyze1': return (n.analyze || 0) >= 1;
+      default: return !!C.f[key];
+    }
+  }
+  function campStatus(S) {
+    const C = S.camp; if (!C || C.basicDone) return null;
+    const D = CAMP[C.i]; return { id: D.id, unlock: D.unlock, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
+  }
+  function campStep(S, h) {
+    const C = S.camp; if (!C || C.basicDone) return;
+    const D = CAMP[C.i];
+    if (D.id === 'c2') { C.hold = S.d.rec >= 0.78 && S.d.water >= 0.3 && !S.inc.some((i) => i.id === C.inc && !i.res) ? C.hold + h : 0; if (C.hold >= 6) C.f.water_hold = 1; }
+    if (D.keys.every((k) => campKeyDone(S, k))) {
+      C.done[D.id] = 1; C.unlocked[D.unlock] = 1; S.pts += 80; S.morale = clamp(S.morale + 5, 0, 100);
+      log(S, 'ok', 'camp.done', { id: D.id, room: D.unlock });
+      C.i++;
+      if (C.i >= CAMP.length) { C.basicDone = true; log(S, 'ok', 'camp.basic', {}); }
+      else campStart(S);
+    }
+  }
+  function setPlayerRole(S, role) {
+    if (!ROLES.includes(role)) return false;
+    const old = S.crew.find((c) => c.role === S.playerRole); if (old) old.zone = 'hab';
+    S.playerRole = role; return true;
+  }
+
   const LIMIT = { 1: 72, 2: 72, 3: 999, 4: 999, 5: 120, 6: 336, 7: 999 };
   function startMission(S, id) {
     if (S.ended) return { ok: false, err: 'ended' };
+    if (S.camp && !S.camp.basicDone) return { ok: false, err: 'locked' };
     // La misión 6 (cultivo, 7 días) puede correr en paralelo con otra misión.
     if (id !== 6) for (let i = 1; i <= 7; i++) if (i !== 6 && S.m[i].st === 'active') return { ok: false, err: 'busy', id: i };
     if (S.m[id].st === 'active' || S.m[id].st === 'done') return { ok: false, err: 'state' };
@@ -748,7 +879,7 @@ const Sim = (function () {
     S.quiz[mid] = ok ? 1 : 0; S.st.quizTot++; if (ok) { S.st.quizOk++; S.pts += 30; }
   }
   function finishRun(S) { if (!S.ended) { S.ended = { kind: 'partial', reason: 'player', t: S.t }; log(S, 'info', 'end.player', {}); } }
-  function setPlayerZone(S, z) { S.crew[0].zone = z; }
+  function setPlayerZone(S, z) { const c = S.crew.find((x) => x.role === (S.playerRole || 'commander')) || S.crew[0]; c.zone = z; }
 
   function report(S) {
     const done = [1, 2, 3, 4, 5, 6, 7].filter((i) => S.m[i].st === 'done');
@@ -763,7 +894,7 @@ const Sim = (function () {
     };
   }
 
-  return { P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

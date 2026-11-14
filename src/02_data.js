@@ -13,7 +13,7 @@ const DATA = (function () {
       moonD: 'Región del cráter Shackleton, polo sur lunar. Sin atmósfera, luz solar casi rasante, mensajes con ~1,3 s de retraso.',
       marsD: 'Atmósfera tenue, polvo, días de 24 h 39 min y mensajes con 3 a 22 minutos de retraso.',
       go: '¡Despegar!', back: 'Volver', close: 'Cerrar', confirm: 'Confirmar', cancel: 'Cancelar', yes: 'Sí', no: 'No', on: 'Activado', off: 'Desactivado',
-      o2: 'Oxígeno', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
+      o2: 'Oxígeno', nutr: 'Nutrientes', water: 'Agua', power: 'Energía', rad: 'Protección', food: 'Alimentos', well: 'Bienestar', mat: 'Materiales', waste: 'Residuos',
       ok: 'Normal', warn: 'Advertencia', crit: 'Crítico', info: 'Información',
       interact: 'Interactuar', repair: 'Reparar', investigate: 'Investigar', manage: 'Administrar', collect: 'Recoger muestras', play: 'Ejecutar minijuego', rest: 'Descansar', explore: 'Explorar',
       paused: 'Pausa', resume: 'Reanudar', mainMenu: 'Menú principal', save: 'Guardar', saved: 'Partida guardada', endRun: 'Terminar y ver informe',
@@ -37,7 +37,7 @@ const DATA = (function () {
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
       helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
-      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
+      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
       start: 'Start mission', cont: 'Continue', manual: 'Learning manual', earthConn: 'Earth Connection', sources: 'Science sources',
@@ -46,7 +46,7 @@ const DATA = (function () {
       moonD: 'Shackleton crater region, lunar south pole. No air, low-angle sunlight, messages delayed ~1.3 s.',
       marsD: 'Thin air, dust, 24 h 39 min days and messages delayed 3 to 22 minutes.',
       go: 'Launch!', back: 'Back', close: 'Close', confirm: 'Confirm', cancel: 'Cancel', yes: 'Yes', no: 'No', on: 'On', off: 'Off',
-      o2: 'Oxygen', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
+      o2: 'Oxygen', nutr: 'Nutrients', water: 'Water', power: 'Energy', rad: 'Protection', food: 'Food', well: 'Wellbeing', mat: 'Materials', waste: 'Waste',
       ok: 'Normal', warn: 'Warning', crit: 'Critical', info: 'Info',
       interact: 'Interact', repair: 'Repair', investigate: 'Investigate', manage: 'Manage', collect: 'Collect samples', play: 'Play mini-game', rest: 'Rest', explore: 'Explore',
       paused: 'Paused', resume: 'Resume', mainMenu: 'Main menu', save: 'Save', saved: 'Game saved', endRun: 'End and see report',
@@ -70,7 +70,7 @@ const DATA = (function () {
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
       helpMove: 'Move with WASD or arrows · E to interact · P pause', helpTouch: 'Use the joystick to move and the E button to interact',
-      busy: 'A mission is already active. Finish or abandon it first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
+      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };
 
@@ -81,7 +81,7 @@ const DATA = (function () {
     hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
-    commander: { es: 'Comandante (tú)', en: 'Commander (you)', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },
+    commander: { es: 'Comandante Vega', en: 'Commander Vega', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },
     engineer: { es: 'Ingeniera Ana', en: 'Engineer Ana', b: { es: 'Repara incidentes sola poco a poco y acelera obras un 30 %.', en: 'Slowly repairs incidents on her own and speeds up building jobs 30%.' } },
     scientist: { es: 'Científico Leo', en: 'Scientist Leo', b: { es: 'Analiza muestras un 50 % más rápido.', en: 'Analyzes samples 50% faster.' } },
     medic: { es: 'Médica Sofía', en: 'Medic Sofía', b: { es: 'Sube la moral de la tripulación (+6 puntos de objetivo).', en: 'Raises crew morale (+6 target points).' } },

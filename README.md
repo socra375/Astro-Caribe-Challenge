@@ -66,13 +66,71 @@ Los cinco astronautas son originales y están dibujados por código (módulo `Ch
 - **Hoja de presentación:** `index.html?sheet` o «Manual → Hoja de personajes». Muestra las tres vistas, ampliaciones de casco, soporte vital y accesorio, paleta y las 7 animaciones en vivo, todo con el mismo código que se usa en el juego.
 - Los emblemas son originales. La médica usa una pantalla de pulso, no una cruz roja (emblema protegido).
 
+### Familiarización, NPC guía y desbloqueo de secciones
+Al empezar solo están abiertas tres secciones: **Puente de mando, Módulo de vida y Reactor y energía**. Las demás tienen las puertas cerradas (en rojo y con 🔒 en el mapa y el minimapa); al acercarse, el juego explica qué misión las abre. Cada sección se desbloquea **al cumplir objetivos reales**, no al pulsar un botón:
+
+| Misión de familiarización | Objetivos (detectados por el motor) | Desbloquea · guía |
+|---|---|---|
+| 1. Activación de la colonia | Escuchar al guía, revisar Recursos, visitar el módulo de vida y la enfermería, visitar el reactor y **ajustar la energía** (reactor, modo emergencia o minijuego solar/balance) | Agua y oxígeno · Sofía |
+| 2. Recuperación del ciclo de agua | **Reparar** la bomba averiada, **calibrar** el oxígeno y **mantener** reciclaje ≥ 78 % y agua ≥ 30 % durante 6 h | Invernadero · Teo |
+| 3. Primer cultivo | **Sembrar** 3 semillas, **regar**, **añadir nutrientes** y **cosechar** una planta madura | Laboratorio · Leo |
+| 4. Exploración científica | **Analizar** una muestra, usar el espectrómetro y consultar el registro | Protección radiológica y bahía del rover · Ana |
+
+- Al entrar por primera vez en una sección, su guía mantiene una **conversación corta de 5 pasos**: se presenta, explica para qué sirve la sección, sus sistemas, la misión y cómo usar la consola. No se repite; se puede volver a escuchar en «Pausa → Conversaciones».
+- Guías: Control de Misión (puente, mientras el jugador es el comandante), Sofía (médica: vida y agua/O₂), Ana (ingeniera: reactor y bahía del rover), Teo (agrónomo: invernadero) y Leo (científico: laboratorio). No hay un sexto personaje «de exploración»: la bahía del rover la presenta Ana, que opera el rover según la tabla de permisos.
+- Las **siete misiones avanzadas** se activan al terminar la familiarización. Antes de eso, los eventos aleatorios solo ocurren en secciones abiertas y con la mitad de frecuencia.
+
+### Vestuario y especialistas
+En el puente hay un **vestuario** 🧥. El jugador elige especialista y cambian el sprite, el traje, las animaciones, la especialidad y las acciones disponibles. El especialista anterior aparece como NPC junto al vestuario y el elegido deja de estar en el mapa (el jugador ocupa su puesto).
+
+| Sección | Especialista |
+|---|---|
+| Puente de mando (misiones, comunicaciones) | Comandante |
+| Módulo de vida (enfermería) | Médica |
+| Reactor y energía | Ingeniera |
+| Agua y oxígeno | Ingeniera o médica |
+| Invernadero y plantas | Agrónomo |
+| Laboratorio | Científico |
+| Blindaje y refugio | Científico o ingeniera |
+| Rover y extractor de hielo | Ingeniera |
+
+- Los permisos solo se aplican **después** de la familiarización. Pasillos, cabinas, sala de bienestar, Conexión con la Tierra, esclusa y muestras exteriores son de uso común.
+- Sin el traje adecuado, el juego explica quién puede hacerlo y marca el vestuario. **Las emergencias nunca se bloquean**: cualquiera puede hacer una «reparación de emergencia» de los incidentes de esa sala o activar el protocolo de refugio durante una tormenta. Los indicadores del HUD siempre abren los recursos.
+- Ventajas al llevar cada traje: la ingeniera repara mejor (+15 % en el minijuego de cableado), el agrónomo gasta menos nutrientes, el científico analiza más rápido (2 h en lugar de 3) y la médica opera la enfermería.
+
+### Llamadas de radio de los NPC
+Las averías, eventos ambientales y umbrales de recursos generan una **llamada interna** en la parte inferior de la pantalla, sin mover a nadie por el mapa. Cada llamada incluye retrato, nombre, especialidad, tipo de alerta, descripción, ubicación exacta (por ejemplo, las jardineras con plaga), qué hacer y qué pasa si se ignora. Botones: **Entendido**, **Marcar ubicación** (marcador en el minimapa y flecha en pantalla), **Consultar sistema** (abre el panel de la instalación) y **Ver explicación** (panel «¿Por qué ocurrió?»).
+
+| Tema | Quién llama |
+|---|---|
+| Oxígeno, presión, sensor de O₂, bienestar | Médica |
+| Agua (reciclador) | Ingeniera; reservas de agua: médica |
+| Energía, reactor, paneles, temperatura, desgaste | Ingeniera |
+| Cultivos y alimentos | Agrónomo |
+| Radiación, dosis, análisis | Científico |
+| Comunicaciones y objetivos generales | Comandante |
+
+Cola con prioridad (crítica > advertencia > información). Las críticas se quedan hasta pulsar «Entendido»; las advertencias desaparecen a los 18 s y la información a los 9 s. Una llamada interrumpida por otra más urgente vuelve a la cola, y los mensajes idénticos se fusionan en lugar de repetirse.
+
+### Invernadero interactivo
+![Especies, etapas y estados](docs/plantas.png)
+
+- **Cinco especies cultivadas realmente en la ISS** (sistemas Veggie y Advanced Plant Habitat de NASA), dibujadas por código con silueta propia: lechuga romana roja (roseta erguida de hojas onduladas), mizuna (mata ancha de hojas finas y dentadas), rábano (hojas lobuladas y raíz roja que asoma al madurar), chile (planta ramificada con hojas en punta, flores y frutos) y zinnia (tallo con hojas opuestas, botón y flor).
+- **Cinco etapas:** semilla, brote (cotiledones con forma propia, como los acorazonados del rábano), planta joven, desarrollo avanzado y planta madura. Cada planta tiene variaciones naturales (tamaño, inclinación, número de hojas, color de la flor) para que no haya clones.
+- **Estado visible:** marchitez y tono pardo si falta agua, charcos y hojas viejas amarillas si sobra, tallo largo y pálido con poca luz, clorosis sin nutrientes y pequeños insectos si hay plaga.
+- **Jardineras:** sustrato, tubo de riego con goteros, sensor de humedad con piloto de color, barra LED que brilla según la potencia, etiqueta de especie e indicador de crecimiento por planta.
+- **18 plantas independientes** (6 jardineras × 3). Pulsa E junto a una planta o tócala para abrir su ficha: especie, etapa, tiempo de cultivo, salud, humedad, nutrientes, iluminación, temperatura y progreso, con orientación de Teo y un dato real de la ISS.
+- **Acciones con coste real:** sembrar (1 semilla, 0,5 L de agua y 0,2 L de nutrientes), regar (0,3 L), añadir nutrientes (0,3 L de solución, o 0,22 L si eres el agrónomo), luz LED de la jardinera (0,6 kW al 100 %, compite con los demás sistemas por la energía), inspeccionar, identificar problemas (las plagas no se ven del todo hasta identificarlas), podar (cuando hay exceso de ramas, plaga identificada o daño) y cosechar (suma alimentos; devuelve semillas y residuos orgánicos). La zinnia no es comestible y sube la moral.
+- **Modelo:** el crecimiento depende de la luz frente a la necesidad de la especie, de la humedad (ideal 35–75 %), de los nutrientes, de la temperatura óptima, de la salud y del bonus del agrónomo. La sequía, el encharcamiento, la falta de luz o de nutrientes, las plagas y la temperatura dañan la salud; a 0 la planta muere. El riego automático con sensores repone hasta el 65 % (el goteo ahorra un 45 % de agua) y la solución nutritiva se fabrica con residuos orgánicos (economía circular).
+- El **ciclo de 7 días** es una simplificación de jugabilidad, no la duración biológica real de cada cultivo; el juego lo indica en la ficha de cada planta.
+
 ### Simulación de recursos (el núcleo)
 Motor `Sim` independiente de la interfaz (estado JSON puro, RNG con semilla, tiempo en horas simuladas). Cinco indicadores principales:
 
 1. **Soporte vital**: oxígeno (kg), agua (L), concentración de O₂ en cabina, reciclaje, presión y temperatura.
 2. **Energía**: paneles solares (alineación, polvo, ciclo día/noche en Marte), reactor (potencia y desgaste), batería, demanda y reparto por prioridades.
 3. **Protección contra radiación**: efectividad del blindaje, dosis estimada por tripulante, plazas del refugio y eventos solares.
-4. **Alimentos**: reservas, 6 camas de cultivo, luz, riego, temperatura y crecimiento.
+4. **Alimentos**: reservas, 18 plantas individuales en 6 jardineras, semillas, solución nutritiva, luz LED, riego, temperatura y crecimiento.
 5. **Bienestar**: moral y descanso, que dependen de las condiciones de habitabilidad y de las alertas.
 
 Cada recurso tiene valor, máximo, consumo por hora, producción por hora, umbral de advertencia y umbral crítico. Todo se mantiene dentro de límites válidos en una única función `normalize()`.
@@ -197,6 +255,8 @@ Un solo archivo, organizado en módulos internos con responsabilidades separadas
 | `Sim` | Motor de simulación puro (entre los marcadores `/*SIM-START*/` y `/*SIM-END*/`) |
 | `SelfTest` | 100 simulaciones automáticas sobre `Sim` |
 | `Chars` | Los cinco astronautas: dibujo por capas, 4 direcciones y 7 poses |
+| `Flora` | Las cinco especies vegetales: 5 etapas, variación natural y estados de estrés |
+| `NPCDATA` | Guías, conversaciones, campaña, contenido de las llamadas y fichas botánicas |
 | `World` | Mapa, colisiones, puertas, esclusa, bots, cámara, render Canvas, partículas y minimapa |
 | `MG` | Seis minijuegos |
 | `Game` | Bucle principal, entrada, HUD, consolas, panel de consecuencias, comunicaciones, fichas, informe y menús |
@@ -221,9 +281,9 @@ node tests/e2e.js
 También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar 100 simulaciones de prueba». Las pruebas trabajan sobre copias del motor y no modifican el progreso del jugador.
 
 **Resultados obtenidos al construir esta versión:**
-- `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos dentro de sus límites y finales coherentes. La política activa gana 72 de 75 partidas; la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
+- `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos y plantas dentro de sus límites y finales coherentes. La política activa completa la familiarización y gana 73 de 75 partidas; la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
 - `contrast.js`: 14/14 pares de tokens cumplen WCAG AA.
-- `e2e.js` (Chromium, sin Internet): **40/40** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9.
+- `e2e.js` (Chromium, sin Internet): **74/74** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9. Además, la familiarización completa con acciones reales: solo 3 secciones al empezar, puertas bloqueadas, cada guía presentándose al entrar, desbloqueo de cada sección al terminar su misión y las 7 abiertas al final. Plantas: selección individual, sembrar gasta semillas, regar gasta agua, los nutrientes gastan solución, subir el LED aumenta la demanda eléctrica, cosechar suma alimentos, la nutrición cambia el crecimiento (0,148 frente a 0,022 en 24 h), las cinco especies tienen siluetas distintas (solapamiento máximo 0,633) y las cinco etapas crecen en tamaño. Especialistas y alertas: el vestuario cambia de rol y deja al anterior como NPC, los permisos no bloquean las reparaciones de emergencia, cada fallo lo comunica el NPC adecuado, «Marcar ubicación» coloca el marcador, los mensajes repetidos no se acumulan y las alertas críticas tienen prioridad.
 
 **No probado:** Firefox, Edge y Safari reales, tablets o teléfonos físicos y lectores de pantalla. El código usa solo APIs estándar (Canvas 2D, Pointer Events, Web Audio, `fetch`), pero esas plataformas no se han verificado.
 

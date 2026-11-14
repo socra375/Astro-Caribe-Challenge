@@ -20,7 +20,10 @@ const World = (function () {
   const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff' };
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [];
   let staticCv = null, scen = 'moon';
-  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0 };
+  const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
+  let curS = null, marker = null;
+  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1 };
+  const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
   /* ---------- Construcción del mapa ---------- */
@@ -36,21 +39,22 @@ const World = (function () {
       if (near) grid[y][x] = WALL;
     }
     doors = [];
-    const D = (x, y, kind) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0 }); };
-    for (const x of [9, 29, 49]) { D(x, 12); D(x, 16); D(x, 29); D(x, 33); }
-    D(29, 45, 'inner'); D(29, 48, 'outer');
+    const D = (x, y, kind, rooms) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0, rooms }); };
+    const TOP = { 9: 'life', 29: 'bridge', 49: 'lab' }, MID = { 9: 'gh', 29: 'water', 49: 'reactor' };
+    for (const x of [9, 29, 49]) { D(x, 12, 'auto', [TOP[x]]); D(x, 16, 'auto', [MID[x]]); D(x, 29, 'auto', [MID[x], 'rad']); D(x, 33, 'auto', ['rad']); }
+    D(29, 45, 'inner', ['rad']); D(29, 48, 'outer', ['rad']);
     furn = []; consoles = [];
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
     const C = (id, room, x, y, verb, icon) => { consoles.push({ id, room, x, y, verb, icon }); F(x, y, 1, 1, 'console', { cid: id }); };
     // Puente
     F(28, 5, 4, 3, 'holo'); F(22, 2, 16, 1, 'window');
     C('cmd', 'bridge', 25, 3, 'manage', '🖥️'); C('comms', 'bridge', 30, 3, 'interact', '📡'); C('earth', 'bridge', 34, 3, 'investigate', '🌎');
-    F(23, 9, 2, 2, 'crate'); F(35, 9, 2, 2, 'crate');
+    F(23, 9, 2, 2, 'crate'); F(35, 8, 2, 3, 'lockers'); C('wardrobe', 'bridge', 34, 10, 'interact', '🧥');
     // Módulo de vida
     for (let i = 0; i < 3; i++) F(3 + i * 3, 3, 2, 3, 'bunk');
     C('bed', 'life', 4, 7, 'rest', '🛏️'); F(13, 3, 3, 2, 'medbed'); C('med', 'life', 16, 3, 'manage', '🩺'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
     // Invernadero
-    for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'bed', { bed: i });
+    for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'planter', { bed: i });
     C('gh', 'gh', 16, 18, 'manage', '🌱'); F(15, 26, 2, 2, 'tank');
     // Reactor
     F(48, 20, 4, 4, 'reactor'); for (let i = 0; i < 3; i++) F(43, 19 + i * 3, 2, 2, 'battery');
@@ -91,20 +95,34 @@ const World = (function () {
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
   const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
   const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2' };
+  const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
     if (a === b) return [b];
+    const here = nodeRoom(a);
     const prev = { [a]: null }, q = [a];
-    while (q.length) { const c = q.shift(); if (c === b) break; for (const n of ADJ[c]) if (!(n in prev)) { prev[n] = c; q.push(n); } }
+    while (q.length) { const c = q.shift(); if (c === b) break; for (const n of ADJ[c]) if (!(n in prev) && !(locked(nodeRoom(n)) && nodeRoom(n) !== here)) { prev[n] = c; q.push(n); } }
     if (!(b in prev)) return [b];
     const path = []; let c = b; while (c) { path.unshift(c); c = prev[c]; } return path;
   }
   function nearestNode(x, y) { let best = null, bd = 1e9; for (const k in N) { const d = (N[k][0] - x) ** 2 + (N[k][1] - y) ** 2; if (d < bd) { bd = d; best = k; } } return best; }
 
-  const BOTCOL = { engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
+  HOME.commander = ['bridge_c', 'bridge_d'];
+  function mkBot(role, n, i) { return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false }; }
+  /** Cambia el especialista del jugador: el especialista elegido deja de ser NPC y el anterior aparece junto al vestuario. */
+  function setPlayerRole(role) {
+    if (role === player.role || !Chars.ROLES[role]) return false;
+    const i = bots.findIndex((b) => b.role === role);
+    if (i >= 0) bots.splice(i, 1);
+    const n = nearestNode(player.x, player.y), nb = mkBot(player.role, n, 2);
+    nb.x = player.x - 1.2; nb.y = player.y; nb.wait = 2;
+    bots.push(nb); player.role = role; player.act = 'celebrate'; player.actT = 1;
+    return true;
+  }
+  const BOTCOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
   function init(sc) {
     scen = sc; build(); staticCv = null;
-    player.x = 30; player.y = 9.5; player.dir = 2;
-    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => { const n = HOME[role][0]; return { role, x: N[n][0], y: N[n][1], node: n, path: [], wait: 1 + i, dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false }; });
+    player.x = 30; player.y = 9.5; player.dir = 2; player.role = 'commander'; marker = null;
+    bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => mkBot(role, HOME[role][0], i));
     airlock = { st: 'in', t: 0 }; parts = [];
   }
 
@@ -125,7 +143,8 @@ const World = (function () {
 
   /* ---------- Actualización ---------- */
   function update(dt, S, inp) {
-    lastT += dt;
+    lastT += dt; curS = S;
+    if (marker && (marker.until < lastT || Math.hypot(player.x - marker.p[0], player.y - marker.p[1]) < 1.6)) marker = null;
     // Jugador
     let vx = inp.x, vy = inp.y;
     const len = Math.hypot(vx, vy);
@@ -144,12 +163,14 @@ const World = (function () {
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
     // Bots
-    for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S, i + 1);
+    for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S);
     // Puertas
     const ents = [player].concat(bots);
     for (const d of doors) {
       let want = false;
       for (const e of ents) if (Math.abs(e.x - (d.x + 1)) < 1.9 && Math.abs(e.y - (d.y + 0.5)) < 2.0) want = true;
+      d.lock = d.rooms && d.rooms.some(locked);
+      if (d.lock) want = false;
       if (d.kind === 'inner') want = want && airlock.st === 'in';
       if (d.kind === 'outer') want = want && airlock.st === 'out';
       const before = d.open;
@@ -190,21 +211,21 @@ const World = (function () {
     if (k === 'ray') { p.vx = 0.8; p.vy = 14; p.life = 1.2; }
     parts.push(p);
   }
-  function updateBot(b, dt, S, idx) {
+  function updateBot(b, dt, S) {
     b.anim += dt * 7;
     if (!S) return;
-    const c = S.crew[idx];
+    const c = S.crew.find((x) => x.role === b.role);
     let goal = null;
-    if (c && c.zone === 'shelter') { goal = idx % 2 ? 'sh_c' : 'sh_c2'; b.task = 'shelter'; }
+    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? 'sh_c' : 'sh_c2'; b.task = 'shelter'; }
     else if (b.role === 'engineer') {
       const inc = S.inc.find((i) => !i.res && i.fix && S.t >= i.from);
-      if (inc) { goal = ROOMNODE[inc.room]; b.task = 'repair'; } else b.task = 'wander';
+      if (inc && !locked(inc.room)) { goal = ROOMNODE[inc.room]; b.task = 'repair'; } else b.task = 'wander';
     } else b.task = 'wander';
     if (b.path.length === 0) {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role]; const tgt = h[Math.floor(Math.random() * h.length)]; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
+        if (b.wait <= 0) { const h = HOME[b.role].filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -218,12 +239,26 @@ const World = (function () {
   }
 
   /* ---------- Interacción ---------- */
+  function plantPos(bed, slot) { const f = furn.find((x) => x.kind === 'planter' && x.bed === bed); return f ? [f.x + 0.5 + slot, f.y + 1.45] : null; }
   function nearest() {
     let best = null, bd = 1.9;
+    for (const f of furn) if (f.kind === 'planter') for (let k = 0; k < 3; k++) { const pp = [f.x + 0.5 + k, f.y + 1.45]; const d = Math.hypot(player.x - pp[0], player.y - pp[1]); if (d < 1.45 && d < bd + 0.25) { bd = d; best = { id: 'plant', bed: f.bed, slot: k, verb: 'investigate', icon: '🌱', x: pp[0], y: pp[1] }; } }
     for (const c of consoles) { const d = Math.hypot(player.x - (c.x + 0.5), player.y - (c.y + 0.5)); if (d < bd) { bd = d; best = c; } }
     for (const s of samples) if (!s.taken) { const d = Math.hypot(player.x - s.x, player.y - s.y); if (d < 1.2 && d < bd) { bd = d; best = { id: 'sample', verb: 'collect', icon: '🪨', s }; } }
     return best;
   }
+  /** Puerta bloqueada cercana (para explicar qué la abre). */
+  function lockedNear() { for (const d of doors) if (d.lock && Math.abs(player.x - (d.x + 1)) < 2 && Math.abs(player.y - (d.y + 0.5)) < 2.2) return d.rooms.find(locked); return null; }
+  /** Toque/clic en el mapa: devuelve la planta bajo el punto si el jugador está cerca. */
+  function pick(cssX, cssY, dpr) {
+    const z = cam.z || 1, wx = (cssX * dpr) / z + cam.x, wy = (cssY * dpr) / z + cam.y;
+    for (const f of furn) if (f.kind === 'planter') for (let k = 0; k < 3; k++) {
+      const px = (f.x + 0.5 + k) * TS, py = (f.y + 1.45) * TS;
+      if (Math.abs(wx - px) < TS * 0.5 && wy < py + 6 && wy > py - TS * 1.3 && Math.hypot(player.x * TS - px, player.y * TS - py) < TS * 3.2) return { id: 'plant', bed: f.bed, slot: k };
+    }
+    return null;
+  }
+  function setMarker(p, label) { if (p) marker = { p, label: label || '', until: lastT + 90 }; }
 
   /* ---------- Render ---------- */
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -276,7 +311,15 @@ const World = (function () {
       case 'bunk': c.fillStyle = '#4a3b72'; rr(c, x + 2, y + 2, w - 4, h - 4, 8); c.fill(); c.fillStyle = '#e8e2ff'; rr(c, x + 6, y + 6, w - 12, 18, 6); c.fill(); c.fillStyle = '#7c64c9'; c.fillRect(x + 4, y + 30, w - 8, h - 38); break;
       case 'medbed': c.fillStyle = '#e9f3ff'; rr(c, x + 2, y + 6, w - 4, h - 12, 10); c.fill(); c.fillStyle = '#ff6b9a'; c.fillRect(x + w / 2 - 4, y + 14, 8, h - 28); c.fillRect(x + w / 2 - 12, y + h / 2 - 4, 24, 8); break;
       case 'table': c.fillStyle = '#4b4f6e'; rr(c, x + 2, y + 2, w - 4, h - 4, 8); c.fill(); c.fillStyle = '#6c7299'; rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.fill(); break;
-      case 'bed': c.fillStyle = '#4b2f1c'; rr(c, x, y, w, h, 6); c.fill(); c.fillStyle = '#6b4226'; rr(c, x + 4, y + 4, w - 8, h - 8, 4); c.fill(); break;
+      case 'planter': // jardinera: marco metálico, sustrato y bandeja
+        c.fillStyle = '#56606f'; rr(c, x, y + 10, w, h - 10, 6); c.fill(); c.strokeStyle = '#2a313d'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#3b2414'; rr(c, x + 4, y + 16, w - 8, h - 24, 4); c.fill();
+        for (let i = 0; i < 40; i++) { c.fillStyle = i % 3 ? 'rgba(90,60,30,.6)' : 'rgba(20,10,5,.5)'; c.fillRect(x + 6 + ((i * 37) % (w - 14)), y + 18 + ((i * 13) % (h - 28)), 2, 2); }
+        c.fillStyle = '#c9ced8'; c.fillRect(x + 2, y + h - 6, w - 4, 3);
+        break;
+      case 'lockers':
+        for (let i = 0; i < 2; i++) { c.fillStyle = i ? '#4f5b80' : '#5a6890'; rr(c, x + 2 + i * (w / 2), y + 2, w / 2 - 4, h - 4, 4); c.fill(); c.strokeStyle = '#2a3150'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#d9a72b'; c.fillRect(x + w / 2 - 6 + i * (w / 2) - 8, y + h / 2, 3, 10); for (let k = 0; k < 3; k++) { c.fillStyle = '#2a3150'; c.fillRect(x + 8 + i * (w / 2), y + 10 + k * 6, w / 2 - 20, 2); } }
+        break;
       case 'tank': c.fillStyle = '#1b6d8f'; c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2 - 3, h / 2 - 3, 0, 0, 7); c.fill(); c.strokeStyle = '#7fe6ff'; c.lineWidth = 3; c.stroke(); break;
       case 'recycler': c.fillStyle = '#245a7a'; rr(c, x, y, w, h, 10); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#0e2c3d'; c.beginPath(); c.arc(x + w / 2, y + h / 2, w / 3, 0, 7); c.fill(); break;
       case 'o2gen': c.fillStyle = '#2e5276'; rr(c, x, y, w, h, 8); c.fill(); c.fillStyle = '#bfe9ff'; c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillText('O₂', x + w / 2, y + h / 2 + 8); break;
@@ -332,20 +375,36 @@ const World = (function () {
     // Puertas
     for (const d of doors) {
       const x = d.x * TS, y = d.y * TS, half = TS * (1 - d.open);
-      const lockC = d.kind === 'auto' ? '#4f6db8' : '#ffc24a';
+      const lockC = d.lock ? '#ff5a5a' : d.kind === 'auto' ? '#4f6db8' : '#ffc24a';
       ctx.fillStyle = '#2d3a63'; ctx.fillRect(x, y + 4, half, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, half, TS - 8);
       ctx.fillStyle = lockC; ctx.fillRect(x + half - 3, y + 4, 3, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, 3, TS - 8);
     }
-    // Camas del invernadero (cultivos)
-    if (S) for (const f of furn) if (f.kind === 'bed') {
-      const b = S.beds[f.bed]; if (!b || !b.crop) continue;
-      const x = f.x * TS, y = f.y * TS, n = 5, g = b.prog;
-      const col = b.hp < 40 ? '#b59a3a' : b.crop === 'radish' ? '#e0457b' : b.crop === 'micro' ? '#9be36b' : '#3ddc84';
-      for (let i = 0; i < n; i++) { const px = x + 10 + i * ((f.w * TS - 20) / (n - 1)), py = y + f.h * TS / 2; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, 3 + g * 8, 0, 7); ctx.fill(); }
-      if (g >= 1) { ctx.font = '14px system-ui'; ctx.fillText('✨', x + f.w * TS - 10, y + 4); }
+    // Jardineras: luz LED, riego, sensor de humedad, etiquetas e indicadores (las plantas se dibujan como entidades)
+    const plantEnts = [];
+    if (S) for (const f of furn) if (f.kind === 'planter') {
+      const b = S.beds[f.bed]; if (!b) continue;
+      const x = f.x * TS, y = f.y * TS, w = f.w * TS;
+      const lit = b.light * ((S.lf && S.lf.lights != null) ? S.lf.lights : 1) * S.cap.gh * (b.plants.some(Boolean) ? 1 : 0);
+      ctx.fillStyle = '#2a2f3d'; ctx.fillRect(x + 2, y - 8, w - 4, 5);
+      if (lit > 0.02) { ctx.save(); ctx.globalAlpha = 0.25 + 0.6 * lit; ctx.fillStyle = '#ff6ad5'; ctx.fillRect(x + 4, y - 7, w - 8, 3); const g2 = ctx.createLinearGradient(0, y - 4, 0, y + f.h * TS); g2.addColorStop(0, 'rgba(255,106,213,' + 0.22 * lit + ')'); g2.addColorStop(1, 'rgba(255,106,213,0)'); ctx.fillStyle = g2; ctx.fillRect(x + 2, y - 4, w - 4, f.h * TS); ctx.restore(); }
+      ctx.fillStyle = '#5b8fc9'; ctx.fillRect(x + 6, y + 13, w - 12, 2.5);
+      const plants = b.plants.filter(Boolean), avgM = plants.length ? plants.reduce((a, p) => a + p.moist, 0) / plants.length : 50;
+      ctx.fillStyle = '#9aa0aa'; ctx.fillRect(x + w - 7, y + 10, 3, 12);
+      ctx.fillStyle = avgM < 28 ? '#ff6b6b' : avgM > 82 ? '#6fb3ff' : avgM < 40 ? '#ffc24a' : '#5fe39a'; ctx.beginPath(); ctx.arc(x + w - 5.5, y + 9, 2.6, 0, 7); ctx.fill();
+      for (let k = 0; k < 3; k++) {
+        const px = x + (0.5 + k) * TS, py = y + 1.45 * TS, pl = b.plants[k];
+        ctx.fillStyle = '#7fc4ff'; ctx.fillRect(px - 1, y + 15, 2, 3);
+        if (!pl) { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('+', px, py - 2); continue; }
+        plantEnts.push({ y: f.y + 1.45, f: () => {
+          Flora.draw(ctx, pl.sp, px, py, 0.92, pl, rm ? null : t);
+          ctx.fillStyle = 'rgba(5,8,20,.7)'; ctx.fillRect(px - 11, py + 4, 22, 9);
+          ctx.fillStyle = '#eef3ff'; ctx.font = 'bold 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText(tr(Flora.SPECIES[pl.sp].short), px, py + 10.5);
+          ctx.fillStyle = '#26345e'; ctx.fillRect(px - 10, py + 14, 20, 2.5); ctx.fillStyle = pl.prog >= 1 ? '#ffd36b' : '#5fe39a'; ctx.fillRect(px - 10, py + 14, 20 * pl.prog, 2.5);
+          if (pl.prog >= 1) { ctx.font = '10px system-ui'; ctx.fillText('✨', px + 9, py - 22); }
+          if (pl.moist < 28 || pl.hp < 40 || (pl.pest && pl.pestKnown)) { ctx.font = 'bold 10px system-ui'; ctx.fillStyle = '#ffc24a'; ctx.fillText('!', px - 10, py - 18); }
+        } });
+      }
     }
-    // Luces de cultivo
-    if (S && S.sys.gh.lights > 0.05) { ctx.save(); ctx.globalAlpha = 0.12 * S.sys.gh.lights * ((S.lf && S.lf.lights) || 0); ctx.fillStyle = '#ff7af0'; const R = RECTS.gh; ctx.fillRect(R[0] * TS, R[1] * TS, (R[2] - R[0] + 1) * TS, (R[3] - R[1] + 1) * TS); ctx.restore(); }
     // Reactor brillando
     if (S) { const lv = (S.pw && S.pw.rea) || 0; const pulse = rm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 3); const g = ctx.createRadialGradient(50 * TS, 22 * TS, 4, 50 * TS, 22 * TS, 70); g.addColorStop(0, 'rgba(255,170,80,' + (0.25 + 0.5 * pulse) * Math.min(1, lv / 6) + ')'); g.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = g; ctx.fillRect(48 * TS - 40, 20 * TS - 40, 4 * TS + 80, 4 * TS + 80); }
     // Consolas
@@ -362,8 +421,14 @@ const World = (function () {
     // Entidades (orden por y)
     const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
     const ents = bots.map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
-    ents.push({ y: player.y, f: () => drawChar(ctx, 'commander', player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
+    plantEnts.forEach((pe) => ents.push(pe));
+    ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
+    // Secciones bloqueadas
+    if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
+      const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
+      ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; ctx.fillText('🔒 ' + tr(DATA.ROOMS[k]), (Rr[0] + Rr[2] + 1) / 2 * TS, (Rr[1] + Rr[3] + 1) / 2 * TS);
+    }
     // Partículas
     for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
     ctx.globalAlpha = 1;
@@ -379,9 +444,11 @@ const World = (function () {
       ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
       if (o.crit) { ctx.fillStyle = 'rgba(255,40,40,' + (rm ? 0.08 : 0.06 + 0.06 * Math.sin(t * 4)) + ')'; ctx.fillRect(0, 0, cw, ch); }
     }
-    // Flecha guía hacia el objetivo
-    if (o.target) {
-      const tx = (o.target[0] * TS - cam.x) * zoom, ty = (o.target[1] * TS - cam.y) * zoom;
+    // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
+    const tgt = marker ? marker.p : o.target;
+    if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
+    if (tgt) {
+      const tx = (tgt[0] * TS - cam.x) * zoom, ty = (tgt[1] * TS - cam.y) * zoom;
       const off = tx < 0 || ty < 0 || tx > cw || ty > ch;
       const ang = Math.atan2(ty - ch / 2, tx - cw / 2);
       const m = 60 * dpr;
@@ -403,7 +470,9 @@ const World = (function () {
       c.fillRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s);
     }
     if (S) for (const i of S.inc) if (!i.res && S.t >= i.from) { const R = RECTS[i.room]; if (!R) continue; c.strokeStyle = i.sev === 'crit' ? '#ff6b6b' : i.sev === 'warn' ? '#ffc24a' : '#6fb3ff'; c.lineWidth = 3; c.strokeRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s); }
+    for (const k in RECTS) if (locked(k)) { const Rr = RECTS[k]; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(ox + Rr[0] * s, oy + Rr[1] * s, (Rr[2] - Rr[0] + 1) * s, (Rr[3] - Rr[1] + 1) * s); c.font = Math.round(10 * s / 2) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🔒', ox + (Rr[0] + Rr[2] + 1) / 2 * s, oy + (Rr[1] + Rr[3] + 1) / 2 * s + 4); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
+    if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
     for (const b of bots) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ox + player.x * s, oy + player.y * s, 5, 0, 7); c.fill();
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
@@ -411,17 +480,19 @@ const World = (function () {
 
   function roomCenter(k) { const R = RECTS[k]; if (!R) return null; const n = N[ROOMNODE[k]]; return n ? [n[0], n[1]] : [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2]; }
   function consolePos(id) { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; }
-  function state() { return { px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
+  function state() { return { role: player.role, px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
     if (Number.isFinite(o.px) && Number.isFinite(o.py) && canStand(o.px, o.py, 0.3)) { player.x = o.px; player.y = o.py; }
     if (Array.isArray(o.samples)) o.samples.forEach((t, i) => { if (samples[i]) samples[i].taken = !!t; });
     airlock.st = o.lock === 'out' ? 'out' : 'in';
+    if (o.role && o.role !== 'commander') setPlayerRole(o.role);
+    player.act = null;
   }
   function respawnSamples() { samples.forEach((s) => (s.taken = false)); }
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
 
-  return { setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
+  return { setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, bfs, N } };
 })();

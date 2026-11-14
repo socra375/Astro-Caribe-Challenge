@@ -16,12 +16,35 @@ const SelfTest = (function () {
     if (S.sys.o2.conc < 10 || S.sys.o2.conc > 30) errs.push('conc O2 fuera de rango');
     if (S.samples < 0) errs.push('muestras negativas');
     for (const c of S.crew) if (c.dose < 0) errs.push('dosis negativa');
-    S.beds.forEach((b, i) => { if (b.prog < 0 || b.prog > 1 || b.hp < 0 || b.hp > 100) errs.push('cama ' + i + ' inválida'); });
+    S.beds.forEach((b, i) => b.plants.forEach((p) => { if (p && (p.prog < 0 || p.prog > 1 || p.hp < 0 || p.hp > 100 || p.moist < 0 || p.moist > 100 || p.nutr < 0 || p.nutr > 100)) errs.push('planta en cama ' + i + ' inválida'); }));
+    for (const k in S.seeds) if (S.seeds[k] < 0) errs.push('semillas negativas');
+    if (S.camp && S.camp.basicDone && Object.keys(S.camp.unlocked).length < 7) errs.push('campaña terminada sin todas las salas');
     if (S.morale < 0 || S.morale > 100) errs.push('moral fuera de rango');
   }
+  function garden(S) {
+    const pref = ['romaine', 'radish', 'mizuna', 'chili', 'zinnia'];
+    S.beds.forEach((b, bi) => b.plants.forEach((p, k) => {
+      if (p && p.prog >= 1) { Sim.harvest(S, bi, k); return; }
+      if (!p) { const sp = pref.find((x) => S.seeds[x] > 0 && x !== 'zinnia'); if (sp) Sim.decide(S, 'plant', { bed: bi, slot: k, sp }); return; }
+      if (p.moist < 35) Sim.decide(S, 'water', { bed: bi, slot: k });
+      if (p.nutr < 30) Sim.decide(S, 'feed', { bed: bi, slot: k });
+      if (p.pest) { Sim.decide(S, 'identify', { bed: bi, slot: k }); Sim.decide(S, 'prune', { bed: bi, slot: k }); }
+      if (p.prune > 0.8) Sim.decide(S, 'prune', { bed: bi, slot: k });
+    }));
+    if (S.r.nutr.v < 6) Sim.decide(S, 'mixnutr', {});
+  }
   function smart(S, h, mem) {
+    garden(S);
+    if (S.camp && !S.camp.basicDone) {
+      for (const k of ['talk_bridge', 'cmd_resources', 'talk_life', 'med_open', 'talk_reactor', 'talk_water', 'talk_gh', 'talk_lab', 'spec_open', 'log_open']) Sim.campFlag(S, k);
+      if (!mem.reac) { mem.reac = 1; Sim.decide(S, 'reactor', { v: 0.9 }); }
+      const st = Sim.campStatus(S);
+      if (st && st.id === 'c2' && !mem.o2c) { mem.o2c = 1; Sim.mini(S, 'o2', { ok: true, score: 0.8 }); }
+      if (S.samples > 0) Sim.decide(S, 'analyze', {});
+      if (st && st.id === 'c3' && !mem.fed) { const x = Sim.plantsList(S)[0]; if (x) { mem.fed = 1; Sim.decide(S, 'feed', { bed: x.bi, slot: x.k }); Sim.decide(S, 'water', { bed: x.bi, slot: x.k }); } }
+    }
     const order = [1, 2, 5, 3, 4, 7];
-    if (S.m[6].st !== 'active' && S.m[6].st !== 'done') Sim.startMission(S, 6);
+    if (S.camp && !S.camp.basicDone) { /* familiarización en curso */ } else if (S.m[6].st !== 'active' && S.m[6].st !== 'done') Sim.startMission(S, 6);
     const act = order.find((i) => S.m[i].st === 'active');
     if (!act) { const nxt = order.find((i) => S.m[i].st !== 'done'); if (nxt) Sim.startMission(S, nxt); }
     if (S.m[4].st === 'active') Sim.reportSite(S, 'x', 1);
@@ -35,7 +58,7 @@ const SelfTest = (function () {
     const storm = S.inc.some((i) => i.type === 'solar_storm' && !i.res);
     if (storm !== S.proto) Sim.decide(S, 'proto', { v: storm });
     Sim.setPlayerZone(S, storm ? 'shelter' : 'hab');
-    S.beds.forEach((b, i) => { if (b.crop && b.prog >= 1) Sim.harvest(S, i); if (!b.crop) Sim.decide(S, 'plant', { bed: i, crop: i % 2 ? 'radish' : 'lettuce' }); });
+
     if (S.d.power < 0.3 && !S.emergency) Sim.decide(S, 'emergency', { v: true });
     if (S.d.power > 0.6 && S.emergency) Sim.decide(S, 'emergency', { v: false });
     if (Math.abs(S.sys.o2.calib) > 1.5) Sim.mini(S, 'o2', { ok: true, score: 0.8 });

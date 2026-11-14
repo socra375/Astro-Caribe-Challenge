@@ -23,10 +23,10 @@ Tres lecciones de **20 minutos** para estudiantes de 7 a 12 años. Funcionan en 
 - Sistemas conectados: el oxígeno se fabrica con agua y electricidad (electrólisis).
 
 **Actividad dentro del juego (12 min)**
-1. Escenario **Luna**, nivel Explorador. Lean juntos el tutorial (1 min).
-2. Caminen al **Puente de mando** y abran la consola de mando, pestaña **Recursos**. Pregunta: ¿qué recurso se consume más rápido?
-3. Inicien la **Misión 1: Estabilizar el soporte vital**. Vayan a *Reciclaje de agua y oxígeno*, reparen la bomba con el minijuego de **cableado** y prueben el botón **Modo máximo** del reciclador. Antes de confirmar, lean el **panel de consecuencias**: ¿qué sube y qué baja?
-4. Si hay tiempo, abran el **Panel de energía** y miren las cuatro prioridades.
+1. Escenario **Luna**, nivel Explorador. Escuchen a **Control de Misión** en el puente: explica el HUD (1 min).
+2. Abran la consola de mando, pestaña **Recursos**. Pregunta: ¿qué recurso se consume más rápido?
+3. Completen **«Activación de la colonia»**: visiten el módulo de vida (habla Sofía, la médica) y el reactor (habla Ana, la ingeniera). Ajusten la energía y lean el **panel de consecuencias** antes de confirmar: ¿qué sube y qué baja?
+4. Se abre la sala de **agua y oxígeno**. En **«Recuperación del ciclo de agua»** reparen la bomba con el minijuego de **cableado** y calibren el oxígeno. Observen cómo el agua se estabiliza.
 
 **Preguntas para los estudiantes**
 - ¿Por qué el agua y el oxígeno están conectados en la base?
@@ -53,9 +53,10 @@ El estudiante explica con sus palabras que un cambio en un sistema afecta a otro
 - Fuentes oficiales: ONE, Ministerio de Energía y Minas, Ministerio de Medio Ambiente, INDRHI, ONAMET y Ministerio de Agricultura.
 
 **Actividad dentro del juego (12 min)**
-1. Continúen la partida o empiecen una nueva. Inicien la **Misión 6: Cultivar alimentos** (puede ir en paralelo con otra misión).
-2. En el **Invernadero**, siembren dos cultivos distintos. Muevan el control de **Iluminación** y lean el panel de consecuencias antes de confirmar.
-3. Jueguen el minijuego **Gestión del invernadero**: si lo superan, se desbloquea el **riego por goteo**. Comparen cuántas veces tuvieron que regar.
+1. Continúen la partida de la lección 1 hasta abrir el **invernadero** (si empiezan de cero, completen antes las dos primeras misiones de familiarización). Teo, el agrónomo, les presentará la sala.
+2. Misión **«Primer cultivo»**: acérquense a una planta y pulsen E (o tóquenla). Comparen dos especies (por ejemplo, rábano y chile) en su ficha: ¿qué necesita cada una? Siembren, rieguen, añadan nutrientes y cosechen la lechuga madura.
+3. Experimento en parejas: en una jardinera bajen el LED y en otra súbanlo. Tras unas horas (velocidad x4), comparen el crecimiento y el consumo de energía. Pulsen **Inspeccionar** para leer el diagnóstico.
+4. Jueguen el minijuego **Gestión del invernadero**: si lo superan, se desbloquea el **riego por goteo**. Comparen cuánta agua usa el riego automático antes y después.
 4. Abran **Conexión con la Tierra** (en el puente) y lean la ficha de la Misión 1 o la 6. Usen el control **"Prueba tú"** (pérdidas de agua o riego por goteo).
 
 **Preguntas para los estudiantes**
