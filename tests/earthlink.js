@@ -181,7 +181,7 @@ const pushInc = (pg, type, o) => pg.evaluate(([t, o]) => { const S = Game.S, T =
     const m0 = S.m[3].st; EL.send(S, 'emerg_report'); wait(20); o.mission = [m0, S.m[3].st, e.orders.length];
     S.proto = false; EL.send(S, 'confirm'); wait(20); o.confirm = [S.proto, e.orders.length];
     // (d) suministros
-    S.inc = []; S.r.food.v = 8; const f0 = S.r.food.v; const rs = EL.send(S, 'supplies'); const second = EL.send(S, 'supplies'); o.cool = [second.ok, !!second.why]; wait(40); o.sup1 = S.r.food.v > f0;
+    S.inc = []; S.r.food.v = 24; const f0 = S.r.food.v; const rs = EL.send(S, 'supplies'); const second = EL.send(S, 'supplies'); o.cool = [second.ok, !!second.why]; wait(90); o.sup1 = S.log.some((l) => l.k === 'el.supply') && e.hist.some((x) => x.who === 'system' && /Llegó el cargamento/.test(x.text.es));
     // (e) ruta segura
     S.sys.rover.hint = false; EL.send(S, 'route'); wait(14); o.route = S.sys.rover.hint === true && !!Object.keys(S.ex ? S.ex.disc : {}).length;
     return o;
