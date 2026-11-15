@@ -6,17 +6,23 @@
      ===================================================================== */
   const MAPFN = {
     bridge: { es: 'Centro de operaciones: misiones, comunicaciones con la Tierra, alertas y vestuario.', en: 'Operations center: missions, Earth communications, alerts and wardrobe.' },
-    life: { es: 'Módulo de vida: camas, enfermería, descanso y bienestar de la tripulación.', en: 'Habitation module: beds, sick bay, rest and crew wellbeing.' },
+    life: { es: 'Dormitorios: camas, taquillas y descanso de la tripulación.', en: 'Crew quarters: beds, lockers and crew rest.' },
+    med: { es: 'Enfermería: revisión de la tripulación y condiciones de habitabilidad.', en: 'Sick bay: crew checks and habitability conditions.' },
+    kitchen: { es: 'Cocina y comedor: raciones y comidas de la tripulación.', en: 'Kitchen & mess: rations and crew meals.' },
+    food: { es: 'Almacén de alimentos: reservas, conservación y cosechas.', en: 'Food storage: reserves, preservation and harvests.' },
+    samples: { es: 'Almacén de muestras: recibe y conserva las muestras del rover.', en: 'Sample storage: receives and keeps the rover samples.' },
+    workshop: { es: 'Taller de mantenimiento: herramientas, piezas y reparaciones.', en: 'Maintenance workshop: tools, parts and repairs.' },
+    waste: { es: 'Gestión de residuos: separación y recuperación de materiales.', en: 'Waste management: sorting and material recovery.' },
     gh: { es: 'Invernadero: plantas individuales, riego, luz LED y cosecha.', en: 'Greenhouse: individual plants, irrigation, LED light and harvest.' },
     reactor: { es: 'Reactor y energía: generación, baterías, consumos y prioridades.', en: 'Reactor & power: generation, batteries, loads and priorities.' },
-    water: { es: 'Reciclaje de agua y oxígeno: agua potable, aire respirable y filtros.', en: 'Water & oxygen recycling: drinking water, breathable air and filters.' },
+    water: { es: 'Soporte vital: oxígeno, reciclaje de agua, presión y calidad del aire.', en: 'Life support: oxygen, water recycling, pressure and air quality.' },
     rad: { es: 'Bahía del rover, esclusa y refugio contra la radiación.', en: 'Rover bay, airlock and radiation shelter.' },
     lab: { es: 'Laboratorio: análisis de muestras, espectrómetro y registro de resultados.', en: 'Lab: sample analysis, spectrometer and results log.' },
     hall: { es: 'Pasillo que conecta las salas del puesto avanzado.', en: 'Corridor linking the outpost rooms.' },
     lock: { es: 'Esclusa: paso entre el interior y la superficie.', en: 'Airlock: passage between inside and the surface.' },
     pad: { es: 'Superficie exterior: aquí se recogen muestras con el traje puesto.', en: 'Outside surface: samples are collected here in a suit.' }
   };
-  const MAPSYS = { bridge: ['comms'], life: ['thermal', 'press'], gh: ['gh'], reactor: ['reactor', 'solar'], water: ['o2', 'rec'], rad: ['shield', 'isru'], lab: ['lab'] };
+  const MAPSYS = { bridge: ['comms'], life: ['thermal', 'press'], med: ['thermal', 'press'], gh: ['gh'], reactor: ['reactor', 'solar'], water: ['o2', 'rec'], rad: ['shield', 'isru'], lab: ['lab'] };
   const ROLECOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
   const isCorr = (k) => /^v\d$/.test(k);
 

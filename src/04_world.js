@@ -3,21 +3,23 @@
    cámara, render Canvas 2D, partículas y minimapa.
    ===================================================================== */
 const World = (function () {
-  const TS = 32, W = 60, H = 56;
+  const TS = 32, W = 100, H = 56;
   const VOID = 0, WALL = 1, FLOOR = 2, DOOR = 3, OUT = 4;
   const RECTS = {
-    life: [2, 2, 17, 11], bridge: [22, 2, 37, 11], lab: [42, 2, 57, 11],
-    gh: [2, 17, 17, 28], water: [22, 17, 37, 28], reactor: [42, 17, 57, 28],
-    rad: [6, 34, 53, 44], hall: [2, 13, 57, 15], v1: [9, 30, 10, 32], v2: [29, 30, 30, 32], v3: [49, 30, 50, 32],
+    life: [2, 2, 17, 11], bridge: [22, 2, 37, 11], lab: [42, 2, 57, 11], kitchen: [62, 2, 77, 11], med: [82, 2, 97, 11],
+    gh: [2, 17, 17, 28], water: [22, 17, 37, 28], reactor: [42, 17, 57, 28], food: [62, 17, 77, 28], samples: [82, 17, 97, 28],
+    rad: [6, 34, 53, 44], waste: [62, 34, 77, 44], workshop: [82, 34, 97, 44],
+    hall: [2, 13, 97, 15], v1: [9, 30, 10, 32], v2: [29, 30, 30, 32], v3: [49, 30, 50, 32], v4: [69, 30, 70, 32], v5: [89, 30, 90, 32], v6: [54, 38, 61, 40], v7: [78, 38, 81, 40],
     lock: [28, 46, 31, 47], pad: [20, 49, 39, 54]
   };
   const SHELTER = [38, 36, 47, 44];
   const PAL = {
     bridge: ['#1b2a55', '#1f3062'], life: ['#2d2346', '#33284f'], gh: ['#183a2a', '#1c4331'], reactor: ['#3a2414', '#432a17'],
     water: ['#0f3446', '#123b50'], rad: ['#2a2f3a', '#30353f'], lab: ['#2b2550', '#312a5a'], hall: ['#1a1f2e', '#1d2334'],
-    v1: ['#1a1f2e', '#1d2334'], v2: ['#1a1f2e', '#1d2334'], v3: ['#1a1f2e', '#1d2334'], lock: ['#3a3426', '#41392a']
+    v1: ['#1a1f2e', '#1d2334'], v2: ['#1a1f2e', '#1d2334'], v3: ['#1a1f2e', '#1d2334'], v4: ['#1a1f2e', '#1d2334'], v5: ['#1a1f2e', '#1d2334'], v6: ['#1a1f2e', '#1d2334'], v7: ['#1a1f2e', '#1d2334'], lock: ['#3a3426', '#41392a'],
+    kitchen: ['#3d2a22', '#46302a'], med: ['#1f3a44', '#244350'], food: ['#33361e', '#3a3d23'], samples: ['#1d3a3f', '#224247'], waste: ['#2a3326', '#2f3a2b'], workshop: ['#333338', '#3a3a40']
   };
-  const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff' };
+  const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff', kitchen: '#ff8f6b', med: '#5fd3e8', food: '#c8d44a', samples: '#4fe0c9', waste: '#8fbf6a', workshop: '#b8b8c4' };
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [];
   let staticCv = null, scen = 'moon';
   const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
@@ -42,6 +44,7 @@ const World = (function () {
     const D = (x, y, kind, rooms) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0, rooms }); };
     const TOP = { 9: 'life', 29: 'bridge', 49: 'lab' }, MID = { 9: 'gh', 29: 'water', 49: 'reactor' };
     for (const x of [9, 29, 49]) { D(x, 12, 'auto', [TOP[x]]); D(x, 16, 'auto', [MID[x]]); D(x, 29, 'auto', [MID[x], 'rad']); D(x, 33, 'auto', ['rad']); }
+    for (const x of [69, 89]) { D(x, 12, 'auto', [x === 69 ? 'kitchen' : 'med']); D(x, 16, 'auto', [x === 69 ? 'food' : 'samples']); D(x, 29, 'auto', [x === 69 ? 'food' : 'samples', x === 69 ? 'waste' : 'workshop']); D(x, 33, 'auto', [x === 69 ? 'waste' : 'workshop']); }
     D(29, 45, 'inner', ['rad']); D(29, 48, 'outer', ['rad']);
     furn = []; consoles = [];
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
@@ -51,8 +54,8 @@ const World = (function () {
     C('cmd', 'bridge', 25, 3, 'manage', '🖥️'); C('comms', 'bridge', 30, 3, 'interact', '📡'); C('earth', 'bridge', 34, 3, 'investigate', '🌎');
     F(23, 9, 2, 2, 'crate'); F(35, 8, 2, 3, 'lockers'); C('wardrobe', 'bridge', 34, 10, 'interact', '🧥');
     // Módulo de vida
-    for (let i = 0; i < 3; i++) F(3 + i * 3, 3, 2, 3, 'bunk');
-    C('bed', 'life', 4, 7, 'rest', '🛏️'); F(13, 3, 3, 2, 'medbed'); C('med', 'life', 16, 3, 'manage', '🩺'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
+    for (let i = 0; i < 5; i++) F(3 + i * 3, 3, 2, 3, 'bunk'); F(15, 8, 2, 3, 'lockers');
+    C('bed', 'life', 4, 7, 'rest', '🛏️'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
     // Invernadero
     for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'planter', { bed: i });
     C('gh', 'gh', 16, 18, 'manage', '🌱'); F(15, 26, 2, 2, 'tank');
@@ -71,6 +74,18 @@ const World = (function () {
     // Laboratorio
     C('lab', 'lab', 44, 3, 'investigate', '🔬'); C('spec', 'lab', 50, 3, 'investigate', '🌈'); C('log', 'lab', 56, 9, 'investigate', '📚');
     F(45, 7, 4, 2, 'table'); F(51, 7, 3, 2, 'table'); F(55, 3, 2, 2, 'rack');
+    // Cocina y comedor
+    F(62, 2, 16, 1, 'window'); F(63, 3, 7, 1, 'stove'); F(71, 3, 5, 1, 'shelf'); F(64, 7, 4, 2, 'table'); F(70, 7, 4, 2, 'table'); F(75, 8, 2, 3, 'lockers');
+    // Enfermería
+    F(84, 3, 3, 2, 'medbed'); F(89, 3, 3, 2, 'medbed'); C('med', 'med', 95, 3, 'manage', '🩺'); F(92, 8, 3, 2, 'table'); F(83, 8, 2, 3, 'lockers');
+    // Almacén de alimentos
+    F(63, 18, 3, 2, 'shelf'); F(66, 18, 3, 2, 'shelf'); F(72, 18, 4, 2, 'shelf'); F(63, 24, 2, 2, 'crate'); F(66, 24, 2, 2, 'crate'); F(73, 24, 4, 3, 'cold');
+    // Almacén de muestras
+    for (const cx of [83, 86, 92, 95]) F(cx, 18, 3, 2, 'cabinet'); F(84, 24, 4, 2, 'table'); F(92, 24, 4, 3, 'cold');
+    // Gestión de residuos
+    for (const bx of [63, 66, 73, 76]) F(bx, 35, 2, 2, 'bin'); F(70, 40, 5, 3, 'recycler'); F(63, 41, 2, 2, 'crate');
+    // Taller de mantenimiento
+    F(83, 36, 6, 2, 'benchs'); F(91, 35, 4, 2, 'tools'); F(84, 41, 3, 2, 'crate'); F(90, 40, 4, 3, 'lathe');
     // Muestras exteriores
     samples = [{ x: 23.5, y: 51.5 }, { x: 35.5, y: 52.5 }, { x: 27.5, y: 53.5 }, { x: 33.5, y: 50.5 }].map((s) => Object.assign(s, { taken: false }));
     // Solidez
@@ -82,19 +97,27 @@ const World = (function () {
   const N = {
     life_c: [7, 9.5], life_d: [10, 11.5], bridge_c: [30, 9.5], bridge_d: [30, 11.5], lab_c: [50, 9.5], lab_d: [50, 11.5],
     ha: [10, 14.5], hb: [30, 14.5], hc: [50, 14.5],
-    gh_t: [10, 16.5], gh_c: [10, 23.5], gh_b: [10, 28.5], v1: [10, 31], bay_a_d: [10, 33.5], bay_a: [10, 34.5],
-    wa_t: [30, 16.5], wa_c: [30, 25.5], wa_b: [30, 28.5], v2: [30, 31], bay_b_d: [30, 33.5], bay_b: [30, 34.5],
-    re_t: [50, 16.5], re_c: [54, 25.5], re_m: [50, 25.5], re_b: [50, 28.5], v3: [50, 31], bay_c_d: [50, 33.5], bay_c: [50, 34.5],
-    bay_s: [36, 34.5], sh_d: [36, 39.5], sh_c: [43, 39.5], sh_c2: [43, 41], bay_r: [18, 34.5], bay_r2: [18, 38.5]
+    gh_t: [10, 16.5], gh_p: [10.5, 18.5], gh_c: [10.5, 23.5], gh_b: [10.5, 28.5], v1: [10, 31], bay_a_d: [10, 33.5], bay_a: [10, 34.5],
+    wa_t: [30, 16.5], wa_p: [30, 19.2], wa_q: [27.5, 20.5], wa_r: [27.5, 24.2], wa_c: [30, 25.5], wa_b: [30, 28.5], v2: [30, 31], bay_b_d: [30, 33.5], bay_b: [30, 34.5],
+    re_t: [50, 16.5], re_t2: [50, 18.3], re_w1: [46.5, 18.3], re_w2: [46.5, 25.5], re_c: [54, 25.5], re_m: [50, 25.5], re_b: [50, 28.5], v3: [50, 31], bay_c_d: [50, 33.5], bay_c: [50, 34.5],
+    bay_s: [36, 34.5], sh_d: [36, 39.5], sh_c: [43, 39.5], sh_c2: [43, 41], bay_r: [18, 34.5], bay_r2: [18, 38.5],
+    hd: [70, 14.5], he: [90, 14.5], kit_c: [69, 9.5], kit_d: [70, 11.5], med_c: [90, 7.5], med_d: [90, 11.5],
+    fd_t: [70, 16.5], fd_c: [70, 22.5], fd_b: [70, 28.5], v4n: [70, 31], ws_d: [70, 33.5], ws_c: [70, 38.5],
+    sa_t: [90, 16.5], sa_c: [90, 22.5], sa_b: [90, 28.5], v5n: [90, 31], wk_d: [90, 33.5], wk_c: [90, 39.5],
+    bay_e: [51, 39.5], cor6: [58, 39.5], cor7: [79.5, 39.5]
   };
   const E = [['life_c', 'life_d'], ['life_d', 'ha'], ['bridge_c', 'bridge_d'], ['bridge_d', 'hb'], ['lab_c', 'lab_d'], ['lab_d', 'hc'], ['ha', 'hb'], ['hb', 'hc'],
-    ['ha', 'gh_t'], ['gh_t', 'gh_c'], ['gh_c', 'gh_b'], ['gh_b', 'v1'], ['v1', 'bay_a_d'], ['bay_a_d', 'bay_a'],
-    ['hb', 'wa_t'], ['wa_t', 'wa_c'], ['wa_c', 'wa_b'], ['wa_b', 'v2'], ['v2', 'bay_b_d'], ['bay_b_d', 'bay_b'],
-    ['hc', 're_t'], ['re_t', 're_m'], ['re_m', 're_c'], ['re_m', 're_b'], ['re_b', 'v3'], ['v3', 'bay_c_d'], ['bay_c_d', 'bay_c'],
-    ['bay_a', 'bay_r'], ['bay_r', 'bay_b'], ['bay_r', 'bay_r2'], ['bay_b', 'bay_s'], ['bay_s', 'bay_c'], ['bay_s', 'sh_d'], ['sh_d', 'sh_c'], ['sh_c', 'sh_c2']];
+    ['ha', 'gh_t'], ['gh_t', 'gh_p'], ['gh_p', 'gh_c'], ['gh_c', 'gh_b'], ['gh_b', 'v1'], ['v1', 'bay_a_d'], ['bay_a_d', 'bay_a'],
+    ['hb', 'wa_t'], ['wa_t', 'wa_p'], ['wa_p', 'wa_q'], ['wa_q', 'wa_r'], ['wa_r', 'wa_c'], ['wa_c', 'wa_b'], ['wa_b', 'v2'], ['v2', 'bay_b_d'], ['bay_b_d', 'bay_b'],
+    ['hc', 're_t'], ['re_t', 're_t2'], ['re_t2', 're_w1'], ['re_w1', 're_w2'], ['re_w2', 're_m'], ['re_m', 're_c'], ['re_m', 're_b'], ['re_b', 'v3'], ['v3', 'bay_c_d'], ['bay_c_d', 'bay_c'],
+    ['bay_a', 'bay_r'], ['bay_r', 'bay_b'], ['bay_r', 'bay_r2'], ['bay_b', 'bay_s'], ['bay_s', 'bay_c'], ['bay_s', 'sh_d'], ['sh_d', 'sh_c'], ['sh_c', 'sh_c2'],
+    ['hc', 'hd'], ['hd', 'he'], ['hd', 'kit_d'], ['kit_d', 'kit_c'], ['he', 'med_d'], ['med_d', 'med_c'],
+    ['hd', 'fd_t'], ['fd_t', 'fd_c'], ['fd_c', 'fd_b'], ['fd_b', 'v4n'], ['v4n', 'ws_d'], ['ws_d', 'ws_c'],
+    ['he', 'sa_t'], ['sa_t', 'sa_c'], ['sa_c', 'sa_b'], ['sa_b', 'v5n'], ['v5n', 'wk_d'], ['wk_d', 'wk_c'],
+    ['bay_c', 'bay_e'], ['bay_e', 'cor6'], ['cor6', 'ws_c'], ['ws_c', 'cor7'], ['cor7', 'wk_c']];
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
   const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
-  const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2' };
+  const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2', kitchen: 'kit_c', med: 'med_c', food: 'fd_c', samples: 'sa_c', waste: 'ws_c', workshop: 'wk_c' };
   const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
     if (a === b) return [b];
@@ -294,7 +317,7 @@ const World = (function () {
     for (const f of furn) drawFurn(c, f);
     // Etiquetas de sala
     c.font = 'bold 15px system-ui'; c.textAlign = 'center';
-    for (const k of ['bridge', 'life', 'lab', 'gh', 'water', 'reactor', 'rad']) {
+    for (const k of ['bridge', 'life', 'lab', 'gh', 'water', 'reactor', 'rad', 'kitchen', 'med', 'food', 'samples', 'waste', 'workshop']) {
       const R = RECTS[k], cx = ((R[0] + R[2] + 1) / 2) * TS, cy = (R[3] + 0.75) * TS;
       c.fillStyle = 'rgba(0,0,0,.45)'; const t = tr(DATA.ROOMS[k]); const w = c.measureText(t).width + 16; rr(c, cx - w / 2, cy - 14, w, 22, 8); c.fill();
       c.fillStyle = ROOMCOL[k]; c.fillText(t, cx, cy + 2);
@@ -329,6 +352,12 @@ const World = (function () {
       case 'tools': c.fillStyle = '#3a3f4f'; c.fillRect(x, y + 4, w, h - 8); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(x + 12 + i * 20, y + 10); c.lineTo(x + 12 + i * 20, y + h - 10); c.stroke(); } break;
       case 'shieldwall': c.fillStyle = '#5d6470'; c.fillRect(x, y, w, h); c.fillStyle = '#ffc24a'; c.fillRect(x, y + h / 2 - 3, w, 6); break;
       case 'benchs': c.fillStyle = '#4b5160'; rr(c, x, y + 4, w, h - 8, 6); c.fill(); break;
+      case 'shelf': c.fillStyle = '#4a4a30'; c.fillRect(x, y, w, h); c.fillStyle = '#c8d44a'; for (let i = 0; i < Math.floor(w / 18); i++) { c.fillRect(x + 6 + i * 18, y + 6, 12, h / 2 - 8); c.fillStyle = i % 2 ? '#ff8f6b' : '#c8d44a'; c.fillRect(x + 6 + i * 18, y + h / 2 + 2, 12, h / 2 - 8); } break;
+      case 'stove': c.fillStyle = '#5b4439'; rr(c, x, y, w, h, 4); c.fill(); for (let i = 0; i < Math.floor(w / 56) + 1; i++) { c.fillStyle = '#1a1411'; c.beginPath(); c.arc(x + 20 + i * 48, y + h / 2, 9, 0, 7); c.fill(); c.strokeStyle = '#ff8f6b'; c.lineWidth = 2; c.stroke(); } break;
+      case 'cold': c.fillStyle = '#d9eef5'; rr(c, x + 2, y + 2, w - 4, h - 4, 6); c.fill(); c.strokeStyle = '#7fd0e8'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#7fd0e8'; c.fillRect(x + 8, y + 8, w - 16, 5); c.fillStyle = '#2b6278'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('❄', x + w / 2, y + h / 2 + 6); break;
+      case 'cabinet': c.fillStyle = '#244a50'; rr(c, x, y, w, h, 4); c.fill(); c.strokeStyle = '#4fe0c9'; c.lineWidth = 2; c.stroke(); for (let i = 0; i < 3; i++) { c.fillStyle = '#0d2326'; c.fillRect(x + 6, y + 6 + i * (h / 3 - 2), w - 12, h / 3 - 8); } break;
+      case 'bin': c.fillStyle = ({ 63: '#3f6a3a', 66: '#3a5f7a', 73: '#7a6a3a', 76: '#6a3a3a' })[f.x] || '#3f6a3a'; rr(c, x + 3, y + 3, w - 6, h - 6, 8); c.fill(); c.strokeStyle = '#0006'; c.lineWidth = 3; c.stroke(); c.fillStyle = '#0005'; c.fillRect(x + 8, y + 8, w - 16, 6); break;
+      case 'lathe': c.fillStyle = '#44464f'; rr(c, x, y, w, h, 6); c.fill(); c.fillStyle = '#ffc24a'; c.fillRect(x + 8, y + 10, w - 16, 8); c.fillStyle = '#9aa0ae'; c.beginPath(); c.arc(x + w - 22, y + h / 2 + 6, 14, 0, 7); c.fill(); break;
       case 'rack': c.fillStyle = '#3a3463'; c.fillRect(x, y, w, h); c.fillStyle = '#9a8cff'; for (let i = 0; i < 4; i++) c.fillRect(x + 6, y + 8 + i * 13, w - 12, 5); break;
     }
     c.restore();

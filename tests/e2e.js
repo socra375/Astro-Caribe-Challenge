@@ -295,6 +295,23 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
   const mu0 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n'); const mu1 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n');
   ok('N alterna el silencio y M ya no lo hace', mu0 !== mu1 && (await pg.locator('#bMute').innerHTML()) === mu0);
+  // ---- Las 13 instalaciones: existencia, conexión y rutas transitables ----
+  const inst = await pg.evaluate(() => {
+    const T = World._test, R = World.RECTS, need = ['bridge', 'life', 'med', 'reactor', 'water', 'gh', 'food', 'kitchen', 'lab', 'samples', 'workshop', 'rad', 'waste'];
+    const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [] };
+    const inDoor = (x, y) => T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2);
+    for (const k in T.N) if (!T.canStand(T.N[k][0], T.N[k][1], 0.25) && !inDoor(T.N[k][0], T.N[k][1])) out.nodesOk = false, out.bad.push(k);
+    World.player.x = 30; World.player.y = 9.5;
+    for (const k of need) {
+      const r = World.route(k);
+      if (!r || r.length < 2) { out.unreachable.push(k); continue; }
+      for (let i = 1; i < r.length; i++) for (let t = 0; t <= 1; t += 0.1) { const x = r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, y = r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t; if (!T.canStand(x, y, 0.25) && !T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2)) out.bad.push(k + '@' + x.toFixed(1) + ',' + y.toFixed(1)); }
+    }
+    return out;
+  });
+  ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
+  ok('Todos los nodos de ruta están en suelo transitable', inst.nodesOk && !inst.bad.length, JSON.stringify(inst.bad.slice(0, 5)));
+  ok('Las 13 instalaciones son alcanzables desde el puente por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
   // Alertas por NPC
   const rad = await pg.evaluate(() => {
     const G = Game._debug, S = Game.S, out = {};
