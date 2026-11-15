@@ -77,6 +77,13 @@ const Sim = (function () {
   ];
   const ALLROOMS = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
+  /** Enfoques de misión (asistente de inicio). Lunar y Marte: las 7 misiones. Estación y Ciencia: configuraciones con objetivos propios y su victoria. */
+  const FOCUS = {
+    moon: { goals: [1, 2, 3, 4, 5, 6, 7], sciMin: 0, mat: 0 },
+    mars: { goals: [1, 2, 3, 4, 5, 6, 7], sciMin: 0, mat: 0 },
+    station: { goals: [1, 2, 3, 5, 6], sciMin: 0, mat: 20 }, // soporte vital, energía, protección solar, blindaje y cultivos; +20 de materiales para construir
+    science: { goals: [3, 4, 7], sciMin: 8, mat: 0 } // protección para salir, sitio de exploración, rover con muestras y al menos un análisis/experimento (8 pts de ciencia)
+  };
 
   /* ---------- Incidentes (plantillas) ---------- */
   const EV = {
@@ -146,6 +153,7 @@ const Sim = (function () {
         isru: { h: 100, on: true },
         rover: { h: 100, batt: 100, hint: false, runs: 0 }
       },
+      focus: FOCUS[o.focus] ? o.focus : null, age: o.age || null,
       emergency: false, proto: false, cap: { gh: 1, lab: 1, comms: 1 },
       beds: [], crew: [], jobs: [], inc: [], log: [], incSeq: 1,
       cm: { q: [], inbox: [], seq: 1, nextDaily: 20 },
@@ -566,7 +574,7 @@ const Sim = (function () {
     S.z.well = r.well.v < 10 ? S.z.well + h : 0; if (S.z.well >= 24) return end('abort', 'well');
     if (S.st.maxDose >= S.limit) return end('dead', 'dose');
     if (S.inc.some((i) => !i.res && i.fix && i.sev === 'crit' && S.t - i.t0 > 72)) return end('abort', 'inc');
-    let all = true; for (let i = 1; i <= 7; i++) if (S.m[i].st !== 'done') all = false;
+    const FC = FOCUS[S.focus] || FOCUS.moon; let all = FC.goals.every((i) => S.m[i].st === 'done') && S.science >= FC.sciMin;
     if (all && !activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from)) end('victory', 'all');
   }
 
@@ -1038,7 +1046,7 @@ const Sim = (function () {
   }
 
   return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
-    finishMission, reportSite, reportQuiz, finishRun, kill, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
+    finishMission, reportSite, reportQuiz, finishRun, kill, FOCUS, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
 /*SIM-END*/

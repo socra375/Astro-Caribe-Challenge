@@ -276,6 +276,44 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 .wiz-nav{justify-content:center;margin-top:16px}
 .wiz-big{min-width:200px;min-height:56px;font-size:19px}
 @media (max-width:640px){.mgrid,.dgrid{grid-template-columns:1fr}.mcard,.dcard{min-height:0;flex-direction:row;text-align:left;gap:12px;padding:12px}.mico{flex:0 0 auto}.mico svg{width:42px;height:42px}.ld-pl svg{width:30px;height:30px}.ld-ship svg{width:48px;height:20px}.wiz-steps li span{display:none}.wiz-steps li{padding:6px}}
+/* ===== Inicio: edad por franjas, misiones ilustradas, resumen y despegue ===== */
+.brand-sub{margin:6px 0 0;letter-spacing:.28em;text-transform:uppercase;font-size:clamp(11px,2.6vw,14px);font-weight:700;color:#b9c6ff;text-shadow:0 0 14px rgba(120,140,255,.6)}
+.ld-ship{width:0;height:0;transform:none!important}.ld-ship svg{display:block;width:64px;height:26px;overflow:visible;margin:-13px 0 0 -40px}
+.ld-ship svg path:first-child,.ld-ship svg path:nth-child(2){transform-origin:right center;animation:flame .12s ease-in-out infinite alternate}
+@keyframes flame{from{transform:scaleX(.7)}to{transform:scaleX(1.35)}}
+.ld-ship.go{left:130%!important;transition:left 1s cubic-bezier(.6,0,1,.6)}.ld-ship.go svg path:first-child,.ld-ship.go svg path:nth-child(2){animation-duration:.05s}
+.ld-panel.lift{animation:ldout 1s ease-in forwards}@keyframes ldout{0%{opacity:1}60%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
+.age-chip{display:inline-block;margin:6px 0 0;padding:4px 16px;border-radius:30px;font-weight:800;color:#04101f;box-shadow:0 0 18px rgba(255,255,255,.18);transition:background .25s}
+.age-num{transition:transform .15s}.age-num.pop{animation:agepop .32s cubic-bezier(.2,1.6,.4,1)}
+@keyframes agepop{0%{transform:scale(.7);opacity:.5}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+.age-range{background:linear-gradient(90deg,rgba(255,255,255,.62) var(--p,50%),rgba(255,255,255,0) var(--p,50%)),linear-gradient(90deg,#5fe39a 0 25%,#38d6ff 25% 50%,#a98bff 50% 75%,#ffb454 75% 96%,#ff6b8a 96% 100%)!important;transition:filter .2s}
+.age-wrap{width:min(640px,100%);margin:0 auto}.age-wrap .age-range{width:100%}.age-ticks{position:relative;height:22px;display:block;width:100%;margin:2px 0 0}
+.age-ticks span{position:absolute;top:0;transform:translateX(-50%);font-size:13px;font-weight:700;color:var(--text-muted)}
+.age-ex{margin:2px 0;font-style:italic;color:#d8e2ff}.age-l1{margin:4px 0;font-weight:700}
+.mgrid{grid-template-columns:repeat(2,1fr)}
+.mcard{align-items:stretch;text-align:left;padding:0;overflow:hidden;gap:0;min-height:0}
+.mcard .mc-art{height:124px;overflow:hidden;border-bottom:1px solid rgba(140,150,255,.25)}.mcard .mc-art svg{display:block;width:100%;height:100%}
+.mc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 0}.mc-head b{font-size:19px}
+.mcard>p{margin:2px 12px}.mcard>.mc-dest{margin-left:12px;margin-right:12px}
+.mc-obj{padding-left:18px;margin:6px 12px;font-size:13.5px;line-height:1.35}.mc-obj li{margin:1px 0}
+.mc-dest{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px!important}
+.chipbtn{border:2px solid var(--border-input);background:var(--surface-2);color:var(--text);border-radius:20px;padding:6px 14px;font-weight:700;cursor:pointer;min-height:36px}
+.chipbtn[aria-pressed=true]{border-color:#38d6ff;background:rgba(56,214,255,.18)}
+.mc-foot{display:flex;flex-direction:column;gap:4px;margin:6px 12px 12px!important}
+.chip-rec{display:inline-block;align-self:flex-start;font-size:12px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,211,107,.16);color:#ffd36b}
+.dtag.exp{background:rgba(255,180,84,.18);color:#ffb454}
+.dcard{align-items:stretch;text-align:center}.dcard .mico,.dcard>svg{align-self:center}
+.lv-par{list-style:none;padding:0;margin:4px 0;font-size:13px;text-align:left}.lv-par li{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dashed rgba(140,150,255,.2)}
+.sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:12px 0;text-align:left}
+.sum-tile{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;border:1px solid rgba(140,150,255,.35);background:linear-gradient(160deg,rgba(30,40,100,.6),rgba(20,16,56,.7))}
+.sum-ico svg{display:block;width:52px;height:52px}.sum-txt{display:flex;flex-direction:column;flex:1;min-width:0}.sum-txt b{font-size:18px}
+.sum-help{max-width:620px;margin:6px auto}
+#launchfx{position:fixed;inset:0;z-index:80;background:#02030c;display:flex;align-items:center;justify-content:center;animation:lfin .25s both}
+#launchfx.out{animation:lfout .5s both}.lf-cv{position:absolute;inset:0;width:100%;height:100%}
+.lf-txt{position:relative;text-align:center;color:#e8f0ff;text-shadow:0 0 18px rgba(80,120,255,.9)}.lf-txt p{margin:6px 0;font-size:clamp(18px,4.5vw,28px);font-weight:800;opacity:0;animation:lftxt .5s forwards}
+.lf-go{font-size:clamp(26px,7vw,48px)!important;letter-spacing:.2em;color:#7fe6ff}
+@keyframes lfin{from{opacity:0}to{opacity:1}}@keyframes lfout{from{opacity:1}to{opacity:0}}@keyframes lftxt{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (max-width:640px){.mgrid,.sum-grid{grid-template-columns:1fr}.mcard{flex-direction:column;gap:0;padding:0}.mcard .mc-art{height:100px}}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px;padding-right:44px}
 .tabs .btn[aria-selected=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .pbar{height:12px;background:#26345e;border-radius:8px;overflow:hidden}
@@ -1534,6 +1572,13 @@ const Sim = (function () {
   ];
   const ALLROOMS = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
+  /** Enfoques de misión (asistente de inicio). Lunar y Marte: las 7 misiones. Estación y Ciencia: configuraciones con objetivos propios y su victoria. */
+  const FOCUS = {
+    moon: { goals: [1, 2, 3, 4, 5, 6, 7], sciMin: 0, mat: 0 },
+    mars: { goals: [1, 2, 3, 4, 5, 6, 7], sciMin: 0, mat: 0 },
+    station: { goals: [1, 2, 3, 5, 6], sciMin: 0, mat: 20 }, // soporte vital, energía, protección solar, blindaje y cultivos; +20 de materiales para construir
+    science: { goals: [3, 4, 7], sciMin: 8, mat: 0 } // protección para salir, sitio de exploración, rover con muestras y al menos un análisis/experimento (8 pts de ciencia)
+  };
 
   /* ---------- Incidentes (plantillas) ---------- */
   const EV = {
@@ -1603,6 +1648,7 @@ const Sim = (function () {
         isru: { h: 100, on: true },
         rover: { h: 100, batt: 100, hint: false, runs: 0 }
       },
+      focus: FOCUS[o.focus] ? o.focus : null, age: o.age || null,
       emergency: false, proto: false, cap: { gh: 1, lab: 1, comms: 1 },
       beds: [], crew: [], jobs: [], inc: [], log: [], incSeq: 1,
       cm: { q: [], inbox: [], seq: 1, nextDaily: 20 },
@@ -2023,7 +2069,7 @@ const Sim = (function () {
     S.z.well = r.well.v < 10 ? S.z.well + h : 0; if (S.z.well >= 24) return end('abort', 'well');
     if (S.st.maxDose >= S.limit) return end('dead', 'dose');
     if (S.inc.some((i) => !i.res && i.fix && i.sev === 'crit' && S.t - i.t0 > 72)) return end('abort', 'inc');
-    let all = true; for (let i = 1; i <= 7; i++) if (S.m[i].st !== 'done') all = false;
+    const FC = FOCUS[S.focus] || FOCUS.moon; let all = FC.goals.every((i) => S.m[i].st === 'done') && S.science >= FC.sciMin;
     if (all && !activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from)) end('victory', 'all');
   }
 
@@ -2495,7 +2541,7 @@ const Sim = (function () {
   }
 
   return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
-    finishMission, reportSite, reportQuiz, finishRun, kill, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
+    finishMission, reportSite, reportQuiz, finishRun, kill, FOCUS, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
 /*SIM-END*/
@@ -5651,6 +5697,7 @@ const World = (function () {
     const g = FL.findIndex((o) => o.D.ground); return g >= 0 ? g + 1 : 1;
   }
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
+  function prewarmFloor(f) { withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
   function arrive(n, outside) {
@@ -6420,7 +6467,7 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, prewarmFloor, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
@@ -6774,7 +6821,7 @@ const Game = (function () {
     Sfx.setVol(settings.vol); Sfx.setMuted(settings.muted);
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
-    document.documentElement.style.setProperty('--scale', settings.scale);
+    applyAgeUi();
     Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#zFit'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bRadio'), '📻'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     applyAudio();
     World.invalidate();
@@ -7149,8 +7196,8 @@ const Game = (function () {
     opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; rideAbort(); survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
-    settings.scen = scen; settings.mode = S.mode; settings.diff = opts.indep ? S.diff : S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = opts.age ? ageHints(opts.age) : S.mode === 'junior'; Store.set('settings', settings);
+    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep, focus: opts.focus, age: opts.age }); { const fm = Sim.FOCUS[S.focus]; if (fm && fm.mat) S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + fm.mat); } MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
+    settings.scen = scen; settings.mode = S.mode; settings.diff = opts.indep ? S.diff : S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = opts.age ? assistHints(opts.age, S.diff) : S.mode === 'junior'; settings.ageScale = opts.age ? ageBand(opts.age).scale : 1; settings.moreOpen = opts.age ? ageBand(opts.age).more : false; settings.age = opts.age || settings.age; applyAgeUi(); Store.set('settings', settings);
     // La llegada se juega una sola vez al empezar. Los atajos de prueba (skipCamp / skipLanding) saltan directo a la base ya desplegada.
     if (opts.skipCamp || opts.skipLanding || /[?&]quick\b/.test(location.search)) { Land.ensure(S); finishNewRun(scen); return; }
     popAll(); clearLayer(); startLanding(S);
@@ -7160,7 +7207,7 @@ const Game = (function () {
     stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
-    const fm = S && S.focus && MISSIONS.find((x) => x.id === S.focus); if (fm && (S.focus === 'station' || S.focus === 'science')) toast((LANG === 'es' ? fm.t[0] + ': ' : fm.t[1] + ': ') + (LANG === 'es' ? fm.g[0] : fm.g[1]), '', 'info');
+    const ft = focusToast(); if (ft) toast(ft, '', 'info');
   }
   function beginPlay() {
     clearLayer(); World.prewarm(); running = true; paused = false;
@@ -7193,101 +7240,6 @@ const Game = (function () {
   }
   /* ---------- Edad, misión y dificultad (asistente de inicio) ---------- */
   // La edad ajusta el lenguaje y las ayudas (modalidad + pistas); la dificultad ajusta recursos y eventos. Son independientes.
-  // Iconos propios del inicio (SVG en línea: no dependen de la fuente de emojis del dispositivo)
-  const WIZ_SVG = {
-    ship: '<svg viewBox="-14 0 78 32" width="64" height="26"><path d="M4 16 L-12 9 L-6 16 L-12 23 Z" fill="#ffb454"/><path d="M-2 16 L-8 12.5 L-5 16 L-8 19.5 Z" fill="#fff3c4"/><path d="M12 7 L2 1 L6 16 L2 31 L12 25 Z" fill="#6b7cff"/><path d="M4 16 L18 8 H40 Q58 10 62 16 Q58 22 40 24 H18 Z" fill="#e6edff"/><path d="M42 8.5 Q58 10 62 16 Q58 22 42 23.5 Z" fill="#a98bff"/><circle cx="33" cy="16" r="4.2" fill="#38d6ff" stroke="#0b1b3a" stroke-width="1.5"/></svg>',
-    earth: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="21" fill="#2f7bff"/><path d="M12 16 Q20 8 26 14 Q22 22 14 24 Q8 22 12 16Z M28 26 Q38 22 40 30 Q36 40 28 38 Q24 32 28 26Z" fill="#5fe39a"/><circle cx="24" cy="24" r="21" fill="none" stroke="#bcd7ff" stroke-width="2" opacity=".6"/></svg>',
-    dest: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="14" fill="#a98bff"/><circle cx="19" cy="19" r="5" fill="#d8c9ff" opacity=".7"/><ellipse cx="24" cy="26" rx="23" ry="6" fill="none" stroke="#d8c9ff" stroke-width="3" transform="rotate(-18 24 26)"/></svg>',
-    moon: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#cfd5e3"/><circle cx="16" cy="18" r="5" fill="#9aa2b8"/><circle cx="30" cy="30" r="6.5" fill="#9aa2b8"/><circle cx="31" cy="14" r="3" fill="#9aa2b8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/></svg>',
-    mars: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#d9623f"/><path d="M8 26 Q18 20 26 26 Q34 32 42 24 Q42 38 24 44 Q10 40 8 26Z" fill="#a8412a"/><ellipse cx="24" cy="6" rx="8" ry="3" fill="#fff" opacity=".8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#ffd0bd" stroke-width="2" opacity=".5"/></svg>',
-    station: '<svg viewBox="0 0 64 48" width="64" height="52"><rect x="2" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><rect x="46" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><path d="M18 24 H46" stroke="#cfd5e3" stroke-width="4"/><rect x="24" y="12" width="16" height="24" rx="4" fill="#e6edff"/><circle cx="32" cy="24" r="5" fill="#38d6ff"/><path d="M32 12 V4 M28 4 H36" stroke="#cfd5e3" stroke-width="2.5"/></svg>',
-    science: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M18 4 H30 M20 4 V18 L8 40 Q6 44 11 44 H37 Q42 44 40 40 L28 18 V4" fill="none" stroke="#e6edff" stroke-width="3" stroke-linejoin="round"/><path d="M13 32 H35 L40 41 Q41 44 37 44 H11 Q7 44 8 41Z" fill="#5fe39a"/><circle cx="22" cy="26" r="2.5" fill="#a98bff"/><circle cx="29" cy="22" r="2" fill="#38d6ff"/></svg>',
-    compass: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="20" fill="none" stroke="#38d6ff" stroke-width="3"/><path d="M24 8 L30 24 L24 40 L18 24Z" fill="#e6edff"/><path d="M24 8 L30 24 H18Z" fill="#ff6b6b"/><circle cx="24" cy="24" r="2.5" fill="#0b1b3a"/></svg>',
-    cadet: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 4 L42 10 V24 Q42 38 24 45 Q6 38 6 24 V10Z" fill="#3b82f6" stroke="#bcd7ff" stroke-width="2.5"/><path d="M24 14 L27 21 L35 22 L29 27 L31 35 L24 31 L17 35 L19 27 L13 22 L21 21Z" fill="#e6edff"/></svg>',
-    star: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 3 L30 17 L45 18 L33 28 L37 43 L24 35 L11 43 L15 28 L3 18 L18 17Z" fill="#ffd25e" stroke="#fff3c4" stroke-width="2" stroke-linejoin="round"/></svg>'
-  };
-  const logoImg = () => h('img', { class: 'logo-img', src: LOGO_SRC, alt: 'Space Explorer', width: 220, height: 232, draggable: 'false' });
-  const wizIco = (k, cls) => h('span', { class: cls || 'mico', html: WIZ_SVG[k], 'aria-hidden': 'true' });
-  const AGE_MIN = 5, AGE_MAX = 17;
-  const ageMode = (a) => (a <= 12 ? 'junior' : 'adv');
-  const ageHints = (a) => a <= 14;
-  const ageBand = (a) => (a <= 12
-    ? { es: ['Lenguaje sencillo y ejemplos cotidianos', 'Modo Junior: misiones guiadas y pistas siempre visibles'], en: ['Simple language and everyday examples', 'Junior mode: guided missions and hints always on'] }
-    : a <= 14
-      ? { es: ['Lenguaje técnico con explicaciones', 'Modo Avanzado: datos y unidades, con pistas'], en: ['Technical language with explanations', 'Advanced mode: data and units, with hints'] }
-      : { es: ['Lenguaje técnico completo', 'Modo Avanzado: datos y unidades, sin pistas automáticas'], en: ['Full technical language', 'Advanced mode: data and units, no automatic hints'] });
-  const MISSIONS = [
-    { id: 'moon', scen: 'moon', ico: 'moon', t: ['Luna', 'Moon'], d: ['Base en el polo sur lunar: noches de dos semanas, polvo y poca gravedad.', 'Base at the lunar south pole: two-week nights, dust and low gravity.'] },
-    { id: 'mars', scen: 'mars', ico: 'mars', t: ['Marte', 'Mars'], d: ['Tormentas de polvo, poca luz solar y mensajes con retraso desde la Tierra.', 'Dust storms, weak sunlight and delayed messages from Earth.'] },
-    { id: 'station', scen: 'moon', ico: 'station', t: ['Construcción de estación', 'Station construction'], d: ['Escenario Luna. Empiezas con +20 de materiales para construir y ampliar la base.', 'Moon scenario. You start with +20 materials to build and expand the base.'], g: ['construye y amplía la base; tienes +20 de materiales.', 'build and expand the base; you have +20 materials.'] },
-    { id: 'science', scen: 'mars', ico: 'science', t: ['Investigación científica', 'Scientific research'], d: ['Escenario Marte. Objetivo: expediciones, muestras y experimentos.', 'Mars scenario. Goal: expeditions, samples and experiments.'], g: ['sal en expediciones, recoge muestras y haz experimentos.', 'go on expeditions, collect samples and run experiments.'] }];
-  const LEVELS = [
-    { id: 'explorer', ico: 'compass', n: ['Explorador', 'Explorer'], tag: ['Fácil', 'Easy'], d: ['Más ayudas, recursos abundantes y mucho margen para equivocarte.', 'More help, plenty of resources and lots of room for mistakes.'] },
-    { id: 'engineer', ico: 'cadet', n: ['Cadete', 'Cadet'], tag: ['Normal', 'Normal'], d: ['Recursos equilibrados y eventos ambientales.', 'Balanced resources and environmental events.'] },
-    { id: 'commander', ico: 'star', n: ['Comandante', 'Commander'], tag: ['Difícil', 'Hard'], d: ['Recursos escasos, eventos complejos y poco margen.', 'Scarce resources, complex events and little margin.'] }];
-  const diffName = (d) => { const L = LEVELS.find((x) => x.id === d) || LEVELS[0]; return L.n[LANG === 'es' ? 0 : 1]; };
-  function setupScreen() {
-    const prevMode = MODE, pk = (a) => a[LANG === 'es' ? 0 : 1];
-    let step = 0, age = clampN(Math.round(+settings.age || 10), AGE_MIN, AGE_MAX), mi = MISSIONS.some((m) => m.id === settings.mission) ? settings.mission : 'moon', lv = LEVELS.some((l) => l.id === settings.diff) ? settings.diff : 'explorer';
-    const wrap = h('div', { class: 'wiz' });
-    const go = (n) => { step = n; render(); };
-    const stepsBar = () => h('ol', { class: 'wiz-steps' }, [['Edad', 'Age'], ['Misión', 'Mission'], ['Dificultad', 'Difficulty']].map((x, i) => h('li', { class: i === step ? 'on' : i < step ? 'done' : '', 'aria-current': i === step ? 'step' : null }, h('b', null, String(i + 1)), h('span', null, pk(x)))));
-    const ageStep = () => {
-      const num = h('div', { class: 'age-num', 'aria-live': 'polite', 'data-age': '1' }), b1 = h('p', null), b2 = h('p', { class: 'small muted' });
-      const rng = h('input', { type: 'range', min: AGE_MIN, max: AGE_MAX, step: 1, value: age, class: 'age-range', 'aria-label': LANG === 'es' ? 'Edad' : 'Age' });
-      const set = (v) => { age = clampN(Math.round(v), AGE_MIN, AGE_MAX); rng.value = age; num.textContent = age === AGE_MAX ? AGE_MAX + '+' : String(age); const b = ageBand(age)[LANG]; b1.textContent = '🗣️ ' + b[0]; b2.textContent = '💡 ' + b[1]; rng.style.setProperty('--p', ((age - AGE_MIN) / (AGE_MAX - AGE_MIN) * 100) + '%'); };
-      rng.addEventListener('input', () => set(+rng.value));
-      const mk = (txt, d, lab) => h('button', { class: 'age-btn', type: 'button', 'aria-label': lab, 'data-age-step': d, onclick: () => { Sfx.play('click'); set(age + d); } }, txt);
-      set(age);
-      return h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? '¿Cuántos años tienes?' : 'How old are you?'),
-        h('p', { class: 'muted' }, LANG === 'es' ? 'La edad ajusta el lenguaje y las ayudas. La dificultad se elige aparte.' : 'Age adjusts the language and the help. Difficulty is chosen separately.'),
-        h('div', { class: 'age-row' }, mk('−', -1, LANG === 'es' ? 'Bajar la edad' : 'Decrease age'), num, mk('+', 1, LANG === 'es' ? 'Subir la edad' : 'Increase age')), rng,
-        h('div', { class: 'age-ticks' }, h('span', null, '5'), h('span', null, '11'), h('span', null, '17+')), h('div', { class: 'age-info' }, b1, b2));
-    };
-    const cards = (list, cur, set, kind) => {
-      const grid = h('div', { class: kind === 'm' ? 'mgrid' : 'dgrid' });
-      for (const it of list) grid.append(h('button', { class: kind === 'm' ? 'mcard' : 'dcard', type: 'button', 'aria-pressed': cur() === it.id ? 'true' : 'false', ['data-' + (kind === 'm' ? 'mission' : 'level')]: it.id,
-        onclick: () => { Sfx.play('click'); set(it.id); for (const c of grid.children) c.setAttribute('aria-pressed', c === grid.children[list.indexOf(it)] ? 'true' : 'false'); } },
-      wizIco(it.ico), h('b', null, pk(it.t || it.n)), it.tag ? h('span', { class: 'dtag' }, pk(it.tag)) : null, h('span', { class: 'small muted' }, pk(it.d))));
-      return grid;
-    };
-    const missionStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige tu misión' : 'Choose your mission'), cards(MISSIONS, () => mi, (v) => (mi = v), 'm'));
-    const levelStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige la dificultad' : 'Choose the difficulty'),
-      h('p', { class: 'muted' }, LANG === 'es' ? 'Cambia los recursos y los eventos, no el lenguaje: puedes ser Comandante a cualquier edad.' : 'It changes resources and events, not the language: you can be a Commander at any age.'), cards(LEVELS, () => lv, (v) => (lv = v), 'd'));
-    const start = () => {
-      const m = MISSIONS.find((x) => x.id === mi); settings.age = age; settings.mission = mi; settings.diff = lv; Store.set('settings', settings);
-      MODE = prevMode; newRun(m.scen, lv, { mode: ageMode(age), indep: true, focus: mi, age });
-    };
-    const render = () => {
-      MODE = ageMode(age);
-      wrap.replaceChildren(stepsBar(), step === 0 ? ageStep() : step === 1 ? missionStep() : levelStep(),
-        h('div', { class: 'row wiz-nav' }, btn(_('back'), () => { if (step === 0) { MODE = prevMode; mainMenu(); } else go(step - 1); }),
-          step < 2 ? btn((LANG === 'es' ? 'Siguiente' : 'Next') + ' ▶', () => go(step + 1), 'primary wiz-big', { 'data-act': 'wiz-next' }) : btn(_('go') + ' ▶', start, 'primary wiz-big', { 'data-act': 'launch' })));
-      const f = wrap.querySelector(step === 0 ? '.age-range' : '.wiz-big'); if (f && f.isConnected) f.focus({ preventScroll: true });
-    };
-    render();
-    showScreen(h('div', { class: 'panel cine-panel wiz-panel' }, wrap), 'cine');
-    const f = wrap.querySelector('.age-range'); if (f) f.focus({ preventScroll: true });
-  }
-
-  /* ---------- Carga espacial ---------- */
-  function bootLoad() {
-    const es = LANG === 'es', rm = document.documentElement.classList.contains('rm');
-    const MS = [[0, 'Encendiendo motores…', 'Starting engines…'], [20, 'Calibrando sensores…', 'Calibrating sensors…'], [42, 'Trazando la ruta hacia la Luna y Marte…', 'Plotting the route to the Moon and Mars…'], [64, 'Sincronizando con la Tierra…', 'Syncing with Earth…'], [84, 'Revisando el soporte vital…', 'Checking life support…'], [97, '¡Listo para el despegue!', 'Ready for launch!']];
-    const pct = h('div', { class: 'ld-pct' }, '0 %'), msg = h('p', { class: 'ld-msg', 'aria-live': 'polite' }), fill = h('i'), ship = h('div', { class: 'ld-ship', 'aria-hidden': 'true', html: WIZ_SVG.ship });
-    const rail = h('div', { class: 'ld-rail', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0, 'aria-label': es ? 'Carga' : 'Loading' }, fill, ship);
-    let done = false, t0 = null;
-    const set = (p) => { pct.textContent = p + ' %'; fill.style.width = p + '%'; ship.style.left = p + '%'; rail.setAttribute('aria-valuenow', p); let m = MS[0]; for (const x of MS) if (p >= x[0]) m = x; msg.textContent = es ? m[1] : m[2]; };
-    const body = h('div', { class: 'panel cine-panel ld-panel', 'data-boot': '1' },
-      h('p', { class: 'muted ld-sub' }, 'Astro Caribe Challenge · STEM'), h('h1', { class: 'title-big has-logo' }, logoImg()),
-      h('div', { class: 'ld-track' }, wizIco('earth', 'ld-pl'), rail, wizIco('dest', 'ld-pl')),
-      pct, msg, btn(es ? 'Saltar ▶' : 'Skip ▶', () => finish(), 'sm'));
-    const finish = () => { if (done) return; done = true; set(100); setTimeout(() => { if (layer.contains(body)) mainMenu(); }, rm ? 80 : 450); };
-    const D = rm ? 800 : 3800;
-    const tick = (ts) => { if (done || !layer.contains(body)) return; if (t0 == null) t0 = ts; const x = Math.min(1, (ts - t0) / D), e = x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; set(Math.round(e * 100)); if (x >= 1) finish(); else requestAnimationFrame(tick); };
-    set(0); showScreen(body, 'cine'); requestAnimationFrame(tick); setTimeout(finish, D + 4000);
-  }
-
   function tutorial(i) {
     i = i || 0;
     const T = DATA.TUT[i];
@@ -7880,6 +7832,7 @@ const Game = (function () {
       const st = Sim.status(S, k === 'dose' ? 'dose' : k);
       const prev = resState[k] || 'ok'; resState[k] = st;
       if (st === 'ok' || (st === prev)) continue;
+      if (S.diff === 'commander' && st === 'warn') continue; // Comandante: menos asistencia, solo avisos críticos
       if (SEVR[st] < SEVR[prev]) continue;
       const R = ND.RES[k], room = ND.RES_ROOM[k];
       const val = k === 'dose' ? fmt(S.d.dose) + ' mSv' : Math.round((S.d[k] || 0) * 100) + ' %';
@@ -9932,6 +9885,255 @@ const Game = (function () {
     popAll(); newRun(o.scen, o.diff, o.opts);
   }
   const survDebug = { noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };
+/* =================== INICIO: carga real, edad, misión, dificultad y resumen =================== */
+  // Iconos propios del inicio (SVG en línea: no dependen de la fuente de emojis del dispositivo)
+  const WIZ_SVG = {
+    ship: '<svg viewBox="-14 0 78 32" width="64" height="26"><path d="M4 16 L-12 9 L-6 16 L-12 23 Z" fill="#ffb454"/><path d="M-2 16 L-8 12.5 L-5 16 L-8 19.5 Z" fill="#fff3c4"/><path d="M12 7 L2 1 L6 16 L2 31 L12 25 Z" fill="#6b7cff"/><path d="M4 16 L18 8 H40 Q58 10 62 16 Q58 22 40 24 H18 Z" fill="#e6edff"/><path d="M42 8.5 Q58 10 62 16 Q58 22 42 23.5 Z" fill="#a98bff"/><circle cx="33" cy="16" r="4.2" fill="#38d6ff" stroke="#0b1b3a" stroke-width="1.5"/></svg>',
+    earth: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="21" fill="#2f7bff"/><path d="M12 16 Q20 8 26 14 Q22 22 14 24 Q8 22 12 16Z M28 26 Q38 22 40 30 Q36 40 28 38 Q24 32 28 26Z" fill="#5fe39a"/><circle cx="24" cy="24" r="21" fill="none" stroke="#bcd7ff" stroke-width="2" opacity=".6"/></svg>',
+    dest: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="14" fill="#a98bff"/><circle cx="19" cy="19" r="5" fill="#d8c9ff" opacity=".7"/><ellipse cx="24" cy="26" rx="23" ry="6" fill="none" stroke="#d8c9ff" stroke-width="3" transform="rotate(-18 24 26)"/></svg>',
+    moon: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#cfd5e3"/><circle cx="16" cy="18" r="5" fill="#9aa2b8"/><circle cx="30" cy="30" r="6.5" fill="#9aa2b8"/><circle cx="31" cy="14" r="3" fill="#9aa2b8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/></svg>',
+    mars: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#d9623f"/><path d="M8 26 Q18 20 26 26 Q34 32 42 24 Q42 38 24 44 Q10 40 8 26Z" fill="#a8412a"/><ellipse cx="24" cy="6" rx="8" ry="3" fill="#fff" opacity=".8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#ffd0bd" stroke-width="2" opacity=".5"/></svg>',
+    station: '<svg viewBox="0 0 64 48" width="64" height="52"><rect x="2" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><rect x="46" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><path d="M18 24 H46" stroke="#cfd5e3" stroke-width="4"/><rect x="24" y="12" width="16" height="24" rx="4" fill="#e6edff"/><circle cx="32" cy="24" r="5" fill="#38d6ff"/><path d="M32 12 V4 M28 4 H36" stroke="#cfd5e3" stroke-width="2.5"/></svg>',
+    science: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M18 4 H30 M20 4 V18 L8 40 Q6 44 11 44 H37 Q42 44 40 40 L28 18 V4" fill="none" stroke="#e6edff" stroke-width="3" stroke-linejoin="round"/><path d="M13 32 H35 L40 41 Q41 44 37 44 H11 Q7 44 8 41Z" fill="#5fe39a"/><circle cx="22" cy="26" r="2.5" fill="#a98bff"/><circle cx="29" cy="22" r="2" fill="#38d6ff"/></svg>',
+    compass: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="20" fill="none" stroke="#38d6ff" stroke-width="3"/><path d="M24 8 L30 24 L24 40 L18 24Z" fill="#e6edff"/><path d="M24 8 L30 24 H18Z" fill="#ff6b6b"/><circle cx="24" cy="24" r="2.5" fill="#0b1b3a"/></svg>',
+    cadet: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 4 L42 10 V24 Q42 38 24 45 Q6 38 6 24 V10Z" fill="#3b82f6" stroke="#bcd7ff" stroke-width="2.5"/><path d="M24 14 L27 21 L35 22 L29 27 L31 35 L24 31 L17 35 L19 27 L13 22 L21 21Z" fill="#e6edff"/></svg>',
+    star: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 3 L30 17 L45 18 L33 28 L37 43 L24 35 L11 43 L15 28 L3 18 L18 17Z" fill="#ffd25e" stroke="#fff3c4" stroke-width="2" stroke-linejoin="round"/></svg>'
+  };
+  const logoImg = () => h('img', { class: 'logo-img', src: LOGO_SRC, alt: 'Space Explorer', width: 220, height: 232, draggable: 'false' });
+  const wizIco = (k, cls) => h('span', { class: cls || 'mico', html: WIZ_SVG[k], 'aria-hidden': 'true' });
+  // Ilustraciones de las tarjetas de misión (SVG en línea, 320×120)
+  const SCENE = {
+    moon: '<svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sg-m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05071a"/><stop offset="1" stop-color="#1b2150"/></linearGradient></defs><rect width="320" height="120" fill="url(#sg-m)"/><g fill="#fff" opacity=".8"><circle cx="30" cy="20" r="1.2"/><circle cx="90" cy="34" r="1"/><circle cx="150" cy="14" r="1.3"/><circle cx="210" cy="30" r="1"/><circle cx="270" cy="12" r="1.2"/></g><circle cx="262" cy="30" r="14" fill="#2f7bff"/><path d="M252 26 Q260 20 266 27 Q262 34 254 35Z" fill="#5fe39a"/><ellipse cx="160" cy="150" rx="230" ry="62" fill="#b9bfd0"/><ellipse cx="110" cy="104" rx="16" ry="5" fill="#8d94a8"/><ellipse cx="236" cy="112" rx="22" ry="6" fill="#8d94a8"/><path d="M150 100 a26 26 0 0 1 52 0Z" fill="#e6edff" stroke="#8fa3d9" stroke-width="2"/><rect x="170" y="86" width="12" height="14" fill="#38d6ff" opacity=".8"/><rect x="208" y="92" width="24" height="9" fill="#3558c0"/></svg>',
+    mars: '<svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sg-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a1a2e"/><stop offset=".7" stop-color="#d9784f"/><stop offset="1" stop-color="#f0a070"/></linearGradient></defs><rect width="320" height="120" fill="url(#sg-r)"/><circle cx="64" cy="34" r="9" fill="#ffe9c9" opacity=".85"/><path d="M0 92 Q60 70 130 90 T260 84 T330 92 V120 H0Z" fill="#a8412a"/><path d="M0 104 Q80 88 160 104 T320 100 V120 H0Z" fill="#7d2d1c"/><g transform="translate(190 78)"><rect x="0" y="6" width="40" height="12" rx="3" fill="#dfe6f5"/><rect x="26" y="0" width="12" height="9" rx="2" fill="#38d6ff"/><circle cx="8" cy="20" r="5" fill="#222"/><circle cx="32" cy="20" r="5" fill="#222"/></g><g fill="#fff" opacity=".18"><ellipse cx="250" cy="60" rx="60" ry="10"/><ellipse cx="110" cy="70" rx="50" ry="8"/></g></svg>',
+    station: '<svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice"><rect width="320" height="120" fill="#04061a"/><g fill="#fff" opacity=".8"><circle cx="24" cy="18" r="1.2"/><circle cx="120" cy="26" r="1"/><circle cx="296" cy="22" r="1.2"/><circle cx="60" cy="86" r="1"/></g><ellipse cx="160" cy="170" rx="210" ry="80" fill="#1d4fb8"/><ellipse cx="160" cy="176" rx="210" ry="80" fill="#2f7bff" opacity=".6"/><g transform="translate(160 56)"><rect x="-120" y="-16" width="62" height="32" fill="#3558c0" stroke="#9db4ff"/><rect x="58" y="-16" width="62" height="32" fill="#3558c0" stroke="#9db4ff"/><rect x="-58" y="-6" width="116" height="12" fill="#7d89aa"/><rect x="-26" y="-26" width="52" height="52" rx="12" fill="#c9d2ea"/><ellipse cx="0" cy="0" rx="40" ry="40" fill="none" stroke="#8795bd" stroke-width="4"/><g fill="#ffd66e"><rect x="-16" y="-5" width="8" height="10"/><rect x="-4" y="-5" width="8" height="10"/><rect x="8" y="-5" width="8" height="10"/></g></g></svg>',
+    science: '<svg viewBox="0 0 320 120" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sg-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1230"/><stop offset="1" stop-color="#25306a"/></linearGradient></defs><rect width="320" height="120" fill="url(#sg-s)"/><path d="M0 98 Q80 80 160 96 T320 92 V120 H0Z" fill="#6b4a5a"/><g fill="#8a6a78"><circle cx="70" cy="100" r="9"/><circle cx="96" cy="106" r="6"/><circle cx="250" cy="102" r="8"/></g><g transform="translate(150 24)"><path d="M18 0 H42 M22 0 V30 L6 64 Q3 70 10 70 H50 Q57 70 54 64 L38 30 V0" fill="none" stroke="#e6edff" stroke-width="4" stroke-linejoin="round"/><path d="M12 54 H48 L53 64 Q55 68 49 68 H11 Q5 68 7 64Z" fill="#5fe39a"/><circle cx="26" cy="44" r="3" fill="#a98bff"/><circle cx="36" cy="38" r="2.5" fill="#38d6ff"/></g><g fill="none" stroke="#7fe6ff" stroke-width="2" opacity=".7"><circle cx="248" cy="40" r="18"/><path d="M261 53 L276 70"/><path d="M60 30 H120" stroke-dasharray="4 4"/><path d="M60 42 H100" stroke-dasharray="4 4"/></g></svg>'
+  };
+
+  /* ---------- Edad: cinco franjas que adaptan el lenguaje, las ayudas y la presentación ---------- */
+  // Las mecánicas no cambian: la franja decide el registro del texto (sencillo o técnico), las pistas, el tamaño de la interfaz y si las ampliaciones («Más información») se muestran abiertas.
+  const AGE_MIN = 5, AGE_MAX = 17;
+  const AGE_BANDS = [
+    { id: 1, from: 5, to: 7, mode: 'junior', scale: 1.2, more: false, col: '#5fe39a', name: ['Explorador novato', 'Rookie explorer'],
+      lang: ['Instrucciones muy sencillas, frases cortas e iconos claros', 'Very simple instructions, short sentences and clear icons'], help: ['Asistencia frecuente: pistas siempre visibles y letra más grande', 'Frequent help: hints always on and larger text'],
+      ex: ['¡Falta aire! Ve al reciclador y arréglalo.', 'The air is running out! Go to the recycler and fix it.'] },
+    { id: 2, from: 8, to: 10, mode: 'junior', scale: 1.1, more: false, col: '#38d6ff', name: ['Aprendiz espacial', 'Space apprentice'],
+      lang: ['Explicaciones sencillas, objetivos guiados y vocabulario básico', 'Simple explanations, guided goals and basic vocabulary'], help: ['Objetivos guiados y pistas visibles', 'Guided goals and visible hints'],
+      ex: ['El oxígeno baja. Repara el reciclador de agua y aire para que alcance para todos.', 'Oxygen is dropping. Repair the water and air recycler so there is enough for everyone.'] },
+    { id: 3, from: 11, to: 13, mode: 'junior', scale: 1, more: true, col: '#a98bff', name: ['Cadete científico', 'Science cadet'],
+      lang: ['Conceptos científicos con más profundidad: las ampliaciones se muestran abiertas', 'Science concepts in more depth: the extra explanations are shown open'], help: ['Pistas y explicaciones ampliadas', 'Hints and extended explanations'],
+      ex: ['El reciclador produce menos oxígeno del que respira la tripulación; repararlo equilibra el sistema.', 'The recycler makes less oxygen than the crew breathes; repairing it balances the system.'] },
+    { id: 4, from: 14, to: 16, mode: 'adv', scale: 1, more: false, col: '#ffb454', name: ['Ingeniero junior', 'Junior engineer'],
+      lang: ['Términos técnicos moderados y más independencia', 'Moderate technical terms and more independence'], help: ['Menos ayudas: las pistas dependen de la dificultad', 'Less help: hints depend on the difficulty'],
+      ex: ['Caída de eficiencia del reciclador de O₂ por fallo de bomba: diagnostica y repara.', 'O₂ recycler efficiency drop from a pump fault: diagnose and repair.'] },
+    { id: 5, from: 17, to: 17, mode: 'adv', scale: 1, more: true, col: '#ff6b8a', name: ['Comandante de misión', 'Mission commander'],
+      lang: ['Explicaciones técnicas con unidades, datos y análisis detallado', 'Technical explanations with units, data and detailed analysis'], help: ['Autonomía: sin pistas automáticas salvo en Explorador', 'Autonomy: no automatic hints except on Explorer'],
+      ex: ['Reciclaje efectivo 71 % → déficit de 0,9 kg O₂/día; autonomía ≈ 38 h. Diagnostica la causa antes de reparar.', 'Effective recycling 71 % → deficit of 0.9 kg O₂/day; endurance ≈ 38 h. Diagnose the cause before repairing.'] }
+  ];
+  const ageBand = (a) => AGE_BANDS.find((b) => a >= b.from && a <= b.to) || AGE_BANDS[4];
+  const ageMode = (a) => ageBand(a).mode;
+  /** Pistas automáticas: siempre en Explorador, nunca en Comandante; en Cadete solo hasta los 13 años. */
+  const assistHints = (age, diff) => (diff === 'explorer' ? true : diff === 'commander' ? false : ageBand(age).id <= 3);
+  /** Tamaño de la interfaz y ampliaciones abiertas según la franja guardada. */
+  function applyAgeUi() { document.documentElement.style.setProperty('--scale', (settings.scale || 1) * (settings.ageScale || 1)); }
+  new MutationObserver(() => { if (!settings.moreOpen) return; layer.querySelectorAll('details.more:not([data-ao])').forEach((d) => { d.open = true; d.dataset.ao = '1'; }); }).observe(layer, { childList: true, subtree: true });
+
+  /* ---------- Misiones (cada tarjeta inicia una configuración real del simulador) ---------- */
+  const MISSIONS = [
+    { id: 'moon', scen: 'moon', rec: 'explorer', exp: false, t: ['Exploración lunar', 'Lunar exploration'], d: ['Explora la superficie y administra tu base en la Luna.', 'Explore the surface and run your base on the Moon.'],
+      obj: [['Explorar con el traje y el rover', 'Explore with the suit and rover'], ['Administrar la base lunar', 'Run the lunar base'], ['Recolectar muestras', 'Collect samples'], ['Resistir noches largas, polvo y radiación', 'Withstand long nights, dust and radiation']],
+      win: ['Completar las 7 misiones de la campaña.', 'Complete the 7 campaign missions.'] },
+    { id: 'mars', scen: 'mars', rec: 'engineer', exp: false, t: ['Exploración de Marte', 'Mars exploration'], d: ['Recorre el terreno marciano y gestiona tus recursos.', 'Cross the Martian terrain and manage your resources.'],
+      obj: [['Explorar el terreno marciano', 'Explore the Martian terrain'], ['Administrar agua, energía y comida', 'Manage water, power and food'], ['Investigar muestras', 'Investigate samples'], ['Afrontar tormentas de polvo y poca luz solar', 'Face dust storms and weak sunlight']],
+      win: ['Completar las 7 misiones de la campaña.', 'Complete the 7 campaign missions.'] },
+    { id: 'station', scen: null, rec: 'engineer', exp: true, t: ['Construcción de una estación', 'Building a station'], d: ['Activa los sistemas esenciales y desarrolla la colonia por etapas.', 'Activate the essential systems and grow the colony in stages.'],
+      obj: [['Activar el soporte vital y la energía', 'Activate life support and power'], ['Administrar energía y soporte vital', 'Manage power and life support'], ['Reforzar la protección y cultivar alimentos', 'Strengthen protection and grow food'], ['Empiezas con +20 de materiales para construir', 'You start with +20 materials to build']],
+      win: ['Completar 5 misiones: soporte vital, energía, protección solar, blindaje y cultivos.', 'Complete 5 missions: life support, power, solar protection, shielding and crops.'], goalToast: ['construye la colonia: activa soporte vital y energía, refuerza el blindaje y cultiva.', 'build the colony: activate life support and power, reinforce shielding and grow food.'] },
+    { id: 'science', scen: null, rec: 'commander', exp: true, t: ['Investigación científica', 'Scientific research'], d: ['Sal a explorar, recoge muestras y analízalas en el laboratorio.', 'Go out to explore, collect samples and analyze them in the lab.'],
+      obj: [['Explorar zonas de interés', 'Explore sites of interest'], ['Recolectar muestras con el rover', 'Collect samples with the rover'], ['Analizar materiales en el laboratorio', 'Analyze materials in the lab'], ['Completar los objetivos científicos', 'Complete the science goals']],
+      win: ['Completar 3 misiones (protección solar, sitio de exploración, rover) y reunir 8 puntos de ciencia con análisis o experimentos.', 'Complete 3 missions (solar protection, exploration site, rover) and earn 8 science points with analyses or experiments.'], goalToast: ['explora, recoge muestras con el rover y analízalas en el laboratorio.', 'explore, collect samples with the rover and analyze them in the lab.'] }
+  ];
+  const missionOf = (id) => MISSIONS.find((m) => m.id === id) || MISSIONS[0];
+  const scenOf = (m, dest) => m.scen || (dest === 'mars' ? 'mars' : 'moon');
+  const LEVELS = [
+    { id: 'explorer', ico: 'compass', n: ['Explorador', 'Explorer'], tag: ['Fácil', 'Easy'], d: ['Recursos abundantes, muchos avisos y mucho margen para equivocarte.', 'Plenty of resources, frequent warnings and lots of room for mistakes.'], help: ['Pistas siempre; avisos desde el nivel de precaución', 'Hints always on; warnings from the caution level'] },
+    { id: 'engineer', ico: 'cadet', n: ['Cadete', 'Cadet'], tag: ['Normal', 'Normal'], d: ['Recursos equilibrados, eventos moderados y consecuencias normales.', 'Balanced resources, moderate events and normal consequences.'], help: ['Ayudas limitadas: pistas solo hasta los 13 años', 'Limited help: hints only up to age 13'] },
+    { id: 'commander', ico: 'star', n: ['Comandante', 'Commander'], tag: ['Difícil', 'Hard'], d: ['Recursos escasos, mucha exigencia y consecuencias más estrictas.', 'Scarce resources, high demand and stricter consequences.'], help: ['Sin pistas y solo avisos críticos', 'No hints and critical warnings only'] }
+  ];
+  const diffName = (d) => { const L = LEVELS.find((x) => x.id === d) || LEVELS[0]; return L.n[LANG === 'es' ? 0 : 1]; };
+  /** Parámetros reales de la dificultad (los mismos que usa el simulador). */
+  function levelParams(id) {
+    const D = Sim.DIFFS[id], es = LANG === 'es', nf = (v) => String(v).replace('.', es ? ',' : '.');
+    return [[es ? 'Recursos iniciales' : 'Starting resources', Math.round(D.startPct * 100) + ' %'], [es ? 'Eventos' : 'Events', '×' + nf(D.ev) + ' · ' + (es ? 'máx. ' : 'max ') + D.maxInc], [es ? 'Reparación' : 'Repair', '×' + nf(D.repair)], [es ? 'Límite de radiación' : 'Radiation limit', D.dose + ' mSv'], [es ? 'Refugio' : 'Shelter', D.shelter + ' ' + (es ? 'plazas' : 'places')]];
+  }
+
+  /* ---------- Asistente de inicio: edad → misión → dificultad → resumen ---------- */
+  function setupScreen() {
+    const prevMode = MODE, pk = (a) => a[LANG === 'es' ? 0 : 1], es = () => LANG === 'es';
+    let step = 0, age = clampN(Math.round(+settings.age || 10), AGE_MIN, AGE_MAX), mi = MISSIONS.some((m) => m.id === settings.mission) ? settings.mission : 'moon',
+      dest = settings.dest === 'mars' ? 'mars' : 'moon', lv = LEVELS.some((l) => l.id === settings.diff) ? settings.diff : 'explorer';
+    const persist = () => { settings.age = age; settings.mission = mi; settings.dest = dest; settings.diff = lv; Store.set('settings', settings); };
+    const wrap = h('div', { class: 'wiz' });
+    const go = (n) => { step = n; render(); };
+    const STEPS = [['Edad', 'Age'], ['Misión', 'Mission'], ['Dificultad', 'Difficulty'], ['Resumen', 'Summary']];
+    const stepsBar = () => h('ol', { class: 'wiz-steps' }, STEPS.map((x, i) => h('li', { class: i === step ? 'on' : i < step ? 'done' : '', 'aria-current': i === step ? 'step' : null, 'data-step': i }, h('b', null, String(i + 1)), h('span', null, pk(x)))));
+    const ageStep = () => {
+      const num = h('div', { class: 'age-num', 'aria-live': 'polite', 'data-age': '1' }), chip = h('div', { class: 'age-chip' });
+      const l1 = h('p', { class: 'age-l1' }), l2 = h('p', { class: 'small muted' }), ex = h('p', { class: 'age-ex' });
+      const rng = h('input', { type: 'range', min: AGE_MIN, max: AGE_MAX, step: 1, value: age, class: 'age-range', 'aria-label': es() ? 'Edad' : 'Age' });
+      const set = (v, pop) => {
+        age = clampN(Math.round(v), AGE_MIN, AGE_MAX); rng.value = age; num.textContent = age === AGE_MAX ? AGE_MAX + '+' : String(age);
+        const b = ageBand(age); chip.textContent = pk(b.name); chip.style.background = b.col; l1.textContent = '🗣 ' + pk(b.lang); l2.textContent = '💡 ' + pk(b.help); ex.textContent = '“' + pk(b.ex) + '”';
+        rng.style.setProperty('--p', ((age - AGE_MIN) / (AGE_MAX - AGE_MIN) * 100) + '%'); rng.dataset.band = b.id; num.style.setProperty('--bc', b.col);
+        if (pop) { num.classList.remove('pop'); void num.offsetWidth; num.classList.add('pop'); }
+        persist();
+      };
+      rng.addEventListener('input', () => set(+rng.value, true));
+      const mk = (txt, d, lab) => h('button', { class: 'age-btn', type: 'button', 'aria-label': lab, 'data-age-step': d, onclick: () => { Sfx.play('click'); set(age + d, true); } }, txt);
+      set(age);
+      const ticks = h('div', { class: 'age-ticks' }, [[5, '5'], [8, '8'], [11, '11'], [14, '14'], [17, '17+']].map(([v, t]) => h('span', { style: { left: ((v - AGE_MIN) / (AGE_MAX - AGE_MIN) * 100) + '%' } }, t)));
+      return h('div', { class: 'wiz-step' }, h('h2', null, es() ? '¿Cuántos años tienes?' : 'How old are you?'),
+        h('p', { class: 'muted' }, es() ? 'La edad adapta el lenguaje y las ayudas, no las mecánicas. La dificultad se elige aparte.' : 'Age adapts the language and the help, not the mechanics. Difficulty is chosen separately.'), chip,
+        h('div', { class: 'age-row' }, mk('−', -1, es() ? 'Bajar la edad' : 'Decrease age'), num, mk('+', 1, es() ? 'Subir la edad' : 'Increase age')), h('div', { class: 'age-wrap' }, rng, ticks),
+        h('div', { class: 'age-info' }, l1, l2, h('p', { class: 'small muted', style: { margin: '8px 0 2px' } }, es() ? 'Así se leerá un aviso del juego:' : 'This is how a game alert will read:'), ex));
+    };
+    const missionStep = () => {
+      const grid = h('div', { class: 'mgrid' });
+      const draw = () => {
+        grid.replaceChildren(...MISSIONS.map((m) => {
+          const pick = () => { Sfx.play('click'); mi = m.id; persist(); draw(); };
+          const destBtns = m.scen ? null : h('div', { class: 'mc-dest' }, h('span', { class: 'small muted' }, (es() ? 'Destino: ' : 'Destination: ')), ['moon', 'mars'].map((d) => h('button', { type: 'button', class: 'chipbtn', 'data-dest': d, 'aria-pressed': dest === d ? 'true' : 'false', onclick: (e) => { e.stopPropagation(); Sfx.play('click'); dest = d; mi = m.id; persist(); draw(); } }, d === 'moon' ? (es() ? 'Luna' : 'Moon') : 'Marte')));
+          return h('div', { class: 'mcard', role: 'button', tabindex: '0', 'aria-pressed': mi === m.id ? 'true' : 'false', 'data-mission': m.id, onclick: pick, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } } },
+            h('div', { class: 'mc-art', html: SCENE[m.id] }), h('div', { class: 'mc-head' }, h('b', null, pk(m.t)), h('span', { class: 'dtag' + (m.exp ? ' exp' : '') }, m.exp ? (es() ? 'Experimental' : 'Experimental') : (es() ? 'Disponible' : 'Available'))),
+            h('p', { class: 'small muted' }, pk(m.d)), h('ul', { class: 'mc-obj' }, m.obj.map((o) => h('li', null, pk(o)))), destBtns,
+            h('div', { class: 'mc-foot' }, h('span', { class: 'chip-rec' }, (es() ? 'Recomendada: ' : 'Recommended: ') + diffName(m.rec)), m.exp ? h('span', { class: 'small muted' }, es() ? 'Configuración con objetivos propios sobre la misma base' : 'Configuration with its own goals on the same base') : null));
+        }));
+      };
+      draw();
+      return h('div', { class: 'wiz-step' }, h('h2', null, es() ? 'Elige tu misión' : 'Choose your mission'), grid);
+    };
+    const levelStep = () => {
+      const grid = h('div', { class: 'dgrid' }); const m = missionOf(mi);
+      const draw = () => {
+        grid.replaceChildren(...LEVELS.map((L) => h('button', { class: 'dcard', type: 'button', 'aria-pressed': lv === L.id ? 'true' : 'false', 'data-level': L.id, onclick: () => { Sfx.play('click'); lv = L.id; persist(); draw(); } },
+          wizIco(L.ico), h('b', null, pk(L.n)), h('span', { class: 'dtag' }, pk(L.tag)), m.rec === L.id ? h('span', { class: 'chip-rec' }, es() ? 'Recomendada para esta misión' : 'Recommended for this mission') : null, h('span', { class: 'small muted' }, pk(L.d)),
+          h('ul', { class: 'lv-par' }, levelParams(L.id).map(([a, b]) => h('li', null, h('span', null, a), h('b', null, b)))), h('span', { class: 'small', style: { color: 'var(--accent)' } }, pk(L.help)))));
+      };
+      draw();
+      return h('div', { class: 'wiz-step' }, h('h2', null, es() ? 'Elige la dificultad' : 'Choose the difficulty'),
+        h('p', { class: 'muted' }, es() ? 'Cambia recursos, eventos y ayudas reales del juego, no el lenguaje: puedes ser Comandante a cualquier edad.' : 'It changes real resources, events and help in the game, not the language: you can be a Commander at any age.'), grid);
+    };
+    const summaryStep = () => {
+      const b = ageBand(age), m = missionOf(mi), L = LEVELS.find((x) => x.id === lv), sc = scenOf(m, dest), hints = assistHints(age, lv);
+      const tile = (ico, lab, val, sub, st) => h('div', { class: 'sum-tile', 'data-sum': st }, h('div', { class: 'sum-ico', html: ico }), h('div', { class: 'sum-txt' }, h('span', { class: 'small muted' }, lab), h('b', null, val), sub ? h('span', { class: 'small muted' }, sub) : null), h('button', { type: 'button', class: 'btn sm', 'data-edit': st, onclick: () => { Sfx.play('click'); go(st === 'dest' ? 1 : st === 'diff' ? 2 : st === 'age' ? 0 : 1); } }, es() ? 'Cambiar' : 'Change'));
+      return h('div', { class: 'wiz-step' }, h('h2', null, es() ? 'Resumen de tu misión' : 'Your mission summary'),
+        h('div', { class: 'sum-grid' },
+          tile(WIZ_SVG.star, es() ? 'Edad' : 'Age', (age === AGE_MAX ? AGE_MAX + '+' : age) + (es() ? ' años · ' : ' years · ') + pk(b.name), pk(b.lang), 'age'),
+          tile(sc === 'mars' ? WIZ_SVG.mars : WIZ_SVG.moon, es() ? 'Destino' : 'Destination', sc === 'mars' ? 'Marte' : (es() ? 'Luna' : 'Moon'), null, 'dest'),
+          tile(WIZ_SVG[m.id === 'moon' ? 'moon' : m.id === 'mars' ? 'mars' : m.id], es() ? 'Misión' : 'Mission', pk(m.t), pk(m.win), 'mission'),
+          tile(WIZ_SVG[L.ico], es() ? 'Dificultad' : 'Difficulty', pk(L.n) + ' · ' + pk(L.tag), levelParams(lv).map((x) => x[0] + ' ' + x[1]).slice(0, 3).join(' · '), 'diff')),
+        h('p', { class: 'small muted sum-help' }, (es() ? 'Ayudas: ' : 'Help: ') + (hints ? (es() ? 'pistas automáticas activadas' : 'automatic hints on') : (es() ? 'sin pistas automáticas' : 'no automatic hints')) + ' · ' + (es() ? 'lenguaje ' : 'language ') + (b.mode === 'junior' ? (es() ? 'sencillo' : 'simple') : (es() ? 'técnico' : 'technical')) + (b.scale > 1 ? (es() ? ' · letra más grande' : ' · larger text') : '') + (b.more ? (es() ? ' · ampliaciones abiertas' : ' · extra explanations open') : '')));
+    };
+    const start = () => {
+      persist(); const b = ageBand(age), m = missionOf(mi), sc = scenOf(m, dest); MODE = prevMode;
+      launchCinematic([(es() ? 'Misión: ' : 'Mission: ') + pk(m.t), (es() ? 'Destino: ' : 'Destination: ') + (sc === 'mars' ? 'Marte' : (es() ? 'Luna' : 'Moon')), (es() ? 'Dificultad: ' : 'Difficulty: ') + diffName(lv)],
+        () => newRun(sc, lv, { mode: b.mode, indep: true, focus: m.id, age }));
+    };
+    const render = () => {
+      MODE = ageMode(age);
+      wrap.replaceChildren(stepsBar(), [ageStep, missionStep, levelStep, summaryStep][step](),
+        h('div', { class: 'row wiz-nav' }, btn(_('back'), () => { if (step === 0) { MODE = prevMode; mainMenu(); } else go(step - 1); }),
+          step < 3 ? btn((es() ? 'Siguiente' : 'Next') + ' ▶', () => go(step + 1), 'primary wiz-big', { 'data-act': 'wiz-next' }) : btn(_('go') + ' ▶', start, 'primary wiz-big', { 'data-act': 'launch' })));
+      const f = wrap.querySelector(step === 0 ? '.age-range' : '.wiz-big'); if (f && f.isConnected) f.focus({ preventScroll: true });
+    };
+    render();
+    showScreen(h('div', { class: 'panel cine-panel wiz-panel' }, wrap), 'cine');
+    const f = wrap.querySelector('.age-range'); if (f) f.focus({ preventScroll: true });
+  }
+
+  /** Transición hacia el inicio de la campaña: túnel de estrellas y el resumen de la misión. */
+  function launchCinematic(lines, done) {
+    const rm = document.documentElement.classList.contains('rm'), T = rm ? 0.5 : 2.0, cvx = h('canvas', { class: 'lf-cv' });
+    const el = h('div', { id: 'launchfx', role: 'status' }, cvx, h('div', { class: 'lf-txt' }, lines.map((t, i) => h('p', { style: { animationDelay: (0.15 + i * 0.3) + 's' } }, t)), h('p', { class: 'lf-go', style: { animationDelay: '1.1s' } }, LANG === 'es' ? 'Despegue…' : 'Lift-off…')));
+    document.getElementById('app').append(el); Sfx.play('scan');
+    const d = Math.min(2, window.devicePixelRatio || 1); cvx.width = Math.floor(innerWidth * d); cvx.height = Math.floor(innerHeight * d);
+    const g = cvx.getContext('2d'), t0 = performance.now(); let fin = false;
+    const finish = () => { if (fin) return; fin = true; window.removeEventListener('keydown', onKey); el.removeEventListener('pointerdown', finish); done(); el.classList.add('out'); setTimeout(() => el.remove(), 500); };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); finish(); } };
+    window.addEventListener('keydown', onKey); el.addEventListener('pointerdown', finish);
+    const tick = (now) => {
+      if (fin) return; const t = (now - t0) / 1000, p = Math.min(1, t / T), w = cvx.width, hh = cvx.height, cx = w / 2, cy = hh / 2;
+      g.fillStyle = 'rgba(2,3,12,0.35)'; g.fillRect(0, 0, w, hh);
+      if (!rm) for (let i = 0; i < 140; i++) { const a = (i * 2.399) % 6.283, r0 = ((i * 37 + t * (80 + p * 900) * (0.4 + (i % 7) / 7)) % 1000) / 1000, r = r0 * r0 * Math.max(w, hh) * 0.8, L = 4 + p * 70 * r0; g.strokeStyle = 'rgba(' + (150 + (i % 3) * 35) + ',' + (190 + (i % 2) * 40) + ',255,' + (0.25 + 0.75 * r0) + ')'; g.lineWidth = 1 + r0 * 2; g.beginPath(); g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.lineTo(cx + Math.cos(a) * (r + L), cy + Math.sin(a) * (r + L)); g.stroke(); }
+      if (p >= 1) finish(); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  /** Aviso de la misión al empezar a jugar (estación y ciencia). */
+  function focusToast() { const m = S && S.focus && MISSIONS.find((x) => x.id === S.focus); return m && m.goalToast ? (LANG === 'es' ? m.t[0] + ': ' + m.goalToast[0] : m.t[1] + ': ' + m.goalToast[1]) : null; }
+
+  /* ---------- Carga: inicialización real de los recursos y sistemas ---------- */
+  // Cada tarea hace trabajo de verdad (fuentes y logotipo, sprites de la tripulación, motor de simulación, mundo y arte de los pisos).
+  // El porcentaje es el avance real de las tareas; la nave nunca va por delante de él.
+  let bootLog = [];
+  const frame1 = () => new Promise((r) => requestAnimationFrame(() => r()));
+  function bootLoad() {
+    const es = LANG === 'es', rm = document.documentElement.classList.contains('rm'); bootLog = [];
+    const tasks = [
+      { l: ['Inicializando sistemas', 'Initializing systems'], w: 2, run: async (rep) => {
+        try { if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 800))]); } catch (e) { /* sin fuentes */ }
+        rep(0.4); const im = layer.querySelector('.logo-img'); if (im && im.decode) { try { await im.decode(); } catch (e) { /* ya cargada */ } }
+        rep(0.8); applySettings(); resize(); return 'settings+logo';
+      } },
+      { l: ['Preparando tripulación', 'Preparing the crew'], w: 3, run: async (rep) => {
+        const c = document.createElement('canvas'); c.width = 120; c.height = 140; const x = c.getContext('2d'); let n = 0;
+        for (const r of Chars.ORDER) { for (let d = 0; d < 4; d++) { x.clearRect(0, 0, 120, 140); Chars.draw(x, r, 60, 125, { dir: d, t: 0.3, pose: 'idle', scale: 1.6 }); n++; } rep(n / (Chars.ORDER.length * 4)); await frame1(); }
+        return n + ' sprites';
+      } },
+      { l: ['Comprobando recursos', 'Checking resources'], w: 3, run: async (rep) => {
+        let ok = 0; for (const sc of ['moon', 'mars']) { const X = Sim.create({ scen: sc, mode: 'adv', seed: 11, noEv: true, skipCamp: true }); Sim.step(X, 3); if (X.r.o2.v > 0 && !X.ended) ok++; rep(ok / 2 * 0.7); await frame1(); }
+        let saved = false; try { saved = !!Store.get('run', null); } catch (e) { /* almacenamiento bloqueado */ } rep(1); return ok + ' escenarios' + (saved ? ' + partida guardada' : '');
+      } },
+      { l: ['Calculando trayectoria', 'Calculating trajectory'], w: 5, run: async (rep) => {
+        World.init(settings.scen === 'mars' ? 'mars' : 'moon'); rep(0.2); await frame1();
+        for (let f = 1; f <= World.floors; f++) { World.prewarmFloor(f); rep(0.2 + 0.8 * f / World.floors); await frame1(); }
+        return World.floors + ' pisos';
+      } },
+      { l: ['Sistemas listos', 'Systems ready'], w: 1, run: async () => 'ok' }
+    ];
+    const total = tasks.reduce((a, t) => a + t.w, 0);
+    const pct = h('div', { class: 'ld-pct' }, '0 %'), msg = h('p', { class: 'ld-msg', 'aria-live': 'polite' }), fill = h('i'), ship = h('div', { class: 'ld-ship', 'aria-hidden': 'true', html: WIZ_SVG.ship });
+    const rail = h('div', { class: 'ld-rail', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0, 'aria-label': es ? 'Carga' : 'Loading' }, fill, ship);
+    const body = h('div', { class: 'panel cine-panel ld-panel', 'data-boot': '1' }, h('h1', { class: 'title-big has-logo' }, logoImg()), h('p', { class: 'brand-sub' }, 'Junior Astronaut Mission Trainer'),
+      h('div', { class: 'ld-track' }, wizIco('earth', 'ld-pl'), rail, wizIco('dest', 'ld-pl')), pct, msg, btn(es ? 'Saltar ▶' : 'Skip ▶', () => { skipped = true; }, 'sm'));
+    let target = 0, shown = 0, finished = false, skipped = false, exiting = false, last = performance.now(), label = tasks[0].l;
+    const t0 = performance.now(); let ready = false;
+    showScreen(body, 'cine');
+    const exit = () => {
+      if (exiting) return; exiting = true; pct.textContent = '100 %'; fill.style.width = '100%'; ship.style.left = '100%'; msg.textContent = es ? 'Sistemas listos' : 'Systems ready';
+      ship.classList.add('go'); body.classList.add('lift'); // la nave acelera, cruza la pantalla y da paso al menú
+      setTimeout(() => { if (layer.contains(body)) mainMenu(); }, rm ? 80 : 1100);
+    };
+    const paint = (now) => {
+      if (exiting || !layer.contains(body)) return; const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      shown = Math.min(target, shown + Math.max(25, (target - shown) * 8) * dt); // suaviza el movimiento, pero nunca supera el avance real
+      const p = Math.min(100, Math.round(shown)); pct.textContent = p + ' %'; fill.style.width = shown.toFixed(1) + '%'; ship.style.left = shown.toFixed(1) + '%'; rail.setAttribute('aria-valuenow', p); msg.textContent = es ? label[0] + '…' : label[1] + '…';
+      if ((finished && shown >= 99.5) || skipped) return exit();
+      requestAnimationFrame(paint);
+    };
+    requestAnimationFrame(paint);
+    (async () => {
+      let done = 0;
+      for (const t of tasks) {
+        label = t.l; const s0 = performance.now(); let info = '';
+        try { info = await t.run((f) => { target = Math.max(target, (done + t.w * Math.min(1, f)) / total * 100); }); } catch (e) { info = 'error: ' + (e && e.message); }
+        done += t.w; target = Math.max(target, done / total * 100); bootLog.push({ task: t.l[0], ms: Math.round(performance.now() - s0), pct: Math.round(target), info });
+        await frame1();
+      }
+      finished = true; ready = true;
+    })();
+    setTimeout(() => { if (!finished) { finished = true; skipped = true; } }, 20000); // seguridad: nunca se queda atascada
+  }
+  const startDebug = { bootLoad, get bootLog() { return bootLog; }, ageBand, assistHints, missions: () => MISSIONS, levelParams, launchCinematic, focusToast };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
@@ -10269,7 +10471,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { surv: survDebug, bootLoad, setupScreen, floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { surv: survDebug, start: startDebug, bootLoad, setupScreen, floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

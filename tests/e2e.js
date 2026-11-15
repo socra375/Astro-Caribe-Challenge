@@ -14,9 +14,12 @@ async function wiz(pg, o) {
   if (o.age != null) await pg.locator('.age-range').fill(String(o.age));
   await pg.locator('[data-act=wiz-next]').click();
   if (o.mission) await pg.locator('[data-mission=' + o.mission + ']').click();
+  if (o.dest) await pg.locator('[data-mission=' + (o.mission === 'science' ? 'science' : 'station') + '] [data-dest=' + o.dest + ']').click();
   await pg.locator('[data-act=wiz-next]').click();
   if (o.level) await pg.locator('[data-level=' + o.level + ']').click();
+  await pg.locator('[data-act=wiz-next]').click(); // resumen
   await pg.getByRole('button', { name: /Despegar/ }).click();
+  await pg.waitForSelector('#landw:not(.hidden)', { timeout: 10000 }); // tras la transición cinematográfica empieza la llegada
 }
 /** Atraviesa la llegada y el aterrizaje (acelerada) tras pulsar «Despegar» en la interfaz. */
 async function landThrough(pg) {
@@ -541,10 +544,10 @@ async function landThrough(pg) {
   ok('El botón − baja la edad', (await pm2.locator('.age-num').innerText()) === '16');
   await pm2.locator('[data-age-step="1"]').click(); await pm2.locator('[data-act=wiz-next]').click();
   ok('Hay cuatro misiones: Luna, Marte, estación e investigación', (await pm2.locator('.mcard').count()) === 4);
-  await pm2.locator('[data-mission=science]').click(); await pm2.locator('[data-act=wiz-next]').click();
+  await pm2.locator('[data-mission=science]').click(); await pm2.locator('[data-mission=science] [data-dest=mars]').click(); await pm2.locator('[data-act=wiz-next]').click();
   ok('Hay tres dificultades: Explorador, Cadete y Comandante', (await pm2.locator('.dcard').count()) === 3 && (await pm2.getByText('Cadete').count()) >= 1);
-  await pm2.locator('[data-level=commander]').click();
-  await pm2.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pm2); await pm2.waitForTimeout(400);
+  await pm2.locator('[data-level=commander]').click(); await pm2.locator('[data-act=wiz-next]').click();
+  await pm2.getByRole('button', { name: /Despegar/ }).click(); await pm2.waitForSelector('#landw:not(.hidden)', { timeout: 10000 }); await landThrough(pm2); await pm2.waitForTimeout(400);
   ok('Edad, misión y dificultad son independientes: 17+ → Avanzado, investigación → Marte, Comandante → difícil', await pm2.evaluate(() => Game.S.mode === 'adv' && Game.S.scen === 'mars' && Game.S.focus === 'science' && Game.S.diff === 'commander' && Game.S.age === 17));
   ok('La modalidad elegida se aplica', await pm2.evaluate(() => Game.S.mode === 'adv' && MODE === 'adv'));
   const hudA = await pm2.evaluate(() => [...document.querySelectorAll('#meters .meter')].filter((m) => !m.classList.contains('hidden')).length);

@@ -121,6 +121,7 @@
       const st = Sim.status(S, k === 'dose' ? 'dose' : k);
       const prev = resState[k] || 'ok'; resState[k] = st;
       if (st === 'ok' || (st === prev)) continue;
+      if (S.diff === 'commander' && st === 'warn') continue; // Comandante: menos asistencia, solo avisos críticos
       if (SEVR[st] < SEVR[prev]) continue;
       const R = ND.RES[k], room = ND.RES_ROOM[k];
       const val = k === 'dose' ? fmt(S.d.dose) + ' mSv' : Math.round((S.d[k] || 0) * 100) + ' %';
