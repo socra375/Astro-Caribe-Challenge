@@ -377,7 +377,7 @@ const Game = (function () {
     const has = !!Store.get('run', null);
     const body = h('div', { class: 'panel' },
       h('p', { class: 'muted small' }, 'Astro Caribe Challenge · STEM'),
-      h('h1', { class: 'title-big' }, 'Junior Astronaut Mission Trainer'),
+      h('h1', { class: 'title-big' }, 'Space Explorer'),
       h('p', null, LANG === 'es' ? 'Administra un puesto avanzado en la Luna o en Marte. Cada recurso es limitado y cada decisión tiene consecuencias. Lo que aprendas también sirve en la Tierra.' : 'Run an outpost on the Moon or Mars. Every resource is limited and every decision has consequences. What you learn also helps on Earth.'),
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
