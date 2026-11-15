@@ -28,7 +28,7 @@ const TripArt = (function () {
       c.fillStyle = '#0a1022'; rr(c, px - cw * 0.07, cy + h * 0.02, cw * 0.14, h * 0.11, 8); c.fill();
       c.fillStyle = on || flash ? SYSCOL[k] : '#26345e'; c.beginPath(); c.arc(px, cy + h * 0.055, h * 0.016, 0, TAU); c.fill();
       if (on) { const gg = c.createRadialGradient(px, cy + h * 0.055, 2, px, cy + h * 0.055, h * 0.05); gg.addColorStop(0, SYSCOL[k] + '88'); gg.addColorStop(1, SYSCOL[k] + '00'); c.fillStyle = gg; c.fillRect(px - h * 0.05, cy, h * 0.1, h * 0.11); }
-      c.fillStyle = on ? '#e8f6ff' : '#5a6890'; c.font = '600 ' + Math.round(Math.max(9, h * 0.017)) + 'px system-ui'; c.textAlign = 'center'; c.fillText(st.labels ? st.labels[i] : k, px, cy + h * 0.115);
+      c.fillStyle = on ? '#e8f6ff' : '#5a6890'; c.font = '600 ' + Math.round(Math.max(9, h * 0.017)) + 'px system-ui'; c.textAlign = 'center'; c.fillText(w < 520 ? String(i + 1) : st.labels ? st.labels[i] : k, px, cy + h * 0.115);
       for (let j = 0; j < 4; j++) { c.fillStyle = on ? SYSCOL[k] : '#1b274a'; c.fillRect(px - cw * 0.05 + j * cw * 0.026, cy + h * 0.085, cw * 0.016, 3 + (on ? 4 * Math.abs(Math.sin(t * 2 + j + i)) : 0)); }
     });
     // asientos y tripulación (de izquierda a derecha: especialistas a los lados, comandante al centro)
@@ -38,7 +38,7 @@ const TripArt = (function () {
       c.fillStyle = '#26315a'; rr(c, x - 52 * sc * 0.55, y - 74 * sc, 104 * sc * 0.55, 80 * sc, 10); c.fill();
       Chars.draw(c, r, x, y - 4 * sc, { dir: 2, t, pose: st.pose && st.pose[r] || 'idle', scale: sc * 1.15, shadow: false });
       c.fillStyle = '#18204a'; rr(c, x - 44 * sc * 0.6, y - 20 * sc, 88 * sc * 0.6, 26 * sc, 8); c.fill(); c.strokeStyle = '#ff8a3d'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 30 * sc * 0.9, y - 21 * sc); c.lineTo(x + 30 * sc * 0.9, y - 21 * sc); c.stroke();
-      if (me) { c.strokeStyle = '#6fffa0'; c.lineWidth = 3; c.beginPath(); c.ellipse(x, y - 30 * sc, 36 * sc * 1.15, 44 * sc * 1.15, 0, 0, TAU); c.stroke(); }
+      if (me) { c.strokeStyle = '#6fffa0'; c.lineWidth = 3; c.beginPath(); c.ellipse(x, y - 34 * sc, 27 * sc * 1.15, 40 * sc * 1.15, 0, 0, TAU); c.stroke(); }
     });
   }
 

@@ -64,7 +64,7 @@ const Trip = (function () {
     t.q.nav = navQuality(t); t.q.ls = lsQuality(t);
     const out = { nav: t.q.nav, ls: t.q.ls, notes: [] };
     if (t.q.nav === 'poor') { if (L.parts.tanks === 'ok') L.parts.tanks = 'warn'; out.notes.push('fuel'); }
-    if (S.r && S.r.well) { const d = t.q.ls === 'good' ? 3 : t.q.ls === 'ok' ? 0 : -5; S.r.well.v = Math.max(0, Math.min(S.r.well.max, S.r.well.v + d)); out.well = d; }
+    if (typeof S.morale === 'number') { const d = t.q.ls === 'good' ? 4 : t.q.ls === 'ok' ? 0 : -6; S.morale = Math.max(0, Math.min(100, S.morale + d)); out.morale = d; }
     L.trip = out; return out;
   }
   return { SYS, SYS_T, PRE, WHO, WHAT, T_NEED, SAFETY_CHECK, NAV_TOL, angdiff, bearing, devSize, LS_EV, FILTER_STEPS, SECT, lvl, fresh, ensure, press, allOn, navQuality, lsQuality, applyToLand };
