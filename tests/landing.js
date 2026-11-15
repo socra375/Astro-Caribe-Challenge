@@ -19,6 +19,7 @@ async function fly(pg, scen, o) {
   o = o || {};
   await pg.evaluate(({ s, m }) => { Game._debug.newRun(s, 'x', { mode: m }); }, { s: scen, m: o.mode || 'junior' });
   await pg.waitForFunction(() => Game._debug.land.on);
+  await pg.evaluate(() => Game._debug.land.skipTrip());
   const sp = o.speed || 25; await pg.evaluate((v) => Game._debug.land.speed(v), sp);
   await pg.waitForSelector('.lbtn:not(.hidden)', { timeout: 20000 }); await pg.click('.lbtn');
   await pg.waitForSelector('.lpanel .choice'); const zi = o.zone || 1;
@@ -134,7 +135,7 @@ async function fly(pg, scen, o) {
   const B = await newCtx(browser);
   let heatSeen = 0, chuteSeen = 0, windDust = 0, ms = 0;
   await B.pg.evaluate(() => Game._debug.newRun('mars', 'x', { mode: 'adv' }));
-  await B.pg.waitForFunction(() => Game._debug.land.on); await B.pg.evaluate(() => Game._debug.land.speed(25));
+  await B.pg.waitForFunction(() => Game._debug.land.on); await B.pg.evaluate(() => Game._debug.land.skipTrip()); await B.pg.evaluate(() => Game._debug.land.speed(25));
   await B.pg.waitForSelector('.lbtn:not(.hidden)'); await B.pg.click('.lbtn'); await B.pg.waitForSelector('.lpanel .choice'); await B.pg.click('.lpanel .choice:nth-of-type(3)'); await B.pg.click('.lpanel .btn.primary');
   await B.pg.waitForSelector('.lpanel .btn.primary'); await sleep(B.pg, 500); await B.pg.click('.lpanel .btn.primary');
   await B.pg.evaluate(() => Game._debug.land.speed(2));
@@ -179,7 +180,7 @@ async function fly(pg, scen, o) {
 
   /* ---- Móvil: la llegada cabe en pantalla ---- */
   const D = await newCtx(browser, { width: 390, height: 780 }, true);
-  await D.pg.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior' })); await D.pg.waitForFunction(() => Game._debug.land.on); await D.pg.evaluate(() => Game._debug.land.speed(25));
+  await D.pg.evaluate(() => Game._debug.newRun('moon', 'x', { mode: 'junior' })); await D.pg.waitForFunction(() => Game._debug.land.on); await D.pg.evaluate(() => Game._debug.land.skipTrip()); await D.pg.evaluate(() => Game._debug.land.speed(25));
   await D.pg.waitForSelector('.lbtn:not(.hidden)'); await D.pg.click('.lbtn'); await D.pg.waitForSelector('.lpanel .choice'); await D.pg.click('.lpanel .choice:nth-of-type(1)'); await sleep(D.pg, 200);
   const mob = await D.pg.evaluate(() => { const p = document.querySelector('.lpanel').getBoundingClientRect(); return { l: p.left, r: p.right, b: p.bottom, w: innerWidth, h: innerHeight, scrollX: document.documentElement.scrollWidth > innerWidth }; });
   ok('Móvil: el panel de zonas cabe en la pantalla y no hay desplazamiento horizontal', mob.l >= 0 && mob.r <= mob.w + 1 && mob.b <= mob.h + 1 && !mob.scrollX, JSON.stringify(mob));
