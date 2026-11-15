@@ -802,7 +802,7 @@ const Sim = (function () {
       case 'rover': {
         const n = Math.max(0, Math.round(fin(res.samples, 0)));
         addSamples(S, n, 'rover'); S.r.mat.v += fin(res.regolith, 0);
-        sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++;
+        sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++; log(S, 'ok', 'rover.back', { n });
         const m7 = S.m[7];
         if (m7.st === 'active' && ok && n >= m7.data.target) finishMission(S, 7, res.score > 0.75 ? 3 : 2);
         sy.rover.hint = false;

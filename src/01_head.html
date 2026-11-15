@@ -70,6 +70,9 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 #hudR{margin-left:auto;display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
 .chip{background:rgba(10,16,36,.88);border:1px solid var(--border);border-radius:12px;padding:6px 10px;font-weight:700;font-size:14px;min-height:40px;display:flex;align-items:center;gap:6px}
 .chip.btn{padding:6px 10px}
+#zoomc{position:absolute;right:8px;bottom:166px;display:flex;flex-direction:column;gap:4px}
+#zoomc.hidden{display:none}
+#zoomc .chip{min-width:40px;min-height:40px;font-size:20px;justify-content:center}
 #mini{position:absolute;right:8px;bottom:8px;width:190px;height:150px;border:1px solid var(--border);border-radius:12px;background:rgba(5,8,20,.85)}
 #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;max-width:min(560px,80vw);background:rgba(10,16,36,.92);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;font-size:15px;text-align:center;pointer-events:none}
 #prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:64px}
@@ -119,6 +122,7 @@ th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical
   #hudR{margin-left:0;width:100%;justify-content:space-between;gap:4px}
   .chip{min-height:38px;padding:4px 8px;font-size:13px}
   #mini{width:112px;height:90px;top:128px;right:6px;bottom:auto}
+  #zoomc{top:224px;right:6px;bottom:auto;flex-direction:row}
   #m_life{grid-column:span 2}
   #hud .meters{grid-auto-rows:auto}
   #hint{top:128px;bottom:auto;left:6px;transform:none;max-width:calc(100% - 132px);font-size:13px;padding:6px 8px}
@@ -177,6 +181,7 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
   <div id="prompt" class="hidden"><button class="btn primary" id="actBtn"></button></div>
   <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button class="btn primary" id="btnE" aria-label="Interactuar">E</button></div>
   <canvas id="mini" class="hidden" width="380" height="300" aria-hidden="true"></canvas>
+  <div id="zoomc" class="hidden"><button class="chip btn" id="zIn" aria-label="Acercar" title="Acercar (+)">+</button><button class="chip btn" id="zOut" aria-label="Alejar" title="Alejar (-)">−</button><button class="chip btn" id="zFit" aria-label="Vista general" title="Vista general (Z)"></button></div>
   <div id="layer"></div>
 </div>
 <script>

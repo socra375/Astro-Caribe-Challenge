@@ -18,13 +18,13 @@
     water: { es: 'Soporte vital: oxígeno, reciclaje de agua, presión y calidad del aire.', en: 'Life support: oxygen, water recycling, pressure and air quality.' },
     rad: { es: 'Bahía del rover, esclusa y refugio contra la radiación.', en: 'Rover bay, airlock and radiation shelter.' },
     lab: { es: 'Laboratorio: análisis de muestras, espectrómetro y registro de resultados.', en: 'Lab: sample analysis, spectrometer and results log.' },
-    hall: { es: 'Pasillo que conecta las salas del puesto avanzado.', en: 'Corridor linking the outpost rooms.' },
+    hall: { es: 'Atrio central y túneles presurizados que conectan los módulos de la base.', en: 'Central atrium and pressurized tunnels linking the base modules.' },
     lock: { es: 'Esclusa: paso entre el interior y la superficie.', en: 'Airlock: passage between inside and the surface.' },
     pad: { es: 'Superficie exterior: aquí se recogen muestras con el traje puesto.', en: 'Outside surface: samples are collected here in a suit.' }
   };
   const MAPSYS = { bridge: ['comms'], life: ['thermal', 'press'], med: ['thermal', 'press'], gh: ['gh'], reactor: ['reactor', 'solar'], water: ['o2', 'rec'], rad: ['shield', 'isru'], lab: ['lab'] };
   const ROLECOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
-  const isCorr = (k) => /^v\d$/.test(k);
+  const isCorr = (k) => /^t\d/.test(k);
 
   function mapOpen() { return stack.length > 0 && !!stack[stack.length - 1]._map; }
   function toggleMap() {
@@ -36,7 +36,7 @@
   function openMap() {
     const es = LANG === 'es', D = World.DIM, RC = World.RECTS;
     const st = { sel: null, route: false, z: 1, cx: D.W / 2, cy: D.H / 2, drag: null, moved: false };
-    const CW = 720, CH = 560;
+    const CW = 900, CH = Math.round(900 * D.H / D.W);
     const cvm = h('canvas', { width: CW, height: CH, class: 'mapcv', tabindex: '0', role: 'img', 'aria-label': es ? 'Mapa completo del puesto avanzado. Pulsa una sala para ver su ficha. Flechas para desplazar, más y menos para el zoom.' : 'Full outpost map. Select a room to see its card. Arrows to pan, plus and minus to zoom.' });
     const info = h('div', { class: 'mapinfo', 'aria-live': 'polite' });
     const sc = () => Math.min(CW / D.W, CH / D.H) * st.z;
@@ -46,28 +46,30 @@
     const crewIn = (k) => World.crew().filter((m) => m.room === k);
     const roomOf = (k) => (isCorr(k) ? 'hall' : k);
     const ids = () => Object.keys(RC);
+    const bgc = World.staticCanvas;
 
     function draw(t) {
       const x = cvm.getContext('2d'), s = sc();
       x.clearRect(0, 0, CW, CH); x.fillStyle = '#070b18'; x.fillRect(0, 0, CW, CH);
       x.lineJoin = 'round';
+      // el mapa es el propio mundo (mismo dibujo y mismo estado que durante la exploración)
+      if (bgc) x.drawImage(bgc, X(0), Y(0), D.W * s, D.H * s);
       for (const k of ids()) {
-        const R = RC[k], lk = World.roomLocked(roomOf(k)), col = World.ROOMCOL[k] || (k === 'pad' ? '#9a7b58' : '#5a6890');
-        const rx = X(R[0]), ry = Y(R[1]), rw = (R[2] - R[0] + 1) * s, rh = (R[3] - R[1] + 1) * s;
-        x.fillStyle = lk ? '#151a29' : col + '4d'; x.fillRect(rx, ry, rw, rh);
-        if (lk) { x.save(); x.beginPath(); x.rect(rx, ry, rw, rh); x.clip(); x.strokeStyle = '#ffffff22'; x.lineWidth = 2; for (let d = -rh; d < rw; d += 14) { x.beginPath(); x.moveTo(rx + d, ry + rh); x.lineTo(rx + d + rh, ry); x.stroke(); } x.restore(); }
-        const sel = roomOf(k) === st.sel;
-        x.strokeStyle = sel ? '#ffc24a' : lk ? '#6b7388' : col; x.lineWidth = sel ? 3 : 1.5; x.strokeRect(rx, ry, rw, rh);
+        if (isCorr(k)) continue;
+        const lk = World.roomLocked(k);
+        if (lk || k === st.sel) {
+          x.save(); x.translate(X(0), Y(0)); x.scale(s, s);
+          if (lk) { x.fillStyle = 'rgba(8,12,24,.72)'; x.fill(World.roomPath(k)); x.clip(World.roomPath(k)); x.strokeStyle = 'rgba(255,255,255,.16)'; x.lineWidth = 0.12; const R = RC[k]; for (let q = R[0] - (R[3] - R[1]); q < R[2]; q += 1.3) { x.beginPath(); x.moveTo(q, R[3] + 1); x.lineTo(q + (R[3] - R[1] + 1), R[1]); x.stroke(); } }
+          if (k === st.sel) { x.fillStyle = 'rgba(255,194,74,.22)'; x.fill(World.roomPath(k)); x.strokeStyle = '#ffc24a'; x.lineWidth = 0.18; x.stroke(World.roomPath(k)); }
+          x.restore();
+        }
       }
-      // puertas y esclusas (las del mundo real)
-      for (const d of World.doorList()) {
-        const lockd = d.kind !== 'auto';
-        x.fillStyle = lockd ? '#ffc24a' : '#38d6ff'; x.fillRect(X(d.x), Y(d.y) + s * 0.2, 2 * s, Math.max(3, s * 0.6));
-      }
+      // puertas (azul) y esclusa (naranja)
+      for (const dr of World.doorList()) { x.fillStyle = dr.kind !== 'auto' ? '#ffc24a' : '#38d6ff'; x.fillRect(X(dr.x) + s * 0.1, Y(dr.y) + s * 0.1, Math.max(3, dr.w * s - s * 0.2), Math.max(3, dr.h * s - s * 0.2)); }
       // etiquetas e iconos de estado
       for (const k of ids()) {
         if (isCorr(k)) continue;
-        const R = RC[k], lk = World.roomLocked(k), cx = X((R[0] + R[2] + 1) / 2), cy = Y((R[1] + R[3] + 1) / 2), rw = (R[2] - R[0] + 1) * s;
+        const R = RC[k], lk = World.roomLocked(k), p0 = World.roomCenter(k) || [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2], cx = X(p0[0]), cy = Y(p0[1]), rw = (R[2] - R[0] + 1) * s;
         const fs = Math.max(10, Math.min(15, 9 + st.z * 2));
         x.font = '700 ' + fs + 'px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
         x.fillStyle = lk ? '#9aa3bb' : '#f2f6ff'; x.strokeStyle = '#0008'; x.lineWidth = 3;
@@ -76,7 +78,7 @@
         const al = alertsIn(k);
         if (al.length) {
           const crit = al.some((i) => i.sev === 'crit'), pul = 0.55 + 0.45 * Math.sin(t / 220);
-          x.save(); x.globalAlpha = pul; x.strokeStyle = crit ? '#ff6b6b' : '#ffc24a'; x.lineWidth = 4; x.strokeRect(X(R[0]) + 2, Y(R[1]) + 2, rw - 4, (R[3] - R[1] + 1) * s - 4); x.restore();
+          x.save(); x.globalAlpha = pul; x.translate(X(0), Y(0)); x.scale(s, s); x.strokeStyle = crit ? '#ff6b6b' : '#ffc24a'; x.lineWidth = 0.35; x.stroke(World.roomPath(k)); x.restore();
           Icons.draw(x, crit ? 'crit' : 'warn', X(R[2] + 1) - 14, Y(R[1]) + 14, 20, crit ? '#ff6b6b' : '#ffc24a');
         }
       }
@@ -129,8 +131,9 @@
 
     function pick(px, py) {
       const s = sc(), wx = (px - CW / 2) / s + st.cx, wy = (py - CH / 2) / s + st.cy;
-      const k = ids().find((q) => { const R = RC[q]; return wx >= R[0] && wx < R[2] + 1 && wy >= R[1] && wy < R[3] + 1; });
-      st.sel = k ? roomOf(k) : null; if (!st.sel) st.route = false; card();
+      let k = World.roomAtPoint(wx, wy);
+      if (!k) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { k = World.roomAtPoint(wx + ox, wy + oy); if (k) break; }
+      st.sel = k && (RC[k] || k === 'pad') ? k : null; if (!st.sel || st.sel === 'pad') st.route = false; card();
     }
     const clampC = () => { st.cx = Math.max(0, Math.min(D.W, st.cx)); st.cy = Math.max(0, Math.min(D.H, st.cy)); };
     const zoom = (d) => { st.z = Math.max(1, Math.min(3.5, st.z * d)); if (st.z === 1) { st.cx = D.W / 2; st.cy = D.H / 2; } clampC(); };
