@@ -95,6 +95,14 @@
       if (hi && hi.p) Icons.draw(x, 'target', X(hi.p[0]), Y(hi.p[1]), 22, '#ffc24a');
       const mk = World.marker;
       if (mk) { x.strokeStyle = '#ff6b6b'; x.lineWidth = 3; x.beginPath(); x.arc(X(mk.p[0]), Y(mk.p[1]), 10 + 3 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'pin', X(mk.p[0]), Y(mk.p[1]) - 16, 20, '#ff6b6b'); }
+      // rover y objetivo de la expedición (los que quedan fuera del plano se señalan en el borde)
+      if (S.ex) {
+        const edge = (px, py) => { const mx = 14, ex = Math.max(mx, Math.min(CW - mx, px)), ey = Math.max(mx, Math.min(CH - mx, py)); return [ex, ey, ex !== px || ey !== py]; };
+        const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y));
+        x.save(); x.translate(rp[0], rp[1]); x.rotate(rp[2] ? Math.atan2(Y(R0.y) - CH / 2, X(R0.x) - CW / 2) : R0.a); x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-9, -6, 18, 12); x.strokeRect(-9, -6, 18, 12); x.fillStyle = '#fff'; x.fillRect(3, -3, 5, 6); x.restore();
+        x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; x.strokeText('Rover', rp[0], rp[1] - 10); x.fillText('Rover', rp[0], rp[1] - 10);
+        const gl = Ex.goal(S); if (gl && S.ex.suit.on) { const gp = edge(X(gl.x), Y(gl.y)); x.strokeStyle = '#ffc24a'; x.lineWidth = 3; x.beginPath(); x.arc(gp[0], gp[1], 9 + 2 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'target', gp[0], gp[1], 18, '#ffc24a'); }
+      }
       // tripulación (NPC) y jugador
       for (const m of World.crew()) { x.fillStyle = ROLECOL[m.role]; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.arc(X(m.x), Y(m.y), 6, 0, 7); x.fill(); x.stroke(); }
       const P = World.player;
@@ -159,7 +167,8 @@
       btn('↔ ' + (es ? 'Ver mundo completo' : 'Full view'), () => { st.z = 1; st.cx = D.W / 2; st.cy = D.H / 2; }, 'sm ghost'),
       h('span', { class: 'small muted' }, es ? 'Azul: puertas · naranja: esclusa. Cierra con M o Esc; el tiempo está en pausa.' : 'Blue: doors · orange: airlock. Close with M or Esc; time is paused.'));
     const body = h('div', { class: 'col' }, tools, cvm, info);
-    const s = push(panel('🗺 ' + (es ? 'Mapa de la base' : 'Base map'), body), { sticky: true, onclose: () => { clearInterval(iv); } });
+    const s = push(panel('🗺 ' + (es ? 'Mapa de la base' : 'Base map'), body), { sticky: true, onclose: () => { clearInterval(iv); World.overview(false); } });
+    World.overview(true); // MapCamera: la cámara se aleja hasta mostrar toda la base; al cerrar vuelve a la cámara principal
     s._map = true;
     const iv = setInterval(() => { if (!s.isConnected) { clearInterval(iv); return; } draw(performance.now()); }, 90);
     card(); draw(performance.now());
