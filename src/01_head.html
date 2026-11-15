@@ -148,6 +148,10 @@ details.more p{margin:6px 0}
 canvas.spark{width:100%;height:46px;display:block}
 html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+.mapcv{width:100%;max-width:760px;height:auto;background:#070b18;border-radius:10px;touch-action:none;cursor:grab;display:block;margin:0 auto}
+.mapinfo{min-height:96px}
+#subs{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;max-width:min(720px,92vw);background:rgba(8,12,28,.94);border:1px solid var(--border);border-radius:12px;padding:8px 12px;z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:15px;pointer-events:auto}
+#subs.hidden{display:none}
 </style>
 </head>
 <body>
@@ -160,7 +164,10 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
       <button class="chip btn" id="bSpeed" title="Velocidad" aria-label="Velocidad">x1</button>
       <button class="chip btn" id="bAlerts" title="Alertas" aria-label="Alertas"></button>
       <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa"></button>
-      <button class="chip btn" id="bMute" title="Silencio (M)" aria-label="Silencio"></button>
+      <button class="chip btn" id="bCom" title="Comunicaciones" aria-label="Comunicaciones"></button>
+      <button class="chip btn" id="bMap" title="Mapa (M)" aria-label="Mapa"></button>
+      <button class="chip btn" id="bCrew" title="Tripulación (C)" aria-label="Tripulación"></button>
+      <button class="chip btn" id="bMute" title="Silencio (N)" aria-label="Silencio"></button>
       <button class="chip btn" id="bMenu" title="Menú" aria-label="Menú"></button>
     </div>
   </div>

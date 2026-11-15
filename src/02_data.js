@@ -37,8 +37,8 @@ const DATA = (function () {
       liveData: 'Datos en vivo de DONKI (últimos 30 días)', fallback: 'Copia local de registros históricos', achievements: 'Logros', stats: 'Estadísticas',
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
-      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
-      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
+      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa · M mapa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
+      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', sorted: 'Los residuos ya están separados: ahora recíclalos.', mealwait: 'Ya se preparó una comida hace poco: espera unas horas.', nofresh: 'No queda fruta ni verdura fresca suficiente.', nopacked: 'No quedan raciones de reserva suficientes.', noslot: 'No hay huecos libres en el almacén de muestras.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
       start: 'Start mission', cont: 'Continue', manual: 'Learning manual', earthConn: 'Earth Connection', sources: 'Science sources',
@@ -71,15 +71,15 @@ const DATA = (function () {
       liveData: 'Live DONKI data (last 30 days)', fallback: 'Local copy of historical records', achievements: 'Achievements', stats: 'Statistics',
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
-      helpMove: 'Move with WASD or arrows · E to interact · P pause', helpTouch: 'Use the joystick to move and the E button to interact',
-      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
+      helpMove: 'Move with WASD or arrows · E to interact · P pause · M map', helpTouch: 'Use the joystick to move and the E button to interact',
+      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', sorted: 'Waste is already sorted: now recycle it.', mealwait: 'A meal was prepared recently: wait a few hours.', nofresh: 'Not enough fresh produce left.', nopacked: 'Not enough reserve rations left.', noslot: 'No free slots in the sample storage.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };
 
   const ROOMS = {
-    bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Módulo de vida', en: 'Habitation module' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
-    reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Reciclaje de agua y oxígeno', en: 'Water & oxygen recycling' },
-    rad: { es: 'Protección radiológica y bahía del rover', en: 'Radiation shelter & rover bay' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
+    bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
+    reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Soporte vital', en: 'Life support' },
+    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
     hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
@@ -421,18 +421,30 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
+  const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
+  function startMusic() {
+    if (!ctx || mus || !musicOn) return;
+    try {
+      const bus = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; bus.gain.value = musicVol * 0.5; lp.connect(bus); bus.connect(master);
+      const os = CH[0].map((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.value = 0.18; o.connect(g); g.connect(lp); o.start(); return o; });
+      let k = 0; const iv = setInterval(() => { k = (k + 1) % CH.length; os.forEach((o, i) => o.frequency.setTargetAtTime(CH[k][i], ctx.currentTime, 1.6)); }, 8000);
+      mus = { os, bus, iv };
+    } catch (e) { mus = null; }
+  }
+  function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
       const t = ctx.currentTime + (when || 0), o = ctx.createOscillator(), a = ctx.createGain();
       o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(g || 0.3, t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, (g || 0.3) * curMul), t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(a); a.connect(master); o.start(t); o.stop(t + d + 0.02);
     } catch (e) { /* ignore */ }
   }
@@ -447,6 +459,8 @@ const Sfx = (function () {
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
     step: () => tone(90, 0.04, 'triangle', 0, 0.04)
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); (P[k] || P.click)(); },
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();

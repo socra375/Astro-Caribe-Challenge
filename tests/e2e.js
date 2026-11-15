@@ -65,8 +65,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Tiempo simulado avanza', t1 > t0 + 0.2, (t1 - t0).toFixed(2));
   // Panel de consecuencias (agua)
   await page.evaluate(() => Game._debug.openConsole('water'));
-  ok('Sin el especialista adecuado se explica y se dirige al vestuario', await page.getByRole('button', { name: /Marcar el vestuario/ }).isVisible());
-  ok('La emergencia se puede reparar con cualquier especialista', await page.getByRole('button', { name: /Reparación de emergencia/ }).isVisible());
+  ok('El comandante abre cualquier consola sin cambiar de personaje', !(await page.getByText(/Se necesita otro especialista/).count()) && await page.evaluate(() => Game.S.playerRole === 'commander') && await page.locator('.panel h2').count() > 0);
   await closeAll(page);
   await page.evaluate(() => { World.setPlayerRole('engineer'); Sim.setPlayerRole(Game.S, 'engineer'); });
   await page.evaluate(() => Game._debug.openConsole('water'));
@@ -186,7 +185,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const skipTalk = async () => { for (let i = 0; i < 6; i++) { const b = pg.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pg.waitForTimeout(60); } else break; } };
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
-  ok('Al empezar solo hay 3 secciones abiertas', un0 === 'bridge,life,reactor', un0);
+  ok('Al empezar están abiertos puente, dormitorios, enfermería, reactor y soporte vital', un0 === 'bridge,life,med,reactor,water', un0);
   await pg.evaluate(() => { World.player.x = 10; World.player.y = 14.6; });
   await pg.keyboard.down('s'); await pg.waitForTimeout(900); await pg.keyboard.up('s');
   const yb = await pg.evaluate(() => World.player.y);
@@ -248,20 +247,174 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.evaluate(() => { const S = Game.S; Sim.decide(S, 'analyze', {}); Sim.step(S, 4); });
   await pg.waitForTimeout(400);
   const fin = await pg.evaluate(() => [Game.S.camp.basicDone, Object.keys(Game.S.camp.unlocked).length]);
-  ok('Familiarización completa: las 7 secciones abiertas', fin[0] && fin[1] === 7, JSON.stringify(fin));
+  ok('Familiarización completa: las 7 secciones principales, la enfermería y el almacén de alimentos abiertos', fin[0] && fin[1] === 9, JSON.stringify(fin));
   await pg.evaluate(() => { World.player.x = 30; World.player.y = 36; }); await pg.waitForTimeout(500);
   ok('La guía de la bahía del rover se presenta', await pg.getByText(/bahía del rover/).first().isVisible()); await skipTalk();
   // Permisos después de la familiarización y vestuario
   await pg.evaluate(() => { World.player.x = 10; World.player.y = 23.5; Game._debug.openConsole('gh'); });
-  ok('Tras la familiarización, el invernadero pide al agrónomo', await pg.getByText(/Se necesita otro especialista/).isVisible());
+  ok('Tras la familiarización, el comandante sigue pudiendo operar el invernadero', !(await pg.getByText(/Se necesita otro especialista/).count()) && await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
   await closeAll(pg);
   await pg.evaluate(() => Game._debug.wardrobePanel());
-  await pg.locator('.card', { hasText: 'Agrónomo' }).getByRole('button', { name: /Ponerse/ }).click();
+  await pg.locator('.card', { hasText: 'Agrónomo' }).getByRole('button', { name: /Jugar con este personaje/ }).click();
   const rl = await pg.evaluate(() => [Game.S.playerRole, World.player.role, World._test.bots.map((b) => b.role).sort().join(',')]);
   ok('El vestuario cambia de especialista y el anterior queda como NPC', rl[0] === 'agri' && rl[1] === 'agri' && rl[2] === 'commander,engineer,medic,scientist', JSON.stringify(rl));
   await pg.evaluate(() => Game._debug.openConsole('gh'));
-  ok('Con el traje correcto se abre el panel', await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
+  ok('Con el especialista también se abre el panel', await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
   await closeAll(pg);
+  // ---- Mapa completo (M), tripulación (C) y pausa ----
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  await pg.keyboard.press('m');
+  ok('M abre el mapa completo', await pg.locator('.mapcv').isVisible());
+  const tm0 = await pg.evaluate(() => Game.S.t); await pg.waitForTimeout(600);
+  ok('Con el mapa abierto el tiempo simulado está en pausa', await pg.evaluate((t) => Game.S.t === t, tm0));
+  const box = await pg.locator('.mapcv').boundingBox();
+  const mp = await pg.evaluate(() => { const R = World.RECTS.reactor; return [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2, World.DIM.W, World.DIM.H]; });
+  const msc = Math.min(720 / mp[2], 560 / mp[3]), mpx = 360 + (mp[0] - mp[2] / 2) * msc, mpy = 280 + (mp[1] - mp[3] / 2) * msc;
+  await pg.mouse.click(box.x + mpx * box.width / 720, box.y + mpy * box.height / 560);
+  ok('Seleccionar una sala muestra su ficha', await pg.locator('.mapinfo').getByText(/Reactor y energía/).first().isVisible());
+  await pg.getByRole('button', { name: /Mostrar ruta/ }).click();
+  const rt = await pg.evaluate(() => { const r = World.route('reactor'); return r && r.length > 2 && r.every((p) => World.RECTS && Number.isFinite(p[0])); });
+  ok('La ruta sigue el grafo real de pasillos y puertas', rt);
+  await pg.getByRole('button', { name: /Marcar destino/ }).click();
+  ok('Marcar destino fija el marcador en el mundo', await pg.evaluate(() => !!World.marker && World.marker.label.length > 0));
+  await pg.keyboard.press('m');
+  ok('M vuelve a cerrar el mapa', !(await pg.locator('.mapcv').count()));
+  await pg.keyboard.press('m'); await pg.keyboard.press('Escape');
+  ok('Esc cierra el mapa', !(await pg.locator('.mapcv').count()));
+  await pg.locator('#bMap').click();
+  ok('El botón del HUD abre el mapa', await pg.locator('.mapcv').isVisible());
+  await closeAll(pg);
+  await pg.keyboard.press('c');
+  ok('C abre el selector de tripulación con los cinco personajes', (await pg.locator('.card h3').count()) >= 5);
+  await closeAll(pg);
+  const pos0 = await pg.evaluate(() => [World.player.x, World.player.y, JSON.stringify(Game.S.m[1])]);
+  await pg.locator('#bCrew').click();
+  await pg.locator('.card', { hasText: 'Científico' }).getByRole('button', { name: /Jugar con este personaje/ }).click();
+  const pos1 = await pg.evaluate(() => [World.player.x, World.player.y, JSON.stringify(Game.S.m[1]), Game.S.playerRole]);
+  ok('Cambiar de personaje conserva posición y misiones', Math.abs(pos0[0] - pos1[0]) < 0.01 && Math.abs(pos0[1] - pos1[1]) < 0.01 && pos0[2] === pos1[2] && pos1[3] === 'scientist', JSON.stringify([pos0, pos1]));
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  const mu0 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n'); const mu1 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n');
+  ok('N alterna el silencio y M ya no lo hace', mu0 !== mu1 && (await pg.locator('#bMute').innerHTML()) === mu0);
+  // ---- Las 13 instalaciones: existencia, conexión y rutas transitables ----
+  const inst = await pg.evaluate(() => {
+    const T = World._test, R = World.RECTS, need = ['bridge', 'life', 'med', 'reactor', 'water', 'gh', 'food', 'kitchen', 'lab', 'samples', 'workshop', 'rad', 'waste'];
+    const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [] };
+    const inDoor = (x, y) => T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2);
+    for (const k in T.N) if (!T.canStand(T.N[k][0], T.N[k][1], 0.25) && !inDoor(T.N[k][0], T.N[k][1])) out.nodesOk = false, out.bad.push(k);
+    World.player.x = 30; World.player.y = 9.5;
+    const savedUn = Game.S.camp.unlocked; Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
+    for (const k of need) {
+      const r = World.route(k);
+      if (!r || r.length < 2) { out.unreachable.push(k); continue; }
+      for (let i = 1; i < r.length; i++) for (let t = 0; t <= 1; t += 0.1) { const x = r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, y = r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t; if (!T.canStand(x, y, 0.25) && !T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2)) out.bad.push(k + '@' + x.toFixed(1) + ',' + y.toFixed(1)); }
+    }
+    Game.S.camp.unlocked = savedUn;
+    return out;
+  });
+  ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
+  ok('Todos los nodos de ruta están en suelo transitable', inst.nodesOk && !inst.bad.length, JSON.stringify(inst.bad.slice(0, 5)));
+  ok('Las 13 instalaciones son alcanzables desde el puente por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
+  // ---- Instalaciones nuevas: almacén, cocina, muestras, taller, residuos ----
+  const fac = await pg.evaluate(() => {
+    const mk = () => Sim.create({ seed: 11, noEv: true, mode: 'adv', skipCamp: true, scen: 'moon' });
+    const out = {};
+    // Almacén: la cosecha entra y se registra; sin frío se estropea más
+    let A = mk(), B = mk();
+    for (const X of [A, B]) { X.pant.fresh = 10; }
+    Sim.decide(B, 'cold', { v: false });
+    Sim.step(A, 24); Sim.step(B, 24);
+    out.spoil = [A.st.spoiled, B.st.spoiled];
+    A = mk(); const pl0 = A.beds[0].plants[0]; pl0.prog = 1; const before = A.pant.fresh; Sim.harvest(A, 0, 0);
+    out.harvest = [A.pant.fresh > before, A.pant.log.length === 1 && A.pant.log[0].k === 'in'];
+    // Cocina: ensalada gasta lo fresco, sube el ánimo y respeta las 8 h
+    A = mk(); A.pant.fresh = 5; A.r.food.v = 40; const m0 = A.morale = 50;
+    const c1 = Sim.decide(A, 'cook', { r: 'salad' }); Sim.step(A, 3); const m1 = A.morale; const c2 = Sim.decide(A, 'cook', { r: 'salad' });
+    out.cook = [c1.ok, m1 > m0 - 5, c2.ok === false && c2.err === 'mealwait', A.st.meals === 1, A.pant.fresh < 5];
+    // Raciones
+    A = mk(); B = mk(); Sim.decide(B, 'ration', { v: 'low' }); Sim.step(A, 1); Sim.step(B, 1); out.ration = B.r.food.cons < A.r.food.cons * 0.9;
+    // Muestras: identificador único, clasificación, almacenamiento, laboratorio, deterioro
+    A = mk(); Sim.addSamples(A, 3, 'rover');
+    const ids = A.sampleList.map((e) => e.id), e0 = A.sampleList[0];
+    const okF = ['id', 'origin', 't', 'cat', 'state', 'slot', 'an'].every((k) => k in e0);
+    const st = Sim.decide(A, 'sstore', { id: e0.id, label: e0.cat });
+    const slotOk = A.sampleList[0].slot === 'A1' && A.sampleList[0].state === 'stored' && A.sampleList[0].ok;
+    const an = Sim.decide(A, 'analyze', { id: e0.id }); const inlab = A.sampleList[0].an === 'inlab';
+    Sim.step(A, 4); const sc0 = A.science;
+    out.samples = [new Set(ids).size === 3, okF, st.ok, slotOk, an.ok, inlab, A.sampleList[0].an === 'done', A.sampleList[0].sci === 15, A.samples === 2];
+    A = mk(); Sim.addSamples(A, 1, 'eva'); Sim.step(A, 25); out.degraded = A.sampleList[0].state === 'degraded';
+    // Taller: fabricar repuesto y usarlo
+    A = mk(); const mat0 = A.r.mat.v; Sim.decide(A, 'craft', {}); Sim.step(A, 4); const p1 = A.parts; const matAfterCraft = A.r.mat.v;
+    A.sys.reactor.h = 40; const matB = A.r.mat.v; const mt = Sim.decide(A, 'maint', { sys: 'reactor' });
+    out.work = [p1 === 1, matAfterCraft < mat0, mt.ok, A.parts === 0, Math.abs(A.r.mat.v - matB) < 0.01, A.jobs.some((j) => j.kind === 'maint' && j.h < 2)];
+    // Residuos: separar antes de reciclar rinde más
+    A = mk(), B = mk(); A.r.waste.v = 20; B.r.waste.v = 20; A.r.mat.v = B.r.mat.v = 10;
+    Sim.decide(A, 'sort', {}); Sim.decide(A, 'recycle', {}); Sim.decide(B, 'recycle', {}); Sim.step(A, 4); Sim.step(B, 4);
+    out.waste = [A.r.mat.v - B.r.mat.v > 2.5];
+    // Migración de partidas guardadas
+    A = mk(); const old = JSON.parse(JSON.stringify(A)); delete old.pant; delete old.sampleList; delete old.parts; old.samples = 2;
+    const M = Sim.migrate(old); out.mig = [!!M.pant, M.sampleList.length === 2, M.samples === 2, M.parts === 0];
+    return out;
+  });
+  ok('Almacén: sin refrigeración se estropea más comida', fac.spoil[1] > fac.spoil[0] * 4, JSON.stringify(fac.spoil));
+  ok('Almacén: la cosecha entra y queda registrada', fac.harvest.every(Boolean), JSON.stringify(fac.harvest));
+  ok('Cocina: la ensalada usa lo fresco, sube el ánimo y respeta el intervalo', fac.cook.every(Boolean), JSON.stringify(fac.cook));
+  ok('Cocina: el plan de raciones cambia el consumo', fac.ration);
+  ok('Muestras: identificador único, clasificación, estante, laboratorio y análisis registrado', fac.samples.every(Boolean), JSON.stringify(fac.samples));
+  ok('Muestras: sin almacenar se deterioran en 24 h', fac.degraded);
+  ok('Taller: fabricar repuesto gasta materiales y el mantenimiento lo usa', fac.work.every(Boolean), JSON.stringify(fac.work));
+  ok('Residuos: separar antes de reciclar recupera más materiales', fac.waste[0]);
+  ok('Las partidas guardadas antiguas se migran', fac.mig.every(Boolean), JSON.stringify(fac.mig));
+  for (const [id, re] of [['store', /Almacén de alimentos/], ['kitchen', /Cocina y comedor/], ['sampler', /Almacén de muestras/], ['work', /Taller de mantenimiento/], ['wastec', /Gestión de residuos/]]) {
+    await pg.evaluate((i) => Game._debug.openConsole(i), id);
+    ok('La consola «' + id + '» abre su panel', await pg.locator('.panel h2').filter({ hasText: re }).first().isVisible());
+    await closeAll(pg);
+  }
+  // ---- Ampliación progresiva: cada zona nueva se abre al completar la anterior ----
+  const expn = await pg.evaluate(() => {
+    const X = Sim.create({ seed: 3, noEv: true, mode: 'adv', skipCamp: true }), C = X.camp, out = {};
+    C.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1 }; C.xi = 0; C.done = { c1: 1, c2: 1, c3: 1, c4: 1 }; C.f = {}; C.cnt = {};
+    const room = () => Object.keys(C.unlocked).sort().join(',');
+    out.start = !C.unlocked.kitchen && !C.unlocked.samples && !C.unlocked.workshop && !C.unlocked.waste;
+    Sim.campFlag(X, 'talk_food'); Sim.step(X, 0.2); out.noKit = !C.unlocked.kitchen;      // falta la misión introductoria
+    Sim.campFlag(X, 'store_open'); Sim.step(X, 0.2); out.kit = !!C.unlocked.kitchen && C.xi === 1;
+    Sim.campFlag(X, 'talk_kitchen'); X.pant.fresh = 5; X.r.food.v = 40; Sim.decide(X, 'cook', { r: 'salad' }); Sim.step(X, 0.2); out.sam = !!C.unlocked.samples && C.xi === 2;
+    Sim.campFlag(X, 'talk_samples'); const e = X.sampleList.find((q) => q.state === 'new'); out.gaveSample = !!e;
+    Sim.decide(X, 'sstore', { id: e.id, label: e.cat }); Sim.step(X, 0.2); out.wk = !!C.unlocked.workshop && C.xi === 3;
+    Sim.campFlag(X, 'talk_workshop'); Sim.decide(X, 'craft', {}); Sim.step(X, 0.2); out.ws = !!C.unlocked.waste && C.xi === 4;
+    Sim.campFlag(X, 'talk_waste'); Sim.decide(X, 'sort', {}); Sim.decide(X, 'recycle', {}); Sim.step(X, 0.2); out.end = C.xi === 5 && Sim.expStatus(X) === null && C.done.x5 === 1;
+    out.pts = X.pts > 0;
+    return out;
+  });
+  ok('Las zonas nuevas empiezan bloqueadas y no se abren sin completar la misión introductoria', expn.start && expn.noKit, JSON.stringify(expn));
+  ok('Cada zona nueva se abre al completar la anterior (almacén → cocina → muestras → taller → residuos)', expn.kit && expn.sam && expn.wk && expn.ws && expn.end, JSON.stringify(expn));
+  ok('La ampliación es opcional: no bloquea las misiones', await pg.evaluate(() => { const X = Sim.create({ seed: 4, noEv: true, mode: 'adv', skipCamp: true }); X.camp.xi = 0; X.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1 }; return Sim.startMission(X, 1).ok === true; }));
+  // ---- HUD final y extra real del médico ----
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  ok('El HUD muestra el personaje seleccionado', /Comandante/.test(await pg.locator('#bCrew').innerText()) || /Comandante/.test((await pg.locator('#bCrew').getAttribute('title')) || ''));
+  await pg.locator('#bCom').click();
+  ok('El botón de comunicaciones del HUD abre el panel de comunicaciones', await pg.locator('.panel h2').filter({ hasText: /Comunicaciones/ }).first().isVisible());
+  await closeAll(pg);
+  await pg.evaluate(() => Game._debug.openConsole('med'));
+  const medCmd = await pg.getByText(/Revisión detallada de la médica/).count(); await closeAll(pg);
+  await pg.evaluate(() => { World.setPlayerRole('medic'); Sim.setPlayerRole(Game.S, 'medic'); Game._debug.openConsole('med'); });
+  ok('La médica ve una revisión detallada de la tripulación que el comandante no ve', medCmd === 0 && (await pg.getByText(/Revisión detallada de la médica/).isVisible()));
+  await closeAll(pg); await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  // ---- Rutinas de los NPC (día y noche) ----
+  const rout = await pg.evaluate(() => {
+    const X = Sim.create({ seed: 8, noEv: true, mode: 'adv', skipCamp: true }); X.t = 24 + 12; // día 2, 12:00
+    World.init(X.scen); World.update(0.01, X, { x: 0, y: 0 });
+    const B = World._test.bots, rooms = () => B.map((b) => World.roomName(b.x, b.y));
+    const run = (sec) => { for (let i = 0; i < sec * 20; i++) { B.forEach((b) => { if (b.wait > 0.2) b.wait = 0.1; }); World.update(0.05, X, { x: 0, y: 0 }); } };
+    const homes = {}; const seen = { engineer: new Set(), scientist: new Set(), medic: new Set(), agri: new Set() };
+    for (let k = 0; k < 400; k++) { run(0.5); B.forEach((b) => seen[b.role] && seen[b.role].add(World.roomName(b.x, b.y))); }
+    const day = Object.fromEntries(Object.entries(seen).map(([r, v]) => [r, [...v]]));
+    X.t = 24 * 2 + 1; // noche (01:00)
+    run(60);
+    const night = rooms();
+    return { day, night, inDorm: night.every((r) => r === 'life' || r === 'hall' || r === 'med') };
+  });
+  ok('Las rutinas diurnas llevan a cada NPC a su zona de trabajo', rout.day.medic.includes('med') && rout.day.scientist.some((r) => r === 'lab' || r === 'samples') && rout.day.agri.some((r) => r === 'gh' || r === 'food') && rout.day.engineer.some((r) => ['reactor', 'water', 'workshop'].includes(r)), JSON.stringify(rout.day));
+  ok('De noche los NPC se retiran a los dormitorios', rout.night.filter((r) => r === 'life').length >= 3, JSON.stringify(rout.night));
   // Alertas por NPC
   const rad = await pg.evaluate(() => {
     const G = Game._debug, S = Game.S, out = {};
@@ -477,6 +630,136 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Siluetas distintas de perfil (IoU < 0.9)', chk.maxS < 0.9, 'max IoU perfil ' + chk.maxS);
   ok('Piernas separadas (hueco entre piernas)', chk.gap);
   await ctx4.close();
+
+  // ---- Audio y voces (Web Speech API simulada: Chromium sin voces reales) ----
+  const FAKE_TTS = () => {
+    window.__spk = []; window.__cancel = 0; window.__conc = 0; window.__maxConc = 0; window.__voicesList = [];
+    const L = {};
+    window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.voice = null; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = ''; } };
+    const ss = {
+      getVoices() { return window.__voicesList; },
+      speak(u) { window.__conc++; window.__maxConc = Math.max(window.__maxConc, window.__conc); window.__spk.push({ text: u.text, voice: u.voice && u.voice.voiceURI, rate: u.rate, pitch: u.pitch, volume: u.volume }); setTimeout(() => { window.__conc--; if (u.onend) u.onend(); }, 150); },
+      cancel() { window.__cancel++; window.__conc = 0; },
+      addEventListener(n, f) { (L[n] = L[n] || []).push(f); },
+      dispatch(n) { (L[n] || []).forEach((f) => f()); }
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: ss, configurable: true });
+  };
+  const ctxV = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxV.addInitScript(FAKE_TTS);
+  const pv = await ctxV.newPage(); const errV = [];
+  pv.on('pageerror', (e) => errV.push(e.message));
+  await pv.goto(FILE); await pv.waitForTimeout(300);
+  await pv.evaluate(() => Game._debug.newRun('moon', 'x', { skipCamp: true, mode: 'adv' })); await pv.waitForTimeout(300);
+  const ids = await pv.evaluate(() => Object.keys(Voice.profiles));
+  const want = []; for (const l of ['es', 'en']) for (const r of ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator']) want.push('npc_' + r + '_' + l);
+  ok('Existen los 12 perfiles internos npc_*_es y npc_*_en', want.every((w) => ids.includes(w)) && ids.length === 12, ids.join(','));
+  ok('Cada perfil guarda los campos pedidos', await pv.evaluate(() => Object.values(Voice.profiles).every((p) => ['profileId', 'characterRole', 'language', 'preferredVoiceURI', 'preferredVoiceName', 'fallbackLanguage', 'rate', 'pitch', 'volume'].every((k) => k in p))));
+  // Sin interacción previa no se reproduce nada (pero sí hay subtítulo)
+  await pv.evaluate(() => Voice.say('control', 'es', 'Mensaje antes de interactuar', { level: 'info' }));
+  ok('No se reproduce voz antes de la primera interacción, pero el subtítulo aparece', (await pv.evaluate(() => window.__spk.length)) === 0 && await pv.locator('#subs').getByText('Mensaje antes de interactuar').isVisible());
+  // Detección dinámica de voces y evento voiceschanged
+  ok('Sin voces detectadas al inicio', (await pv.evaluate(() => Voice.voices.length)) === 0);
+  await pv.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }, { voiceURI: 'uB', name: 'Voz B', lang: 'es-MX', default: false }, { voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: false }]; speechSynthesis.dispatch('voiceschanged'); });
+  ok('voiceschanged actualiza la lista de voces', (await pv.evaluate(() => Voice.voices.length)) === 3);
+  await pv.mouse.click(5, 5); // primera interacción
+  const vpri = await pv.evaluate(() => {
+    const out = [], P = Voice.profiles.npc_engineer_es;
+    Voice.setPreferred('npc_engineer_es', 'uB'); out.push(Voice.resolve('npc_engineer_es').how + ':' + Voice.resolve('npc_engineer_es').voice.uri);
+    P.preferredVoiceURI = 'inexistente'; P.preferredVoiceName = 'Voz A'; out.push(Voice.resolve('npc_engineer_es').how + ':' + Voice.resolve('npc_engineer_es').voice.uri);
+    P.preferredVoiceName = 'nadie'; out.push(Voice.resolve('npc_engineer_es').how);
+    const keep = window.__voicesList; window.__voicesList = [{ voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: true }]; Voice.refresh(); out.push(Voice.resolve('npc_engineer_es').how);
+    window.__voicesList = []; Voice.refresh(); out.push(Voice.resolve('npc_engineer_es').how);
+    window.__voicesList = keep; P.preferredVoiceURI = null; P.preferredVoiceName = null; Voice.refresh();
+    return out;
+  });
+  ok('Prioridad: voiceURI → nombre → idioma → predeterminada → solo texto', JSON.stringify(vpri) === JSON.stringify(['uri:uB', 'name:uA', 'lang', 'default', 'none']), JSON.stringify(vpri));
+  // Narración con el NPC adecuado
+  await pv.evaluate(() => { window.__spk.length = 0; Game._debug.call({ key: 'tA', sev: 'warn', who: 'engineer', title: 'Fallo eléctrico', desc: 'Cae la tensión.', loc: 'Reactor', act: 'Ve al reactor.' }); });
+  await pv.waitForTimeout(200);
+  const e1 = await pv.evaluate(() => ({ spk: window.__spk.slice(), P: Voice.profiles.npc_engineer_es }));
+  ok('La avería eléctrica la narra el perfil del ingeniero (tono propio)', e1.spk.length === 1 && Math.abs(e1.spk[0].pitch - e1.P.pitch) < 1e-6 && /Fallo eléctrico/.test(e1.spk[0].text) && /Reactor/.test(e1.spk[0].text), JSON.stringify(e1.spk));
+  await pv.evaluate(() => { Game._debug.radio.cur = null; Game._debug.radio.q = []; });
+  await pv.evaluate(() => { window.__spk.length = 0; Game._debug.call({ key: 'tB', sev: 'warn', who: 'agri', title: 'Riego', desc: 'Baja presión.', loc: 'Invernadero', act: 'Revisa la válvula.' }); });
+  await pv.waitForTimeout(300);
+  const e2 = await pv.evaluate(() => ({ spk: window.__spk.slice(), P: Voice.profiles.npc_agronomist_es }));
+  ok('Los cultivos los narra el perfil del agrónomo', e2.spk.length >= 1 && e2.spk.some((q) => Math.abs(q.pitch - e2.P.pitch) < 1e-6 && /Riego/.test(q.text)), JSON.stringify(e2.spk));
+  // Sin solapes y las críticas interrumpen
+  const ov = await pv.evaluate(async () => {
+    Voice.stop(); window.__spk.length = 0; window.__maxConc = 0; window.__cancel = 0;
+    Voice.say('control', 'es', 'Uno', { level: 'info' }); Voice.say('control', 'es', 'Dos', { level: 'info' }); Voice.say('control', 'es', 'Tres', { level: 'info' });
+    await new Promise((r) => setTimeout(r, 700));
+    const maxConc = window.__maxConc, texts = window.__spk.map((q) => q.text);
+    window.__spk.length = 0; const c0 = window.__cancel;
+    Voice.say('control', 'es', 'Informativo largo', { level: 'info' }); Voice.say('commander', 'es', 'Alerta crítica', { level: 'crit' });
+    await new Promise((r) => setTimeout(r, 400));
+    return { maxConc, texts, cancelled: window.__cancel > c0, crit: window.__spk.map((q) => q.text) };
+  });
+  ok('Los mensajes no se solapan (cola con un solo mensaje a la vez)', ov.maxConc <= 1 && ov.texts[0] === 'Uno', JSON.stringify(ov));
+  ok('Una alerta crítica interrumpe la narración informativa', ov.cancelled && ov.crit.includes('Alerta crítica'), JSON.stringify(ov));
+  // Volúmenes, velocidad, TTS y subtítulos
+  const vol = await pv.evaluate(async () => {
+    Voice.stop(); window.__spk.length = 0; const c = Voice.cfg; c.vVoice = 0.3; c.vAlert = 0.5; c.rate = 1.5;
+    Voice.say('control', 'es', 'Volumen informativo', { level: 'info' }); await new Promise((r) => setTimeout(r, 300));
+    Voice.say('control', 'es', 'Volumen alerta', { level: 'crit' }); await new Promise((r) => setTimeout(r, 300));
+    const a = window.__spk.find((q) => /informativo/.test(q.text)), b = window.__spk.find((q) => /alerta/.test(q.text)), P = Voice.profiles.npc_narrator_es;
+    c.vVoice = 1; c.vAlert = 1; c.rate = 1; return { a, b, rate: P.rate };
+  });
+  ok('El volumen de voces y el de alertas se aplican por separado', vol.a && vol.b && Math.abs(vol.a.volume - 0.3) < 0.01 && Math.abs(vol.b.volume - 0.15) < 0.01, JSON.stringify(vol));
+  ok('La velocidad de narración se aplica', vol.a && Math.abs(vol.a.rate - vol.rate * 1.5) < 0.01, JSON.stringify(vol));
+  const tt = await pv.evaluate(async () => { Voice.stop(); window.__spk.length = 0; Voice.cfg.tts = false; Voice.say('control', 'es', 'Con TTS apagado', { level: 'info' }); await new Promise((r) => setTimeout(r, 200)); const n = window.__spk.length; Voice.cfg.tts = true; return n; });
+  ok('Con TTS desactivado no se emite voz y el subtítulo sigue', tt === 0 && await pv.locator('#subs').getByText('Con TTS apagado').isVisible());
+  await pv.evaluate(() => { Voice.cfg.subs = false; Voice.say('control', 'es', 'Subtítulo oculto', { level: 'info' }); });
+  await pv.waitForTimeout(150);
+  ok('Los subtítulos se pueden ocultar', !(await pv.locator('#subs:not(.hidden)').getByText('Subtítulo oculto').count()));
+  await pv.evaluate(() => { Voice.cfg.subs = true; Voice.say('control', 'es', 'Texto exacto del diálogo', { level: 'info' }); });
+  await pv.waitForTimeout(150);
+  ok('El subtítulo es igual al texto narrado', await pv.evaluate(() => document.querySelector('#subs').textContent.includes(window.__spk[window.__spk.length - 1].text)));
+  const rp = await pv.evaluate(async () => { window.__spk.length = 0; Voice.repeat(); await new Promise((r) => setTimeout(r, 300)); return window.__spk.length && window.__spk[0].text; });
+  ok('Repetir el último mensaje', rp === 'Texto exacto del diálogo', String(rp));
+  // Panel de audio: una sola voz española → no se afirma que sean voces distintas
+  await pv.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }, { voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: false }]; Voice.refresh(); Object.values(Voice.profiles).forEach((p) => { p.preferredVoiceURI = null; p.preferredVoiceName = null; }); });
+  await pv.keyboard.press('Escape'); await pv.evaluate(() => Game._debug.audioPanel()); await pv.waitForTimeout(200);
+  ok('El panel de audio avisa de que solo hay una voz española (no son voces distintas)', await pv.getByText(/Solo hay una voz disponible/).isVisible());
+  ok('El panel de audio ofrece volúmenes, interruptores, idioma y una voz por personaje', (await pv.locator('input[type=range]').count()) >= 5 && (await pv.locator('input[type=checkbox]').count()) >= 4 && (await pv.locator('select').count()) === 6);
+  await pv.locator('select').first().selectOption('uA');
+  ok('Elegir una voz la guarda en el perfil', await pv.evaluate(() => Voice.profiles.npc_commander_es.preferredVoiceURI === 'uA' && Voice.cfg.saved.npc_commander_es.name === 'Voz A'));
+  // La música no arranca sola: solo al activarla y tras interactuar
+  const mus0 = await pv.evaluate(() => Sfx.musicPlaying);
+  await pv.locator('label', { hasText: /Música/ }).locator('input[type=checkbox]').first().check(); await pv.waitForTimeout(300);
+  ok('La música está apagada por defecto y arranca al activarla', mus0 === false && (await pv.evaluate(() => Sfx.musicPlaying)) === true);
+  await pv.locator('label', { hasText: /Música/ }).locator('input[type=checkbox]').first().uncheck(); await pv.waitForTimeout(100);
+  ok('Se puede desactivar la música', (await pv.evaluate(() => Sfx.musicPlaying)) === false);
+  await closeAll(pv);
+  ok('Sin errores de página con voz simulada', errV.length === 0, errV.join(' | '));
+  await ctxV.close();
+  // Sin Web Speech API: el juego sigue funcionando con texto y subtítulos
+  const ctxN = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxN.addInitScript(() => { try { delete window.SpeechSynthesisUtterance; Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true }); } catch (e) { /* ignore */ } });
+  const pn = await ctxN.newPage(); const errN = [];
+  pn.on('pageerror', (e) => errN.push(e.message));
+  await pn.goto(FILE); await pn.waitForTimeout(300);
+  await pn.evaluate(() => Game._debug.newRun('moon', 'x', { skipCamp: true, mode: 'junior' })); await pn.waitForTimeout(300);
+  await pn.mouse.click(5, 5);
+  await pn.evaluate(() => Game._debug.call({ key: 'nn', sev: 'crit', who: 'medic', title: 'Aire bajo', desc: 'Falta oxígeno.', loc: 'Soporte vital', act: 'Ve a soporte vital.', cons: 'Falta aire.' }));
+  ok('Sin TTS la alerta se ve en la tarjeta de radio', await pn.locator('#radio').getByText('Aire bajo').isVisible());
+  await pn.evaluate(() => Voice.say('control', 'es', 'Aviso solo con texto', { level: 'info' })); await pn.waitForTimeout(150);
+  ok('Sin TTS el subtítulo muestra el mensaje', !(await pn.evaluate(() => Voice.supported)) && await pn.locator('#subs').getByText('Aviso solo con texto').isVisible());
+  await pn.evaluate(() => Game._debug.audioPanel()); await pn.waitForTimeout(150);
+  ok('Sin TTS el panel de audio lo explica y sigue siendo usable', await pn.getByText(/no ofrece síntesis de voz/).isVisible());
+  await closeAll(pn); await pn.keyboard.press('m'); await pn.waitForTimeout(150);
+  ok('Sin TTS el resto del juego funciona (mapa)', await pn.locator('.mapcv').isVisible());
+  ok('Sin errores de página sin TTS', errN.length === 0, errN.join(' | '));
+  await ctxN.close();
+  // localStorage bloqueado: las preferencias de voz funcionan durante la sesión
+  const ctxB = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxB.addInitScript(FAKE_TTS); await ctxB.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
+  const pb = await ctxB.newPage(); const errB = [];
+  pb.on('pageerror', (e) => errB.push(e.message));
+  await pb.goto(FILE); await pb.waitForTimeout(300);
+  const bl = await pb.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }]; Voice.refresh(); Voice.setPreferred('npc_medic_es', 'uA'); Voice.cfg.music = true; Voice.persist(); return [Voice.resolve('npc_medic_es').how, Voice.cfg.music]; });
+  ok('Con localStorage bloqueado la configuración de voz funciona en memoria', bl[0] === 'uri' && bl[1] === true && errB.length === 0, JSON.stringify(bl) + errB.join('|'));
+  await ctxB.close();
 
   // ---- SelfTest en el navegador ----
   const ctx3 = await browser.newContext(); const px = await ctx3.newPage();

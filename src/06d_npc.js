@@ -39,7 +39,7 @@
   }
   function nextCall() {
     radio.cur = radio.q.shift() || null; radio.t = 0;
-    if (radio.cur) Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info');
+    if (radio.cur) { Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info'); narrateCall(radio.cur); }
     renderRadio();
   }
   function dismissCall() { nextCall(); }
@@ -67,6 +67,7 @@
         c.cons ? h('div', { class: 'small muted r-cons' }, '⚠ ' + (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons) : null,
         h('div', { class: 'row', style: { gap: '6px', marginTop: '2px' } },
           btn('✔ ' + (es ? 'Entendido' : 'Got it'), dismissCall, 'sm primary'),
+          btn('🔁 ' + (es ? 'Repetir mensaje' : 'Repeat message'), () => { Voice.stop(); narrateCall(c); }, 'sm'),
           c.target ? btn('📍 ' + (es ? 'Marcar ubicación' : 'Mark location'), () => { World.setMarker(c.target, c.loc); toast(es ? 'Ubicación marcada en el minimapa' : 'Location marked on the minimap', c.loc, 'info'); }, 'sm') : null,
           c.console ? btn('🖥️ ' + (es ? 'Consultar sistema' : 'Check system'), () => { openConsole({ id: c.console }); }, 'sm') : null,
           c.why ? btn('❓ ' + (es ? 'Ver explicación' : 'See explanation'), () => (DATA.EVT[c.why] ? whyPanel(c.why) : null), 'sm') : null)));
@@ -100,6 +101,8 @@
       return true;
     }
     if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'camp.exp') { const g = ND.GUIDE[p.room] || 'commander'; call({ key: 'cx' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: p.room ? (es ? 'Se ha abierto: ' : 'Now open: ') + tr(DATA.ROOMS[p.room]) + '. ' + (es ? 'Ve a conocerla: te espero allí.' : 'Go and see it: I will meet you there.') : (es ? 'Las trece instalaciones ya están abiertas.' : 'All thirteen facilities are now open.'), loc: p.room ? tr(DATA.ROOMS[p.room]) : '', target: p.room ? World.roomCenter(p.room) : null }); World.setAct('all', 'celebrate', 3); return true; }
+    if (k === 'camp.exp.start') { const C = ND.CAMP[p.id]; call({ key: 'csx' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva ampliación: ' : 'New expansion: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'crop.dead') { call({ key: 'dead' + e.n, sev: 'warn', who: 'agri', title: es ? 'Se perdió una planta' : 'A plant died', desc: (p.sp ? tr(Flora.SPECIES[p.sp].name) + ' · ' : '') + (es ? 'jardinera ' : 'planter ') + p.bed, loc: tr(DATA.ROOMS.gh), act: es ? 'Revisa humedad, luz y nutrientes de las otras plantas.' : 'Check moisture, light and nutrients of the other plants.', target: World.plantPos(p.bed - 1, 1), console: 'gh' }); return true; }
     if (k === 'job.analyze') { call({ key: 'an' + e.n, sev: 'ok', who: 'scientist', title: es ? 'Análisis terminado' : 'Analysis done', desc: es ? 'La muestra contiene minerales típicos del regolito. +12 puntos de ciencia.' : 'The sample has typical regolith minerals. +12 science points.' }); return true; }
@@ -136,9 +139,10 @@
         h('div', { class: 'row', style: { justifyContent: 'space-between' } },
           h('span', { class: 'small muted' }, (i + 1) + ' / ' + lines.length),
           h('div', { class: 'row' }, i < lines.length - 1 ? btn(_('skip'), finish, 'sm') : null, btn(i < lines.length - 1 ? _('next') + ' ▶' : (LANG === 'es' ? '¡Entendido!' : 'Got it!'), () => { if (i < lines.length - 1) { i++; s.replaceChild(draw(), s.firstChild); focusFirst(s); } else finish(); }, 'primary', { autofocus: true }))));
+      Voice.speak(Voice.profileFor(ND.GUIDE[room], LANG), tr(lines[i]), { level: 'info', silent: true });
       return box;
     };
-    function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
+    function finish() { Voice.stop(); pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
   }
   function talkData(room) {
@@ -183,32 +187,19 @@
       return h('div', { class: 'card', style: cur ? { borderColor: 'var(--accent)' } : {} },
         h('div', { class: 'row', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, cv, h('div', { class: 'col', style: { gap: '4px' } },
           h('h3', null, tr(R.name)), h('span', { class: 'small' }, tr(DATA.ROLE_T[role].b)),
-          h('span', { class: 'small muted' }, (es ? 'Opera: ' : 'Operates: ') + ROOMS_OF[role].map((r) => tr(DATA.ROOMS[r])).join(', ')),
+          h('span', { class: 'small muted' }, (es ? 'Suele trabajar en: ' : 'Usually works in: ') + ROOMS_OF[role].map((r) => tr(DATA.ROOMS[r])).join(', ')),
           h('span', { class: 'small muted' }, '◆ ' + tr(R.acc)))),
-        cur ? tag('✔ ' + (es ? 'Lo llevas puesto' : 'You are wearing it'), 'ok') : btn('🧥 ' + (es ? 'Ponerse este traje' : 'Wear this suit'), () => {
+        cur ? tag('✔ ' + (es ? 'Es tu personaje actual' : 'Your current character'), 'ok') : btn('🧑‍🚀 ' + (es ? 'Jugar con este personaje' : 'Play as this crew member'), () => {
           World.setPlayerRole(role); Sim.setPlayerRole(S, role); saveRun(); pop();
-          toast((es ? 'Ahora eres: ' : 'You are now: ') + tr(R.name), es ? 'El especialista titular te acompaña como apoyo.' : 'The regular specialist stays on as support.', 'ok');
+          toast((es ? 'Ahora juegas con: ' : 'You now play as: ') + tr(R.name), es ? 'El anterior sigue en la base como compañero.' : 'The previous one stays in the base as a crewmate.', 'ok');
         }, 'primary sm'));
     });
-    push(panel('🧥 ' + (es ? 'Vestuario de especialistas' : 'Specialist wardrobe'), h('div', null,
-      h('p', { class: 'small' }, S.camp && !S.camp.basicDone ? (es ? 'Durante la familiarización puedes operar todo. Después, cada sección pedirá su especialista.' : 'During familiarization you can operate everything. Afterwards, each section needs its specialist.') : (es ? 'Cada sección necesita su especialista. Pasillos y zonas comunes son libres, y en una emergencia cualquiera puede reparar.' : 'Each section needs its specialist. Corridors and common areas are open, and in an emergency anyone can repair.')),
+    push(panel('🧑‍🚀 ' + (es ? 'Tripulación' : 'Crew'), h('div', null,
+      h('p', { class: 'small' }, es ? 'El comandante puede hacerlo todo. Cambiar de personaje es opcional: cada especialista solo aporta una ventaja. El cambio es inmediato y no pierdes ni misiones ni progreso.' : 'The commander can do everything. Switching is optional: each specialist only adds an advantage. The switch is instant and you lose no missions or progress.'),
       h('div', { class: 'grid2' }, cards))));
   }
-  function allowed(id) {
-    if (!S || !S.camp || !S.camp.basicDone) return true;
-    const need = ND.ACCESS[id]; return !need || need.includes(S.playerRole);
-  }
-  function gatePanel(id, room) {
-    const es = LANG === 'es', need = ND.ACCESS[id];
-    const incs = Sim.activeInc(S).filter((i) => i.room === room && i.fix && S.t >= i.from);
-    const storm = id === 'shield' && S.inc.some((i) => i.type === 'solar_storm' && !i.res) && !S.proto;
-    push(panel('🔐 ' + (es ? 'Se necesita otro especialista' : 'Another specialist is needed'), h('div', null,
-      h('p', null, (es ? 'Esta operación la realiza: ' : 'This operation is done by: ') + need.map((r) => tr(Chars.ROLES[r].name)).join(es ? ' o ' : ' or ') + '.'),
-      h('p', { class: 'small muted' }, (es ? 'Llevas el traje de ' : 'You are wearing the ') + tr(Chars.ROLES[S.playerRole].name) + (es ? '. Cámbialo en el vestuario 🧥 del puente de mando.' : ' suit. Change it at the 🧥 wardrobe on the bridge.')),
-      h('div', { class: 'row' }, btn('📍 ' + (es ? 'Marcar el vestuario' : 'Mark the wardrobe'), () => { World.setMarker(World.consolePos('wardrobe'), 'wardrobe'); pop(); }, 'primary'),
-        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); repairFlow(i); }, 'danger')),
-        storm ? btn('🚨 ' + (es ? 'Activar protocolo de refugio (emergencia)' : 'Turn on shelter protocol (emergency)'), () => { pop(); confirmDecision('proto', { v: true }, es ? 'Protocolo de refugio' : 'Shelter protocol'); }, 'danger') : null)), { narrow: true }));
-  }
+  /** El comandante (y cualquier especialista) puede operar todas las consolas: el especialista solo aporta ventajas. */
+  function allowed() { return true; }
 
   /* ---------- Ficha de planta ---------- */
   const ISSUE = {

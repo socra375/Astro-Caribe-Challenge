@@ -40,7 +40,8 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    applyAudio();
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -112,7 +113,7 @@ const Game = (function () {
         toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
         Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
       }
-      if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
+      if (e.k === 'm.done') { { const [t, b] = logText(e); narrate(t + (b ? '. ' + b : ''), { level: 'info' }); } stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
       if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
       if (e.k === 'res.solar_storm') unlock('shelter');
@@ -195,6 +196,7 @@ const Game = (function () {
     Icons.setText($('#bAlerts'), (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon));
     $('#bSpeed').textContent = 'x' + speed;
     Icons.setText($('#bPause'), paused ? '▶' : '⏸');
+    { const bc = $('#bCrew'); Icons.setText(bc, '🧑‍🚀 ' + tr(Chars.ROLES[S.playerRole || 'commander'].name).split(' ')[0]); bc.title = (LANG === 'es' ? 'Tripulación (C) · juegas con ' : 'Crew (C) · you play as ') + tr(Chars.ROLES[S.playerRole || 'commander'].name); }
     const hint = $('#hint');
     const hi = settings.hints ? nextHint() : null;
     if (hi) { Icons.setText(hint, hi.t); hint.classList.remove('hidden'); } else hint.classList.add('hidden');
@@ -227,6 +229,14 @@ const Game = (function () {
       }
     }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
+    const xs = !act && Sim.expStatus(S);
+    if (xs) {
+      const k = xs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '', p = tg.startsWith('room:') ? World.roomCenter(tg.slice(5)) : World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[xs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
     const T = {
@@ -254,6 +264,7 @@ const Game = (function () {
     Sfx.init();
     const tgt = e.target && e.target.tagName;
     if (mgRun && mgRun.g && !mgRun.g.done) { mgRun.g.keys[e.key] = true; const d = MG.defs[mgRun.kind]; if (d.key) d.key(mgRun.g, e.key, true); if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault(); if (e.key !== 'Escape') return; }
+    if ((e.key === 'm' || e.key === 'M') && running && tgt !== 'INPUT' && tgt !== 'SELECT' && !(mgRun && mgRun.g)) { toggleMap(); e.preventDefault(); return; }
     if (e.key === 'Escape') { if (modalOpen() && running) { pop(); e.preventDefault(); } else if (running) pauseMenu(); return; }
     if (modalOpen()) return;
     if (!running) return;
@@ -262,7 +273,9 @@ const Game = (function () {
     if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
     if (e.key === 'e' || e.key === 'E' || e.key === 'Enter' || e.key === ' ') interact();
     if (e.key === 'p' || e.key === 'P') togglePause();
-    if (e.key === 'm' || e.key === 'M') toggleMute();
+    if (e.key === 'n' || e.key === 'N') toggleMute();
+    if (e.key === 'c' || e.key === 'C') openCrew();
+    if (e.key === 'v' || e.key === 'V') repeatVoice();
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -384,7 +397,7 @@ const Game = (function () {
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
-        btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
+        btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
     );
@@ -443,7 +456,7 @@ const Game = (function () {
     const chk = (k) => { const c = h('input', { type: 'checkbox', onchange: (e) => { s[k] = e.target.checked; applySettings(); updateHud(); } }); c.checked = !!s[k]; c.style.width = '24px'; c.style.height = '24px'; return c; };
     const size = h('select', { 'aria-label': _('textSize'), onchange: (e) => { s.scale = +e.target.value; applySettings(); } }, [1, 1.15, 1.3].map((v) => { const o = h('option', { value: v }, Math.round(v * 100) + '%'); if (v === s.scale) o.selected = true; return o; }));
     push(panel('⚙️ ' + _('settings'), h('div', null,
-      row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
+      btn('🔊 ' + (LANG === 'es' ? 'Audio y voces…' : 'Audio & voices…'), audioPanel), row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
       row('🌐 Idioma / Language', btn(_('lang'), () => { s.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); pop(); if (running) { buildHud(); updateHud(); } else mainMenu(); })),
       h('hr'), h('p', { class: 'small muted' }, LANG === 'es' ? 'Pruebas del motor: 100 simulaciones con semillas distintas. No cambian tu partida ni tu progreso.' : 'Engine tests: 100 simulations with different seeds. They do not change your game or progress.'),
       btn('🧪 ' + _('selftest'), () => selfTestPanel()),

@@ -67,6 +67,15 @@ const Sim = (function () {
     { id: 'c3', unlock: 'lab', keys: ['talk_gh', 'plant3', 'water1', 'feed1', 'harvest1'] },
     { id: 'c4', unlock: 'rad', keys: ['talk_lab', 'analyze1', 'spec_open', 'log_open'] }
   ];
+  // Ampliación de la base: cada zona nueva se abre al completar la anterior. No bloquea misiones ni emergencias.
+  const EXP = [
+    { id: 'x1', unlock: 'kitchen', keys: ['talk_food', 'store_open'] },
+    { id: 'x2', unlock: 'samples', keys: ['talk_kitchen', 'cook1'] },
+    { id: 'x3', unlock: 'workshop', keys: ['talk_samples', 'sstore1'] },
+    { id: 'x4', unlock: 'waste', keys: ['talk_workshop', 'craft1'] },
+    { id: 'x5', unlock: null, keys: ['talk_waste', 'sort1', 'recycle1'] }
+  ];
+  const ALLROOMS = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
 
   /* ---------- Incidentes (plantillas) ---------- */
@@ -140,17 +149,18 @@ const Sim = (function () {
       beds: [], crew: [], jobs: [], inc: [], log: [], incSeq: 1,
       cm: { q: [], inbox: [], seq: 1, nextDaily: 20 },
       m: {}, samples: 0, science: 0, pts: 0, morale: 78, rest: 75,
+      pant: { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] }, sampleList: [], sampleSeq: 1, parts: 0, sorted: false,
       z: { water: 0, food: 0, power: 0, press: 0, well: 0 },
       lastEv: 0, pw: {}, lf: {}, d: {}, pendingCards: [], quiz: {},
       st: { waterUsed: 0, waterRec: 0, eGen: 0, eUsed: 0, foodProd: 0, foodCons: 0, incTot: 0, incRes: 0, quizOk: 0, quizTot: 0,
-        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {} }
+        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {}, spoiled: 0, meals: 0, crafted: 0 }
     };
     if (scen === 'mars') S.lightMin = Math.round(rr(S, 4, 20) * 10) / 10; // real: ~3 a ~22 min según posiciones orbitales
     for (let i = 0; i < 6; i++) S.beds.push({ light: 0.7, plants: [null, null, null] });
     ['romaine', 'mizuna', 'romaine'].forEach((sp, k) => { S.beds[0].plants[k] = newPlant(S, sp, 0.35 + 0.05 * k); });
     S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     S.playerRole = 'commander';
-    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, reactor: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0 };
+    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, med: 1, reactor: 1, water: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0, xi: 0 };
     for (let i = 0; i < 5; i++) S.crew.push({ role: ROLES[i], zone: 'hab', dose: 0 });
     for (let i = 1; i <= 7; i++) S.m[i] = { st: 'idle', var: 0, stars: 0, hold: 0, t0: 0, att: 0, prog: 0, data: {} };
     derive(S);
@@ -163,10 +173,15 @@ const Sim = (function () {
     S.log.push({ n: S.logN, t: Math.round(S.t * 100) / 100, sev, k, p: p || {} });
     if (S.log.length > 250) S.log.splice(0, S.log.length - 250);
   }
-  function campDone() { return { i: CAMP.length, unlocked: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1 }, basicDone: true, hold: 0, inc: 0 }; }
+  function campDone() { return { i: CAMP.length, unlocked: Object.assign({}, ALLROOMS), f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1, x1: 1, x2: 1, x3: 1, x4: 1, x5: 1 }, basicDone: true, hold: 0, inc: 0, xi: EXP.length }; }
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
     if (!S.camp) S.camp = campDone();
+    { const C = S.camp; C.unlocked.med = 1; if (C.xi == null) { C.xi = 0; if (C.basicDone) { C.unlocked.food = 1; } } }
+    if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
+    if (!S.sampleList) { S.sampleList = []; S.sampleSeq = 1; const n = Math.max(0, Math.round(S.samples || 0)); S.samples = 0; if (n) addSamples(S, n, 'legacy'); }
+    if (S.parts == null) S.parts = 0; if (S.sorted == null) S.sorted = false;
+    if (S.st) { S.st.spoiled = S.st.spoiled || 0; S.st.meals = S.st.meals || 0; S.st.crafted = S.st.crafted || 0; }
     if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
     if (!S.playerRole) S.playerRole = 'commander';
@@ -176,8 +191,8 @@ const Sim = (function () {
     S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
     return S;
   }
-  function campFlag(S, key) { if (S.camp && !S.camp.basicDone) S.camp.f[key] = 1; }
-  function campCnt(S, key) { if (S.camp && !S.camp.basicDone) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
+  function campFlag(S, key) { if (S.camp) S.camp.f[key] = 1; }
+  function campCnt(S, key) { if (S.camp) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
   function plantsList(S) { const out = []; S.beds.forEach((b, bi) => b.plants.forEach((p, k) => { if (p) out.push({ p, bi, k }); })); return out; }
   const pct = (r) => (r.max > 0 ? r.v / r.max : 0);
   function status(S, key) {
@@ -328,6 +343,7 @@ const Sim = (function () {
       { id: 'press', p: 1, kw: 0.3 + 0.5 * M.leak },
       { id: 'comms', p: 2, kw: 0.8 * S.cap.comms },
       { id: 'shield', p: 2, kw: 0.2 + 0.2 * sy.shield.lvl },
+      { id: 'cold', p: 3, kw: S.pant.cold && S.pant.fresh > 0.01 ? 0.1 : 0 },
       { id: 'lab', p: 3, kw: S.jobs.some((j) => j.kind === 'analyze' || j.kind === 'experiment') ? 1.5 * S.cap.lab : 0 },
       { id: 'rover', p: 3, kw: sy.rover.batt < 100 ? 1.0 : 0 },
       { id: 'isru', p: 3, kw: sy.isru.on ? P.ISRU_KW : 0 },
@@ -425,9 +441,15 @@ const Sim = (function () {
     r.nutr.v -= fert; r.nutr.cons = fert / h;
 
     /* --- Alimentos --- */
-    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons;
+    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons * (RATION[S.pant.ration] || 1);
     r.food.cons = fUse; r.food.prod = 0;
     r.food.v -= fUse * h; S.st.foodCons += fUse * h;
+    { // Almacén: se come primero lo fresco; lo fresco se deteriora más sin refrigeración (modelo educativo simplificado)
+      const Pn = S.pant; Pn.fresh = Math.max(0, Pn.fresh - fUse * h);
+      const cf = Pn.cold && !S.emergency ? (lf.cold == null ? 1 : lf.cold) : 0, spoil = Math.min(Pn.fresh, r.food.v) * (0.01 - 0.0092 * cf) * h;
+      if (spoil > 0) { Pn.fresh -= spoil; r.food.v -= spoil; S.st.spoiled += spoil; }
+      for (const e of S.sampleList) if (e.state === 'new' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
+    }
     r.waste.prod = S.N * (P.WASTE_PER_PERSON_DAY / 24); r.waste.v += r.waste.prod * h; // envases y residuos sólidos
 
     /* --- Radiación --- */
@@ -459,7 +481,7 @@ const Sim = (function () {
       clamp(pct(r.food) / 0.25, 0, 1), clamp(pct(r.water) / 0.2, 0, 1), lf.therm];
     const hq = q.reduce((a, b) => a + b, 0) / q.length;
     const medic = bonus(S, 'medic') ? 6 : 0;
-    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic;
+    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic + (S.pant.ration === 'high' ? 3 : S.pant.ration === 'low' ? -4 : 0);
     S.morale = clamp(S.morale + (mT - S.morale) * Math.min(1, 0.04 * h), 0, 100);
     S.rest = clamp(S.rest + (28 + 66 * hq - S.rest) * Math.min(1, 0.05 * h), 0, 100);
     r.well.v = 0.6 * S.morale + 0.4 * S.rest;
@@ -554,15 +576,38 @@ const Sim = (function () {
     d.day = Math.floor(S.t / 24) + 1; d.hour = S.t % 24;
   }
 
+  /* ---------- Instalaciones: muestras, almacén, cocina, taller y residuos (modelo educativo) ---------- */
+  const SAMPLE_CATS = ['regolith', 'rock', 'ice'];
+  const SAMPLE_SLOTS = 8;
+  /** Registra muestras ficticias de juego (no son muestras reales de NASA). La categoría real depende del identificador, sin usar el generador aleatorio. */
+  function addSamples(S, n, origin) {
+    for (let i = 0; i < n; i++) {
+      const seq = S.sampleSeq++, cat = SAMPLE_CATS[(seq * 5 + (origin ? origin.length : 0)) % 3];
+      S.sampleList.push({ id: 'MS-' + String(seq).padStart(3, '0'), seq, origin: origin || 'rover', t: S.t, cat, label: null, state: 'new', slot: null, an: 'pending', ok: false, sci: 0 });
+    }
+    S.samples += n; S.st.samplesTot += n;
+  }
+  const sampleFresh = (e) => e.state === 'new' || e.state === 'degraded';
+  function pantryLog(S, k, kg, w) { const L = S.pant.log; L.push({ t: Math.round(S.t * 10) / 10, k, kg: Math.round(kg * 100) / 100, w: w || '' }); if (L.length > 40) L.splice(0, L.length - 40); }
+  const RATION = { low: 0.8, normal: 1, high: 1.15 };
+  const freeSlot = (S) => { for (let i = 1; i <= SAMPLE_SLOTS; i++) { const id = 'A' + i; if (!S.sampleList.some((e) => e.slot === id)) return id; } return null; };
+
   /* ---------- Trabajos ---------- */
   function finishJob(S, j) {
     const sy = S.sys;
     if (j.kind === 'shield') { sy.shield.lvl = Math.min(3, sy.shield.lvl + 1); sy.shield.h = Math.max(sy.shield.h, 90); log(S, 'ok', 'job.shield', { lvl: sy.shield.lvl }); }
     if (j.kind === 'shelter') { sy.shield.cap = Math.min(5, sy.shield.cap + 1); log(S, 'ok', 'job.shelter', { cap: sy.shield.cap }); }
-    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'analyze') {
+      const e = S.sampleList.find((x) => x.id === j.sid);
+      const sci = e ? (e.state === 'degraded' ? 7 : 12) + (e.ok ? 3 : 0) : 12;
+      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; }
+      S.science += sci; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {});
+    }
+    if (j.kind === 'cook') { S.morale = Math.min(100, S.morale + j.mor); S.r.well.v = Math.min(100, S.r.well.v + 2); S.st.meals++; log(S, 'ok', 'job.cook', {}); }
+    if (j.kind === 'craft') { S.parts++; S.st.crafted++; log(S, 'ok', 'job.craft', {}); }
     if (j.kind === 'nutr') { S.r.nutr.v += 4; log(S, 'ok', 'job.nutr', {}); }
     if (j.kind === 'experiment') { S.science += 8; S.morale += 4; log(S, 'ok', 'job.experiment', {}); }
-    if (j.kind === 'recycle') { S.r.mat.v += 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
+    if (j.kind === 'recycle') { S.r.mat.v += j.sorted ? 8 : 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
     if (j.kind === 'maint') { sy[j.sys].h = Math.min(100, sy[j.sys].h + 35); log(S, 'ok', 'job.maint', { sys: j.sys }); }
   }
 
@@ -589,18 +634,48 @@ const Sim = (function () {
     },
     maint: (S, p) => {
       if (S.jobs.some((j) => j.kind === 'maint')) return 'busy';
+      if (S.parts > 0) { S.parts--; S.jobs.push({ kind: 'maint', h: 1.8, kw: 0.6, sys: p.sys || 'reactor', part: true }); return; } // con repuesto: más rápido y sin gastar materiales
       if (S.r.mat.v < 4) return 'nomat';
       S.r.mat.v -= 4; S.jobs.push({ kind: 'maint', h: 3, kw: 0.6, sys: p.sys || 'reactor' });
+    },
+    craft: (S) => {
+      if (S.jobs.some((j) => j.kind === 'craft')) return 'busy';
+      if (S.r.mat.v < 6) return 'nomat';
+      S.r.mat.v -= 6; S.jobs.push({ kind: 'craft', h: S.playerRole === 'engineer' ? 2 : 3, kw: 0.8 }); campCnt(S, 'craft');
+    },
+    sort: (S) => {
+      if (S.sorted) return 'sorted';
+      if (S.r.waste.v < 6) return 'nowaste';
+      S.sorted = true; campCnt(S, 'sort'); step(S, 1);
+    },
+    cold: (S, p) => { S.pant.cold = !!p.v; },
+    ration: (S, p) => { if (!RATION[p.v]) return 'err'; S.pant.ration = p.v; },
+    cook: (S, p) => {
+      if (S.jobs.some((j) => j.kind === 'cook')) return 'busy';
+      if (S.t - S.pant.mealT < 8) return 'mealwait';
+      const salad = p.r !== 'ration', kg = salad ? 1.5 : 1;
+      if (salad ? S.pant.fresh < kg : S.r.food.v - S.pant.fresh < kg) return salad ? 'nofresh' : 'nopacked';
+      if (salad) S.pant.fresh -= kg; S.r.food.v -= kg; S.pant.mealT = S.t; pantryLog(S, 'out', kg, salad ? 'salad' : 'ration');
+      S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 }); campCnt(S, 'cook');
+    },
+    sstore: (S, p) => {
+      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
+      if (!SAMPLE_CATS.includes(p.label)) return 'err';
+      const sl = freeSlot(S); if (!sl) return 'noslot';
+      e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded'; campCnt(S, 'sstore');
     },
     recycle: (S) => {
       if (S.jobs.some((j) => j.kind === 'recycle')) return 'busy';
       if (S.r.waste.v < 6) return 'nowaste';
-      S.r.waste.v -= 6; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8 });
+      S.r.waste.v -= 6; const so = S.sorted; S.sorted = false; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8, sorted: so }); campCnt(S, 'recycle');
     },
-    analyze: (S) => {
+    analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0 });
+      const pend = S.sampleList.filter((x) => x.an === 'pending');
+      const e = (p && p.id ? pend.find((x) => x.id === p.id) : null) || pend.find((x) => x.state === 'stored') || pend[0];
+      if (!e) return 'nosample';
+      e.an = 'inlab'; S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0, sid: e.id });
     },
     experiment: (S) => {
       if (S.jobs.some((j) => j.kind === 'experiment')) return 'busy';
@@ -642,7 +717,7 @@ const Sim = (function () {
     },
     eva: (S) => {
       if (S.r.o2.v < 0.5) return 'err';
-      S.r.o2.v -= 0.2; S.samples++; S.st.samplesTot++; S.r.mat.v += 1; S.pts += 5;
+      S.r.o2.v -= 0.2; addSamples(S, 1, 'eva'); S.r.mat.v += 1; S.pts += 5;
     },
     sleep: (S) => { S.rest = clamp(S.rest + 30, 0, 100); S.morale = clamp(S.morale + 4, 0, 100); step(S, 4); },
     rec: (S) => { S.morale = clamp(S.morale + 9, 0, 100); step(S, 2); },
@@ -684,6 +759,7 @@ const Sim = (function () {
     const b = S.beds[bed], pl = b && b.plants[slot];
     if (!pl || pl.prog < 1) return null;
     const c = CROPS[pl.sp], y = c.y * (pl.hp / 100) * (pl.prune > 1 ? 0.8 : 1);
+    S.pant.fresh += y; pantryLog(S, 'in', y, pl.sp);
     S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[pl.sp] = (S.st.crops[pl.sp] || 0) + 1;
     S.seeds[pl.sp] = (S.seeds[pl.sp] || 0) + c.seeds; S.morale = clamp(S.morale + c.mor, 0, 100); S.r.waste.v += 0.15;
     const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[pl.sp] = 1; }
@@ -725,7 +801,7 @@ const Sim = (function () {
         break;
       case 'rover': {
         const n = Math.max(0, Math.round(fin(res.samples, 0)));
-        S.samples += n; S.st.samplesTot += n; S.r.mat.v += fin(res.regolith, 0);
+        addSamples(S, n, 'rover'); S.r.mat.v += fin(res.regolith, 0);
         sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++;
         const m7 = S.m[7];
         if (m7.st === 'active' && ok && n >= m7.data.target) finishMission(S, 7, res.score > 0.75 ? 3 : 2);
@@ -771,7 +847,7 @@ const Sim = (function () {
     const id = CAMP[C.i] && CAMP[C.i].id;
     if (id === 'c2') { const inc = S.inc.find((i) => !i.res && i.type === 'water_fail') || addInc(S, 'water_fail', { sev: 'warn' }); C.inc = inc.id; }
     if (id === 'c3') S.beds[0].plants.forEach((pl) => { if (pl) pl.prog = Math.max(pl.prog, 0.86); });
-    if (id === 'c4') { S.samples += 2; S.st.samplesTot += 2; }
+    if (id === 'c4') addSamples(S, 2, 'camp');
     if (id) log(S, 'info', 'camp.start', { id });
   }
   function campKeyDone(S, key) {
@@ -783,6 +859,11 @@ const Sim = (function () {
       case 'feed1': return (n.feed || 0) >= 1;
       case 'harvest1': return (n.harvest || 0) >= 1;
       case 'analyze1': return (n.analyze || 0) >= 1;
+      case 'cook1': return (n.cook || 0) >= 1;
+      case 'sstore1': return (n.sstore || 0) >= 1;
+      case 'craft1': return (n.craft || 0) >= 1;
+      case 'sort1': return (n.sort || 0) >= 1;
+      case 'recycle1': return (n.recycle || 0) >= 1;
       default: return !!C.f[key];
     }
   }
@@ -790,15 +871,36 @@ const Sim = (function () {
     const C = S.camp; if (!C || C.basicDone) return null;
     const D = CAMP[C.i]; return { id: D.id, unlock: D.unlock, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
   }
+  function expStart(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    C.cnt = {};
+    if (D.id === 'x3' && !S.sampleList.some((e) => e.an === 'pending' && (e.state === 'new' || e.state === 'degraded'))) addSamples(S, 1, 'camp');
+    if (D.id === 'x4') S.r.mat.v = Math.max(S.r.mat.v, 10);
+    if (D.id === 'x5') S.r.waste.v = Math.max(S.r.waste.v, 8);
+    log(S, 'info', 'camp.exp.start', { id: D.id });
+  }
+  function expStatus(S) {
+    const C = S.camp; if (!C || !C.basicDone || C.xi == null || C.xi >= EXP.length) return null;
+    const D = EXP[C.xi]; return { id: D.id, unlock: D.unlock, i: C.xi, n: EXP.length, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
+  }
+  function expStep(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    if (D.keys.every((k) => campKeyDone(S, k))) {
+      C.done[D.id] = 1; if (D.unlock) C.unlocked[D.unlock] = 1; S.pts += 60; S.morale = clamp(S.morale + 4, 0, 100);
+      log(S, 'ok', 'camp.exp', { id: D.id, room: D.unlock });
+      C.xi++; if (C.xi < EXP.length) expStart(S);
+    }
+  }
   function campStep(S, h) {
-    const C = S.camp; if (!C || C.basicDone) return;
+    const C = S.camp; if (!C) return;
+    if (C.basicDone) { if (C.xi != null && C.xi < EXP.length) expStep(S); return; }
     const D = CAMP[C.i];
     if (D.id === 'c2') { C.hold = S.d.rec >= 0.78 && S.d.water >= 0.3 && !S.inc.some((i) => i.id === C.inc && !i.res) ? C.hold + h : 0; if (C.hold >= 6) C.f.water_hold = 1; }
     if (D.keys.every((k) => campKeyDone(S, k))) {
       C.done[D.id] = 1; C.unlocked[D.unlock] = 1; S.pts += 80; S.morale = clamp(S.morale + 5, 0, 100);
       log(S, 'ok', 'camp.done', { id: D.id, room: D.unlock });
       C.i++;
-      if (C.i >= CAMP.length) { C.basicDone = true; log(S, 'ok', 'camp.basic', {}); }
+      if (C.i >= CAMP.length) { C.basicDone = true; C.unlocked.food = 1; C.xi = 0; expStart(S); log(S, 'ok', 'camp.basic', {}); }
       else campStart(S);
     }
   }
@@ -929,7 +1031,7 @@ const Sim = (function () {
     };
   }
 
-  return { DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

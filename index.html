@@ -148,6 +148,10 @@ details.more p{margin:6px 0}
 canvas.spark{width:100%;height:46px;display:block}
 html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+.mapcv{width:100%;max-width:760px;height:auto;background:#070b18;border-radius:10px;touch-action:none;cursor:grab;display:block;margin:0 auto}
+.mapinfo{min-height:96px}
+#subs{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;max-width:min(720px,92vw);background:rgba(8,12,28,.94);border:1px solid var(--border);border-radius:12px;padding:8px 12px;z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:15px;pointer-events:auto}
+#subs.hidden{display:none}
 </style>
 </head>
 <body>
@@ -160,7 +164,10 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
       <button class="chip btn" id="bSpeed" title="Velocidad" aria-label="Velocidad">x1</button>
       <button class="chip btn" id="bAlerts" title="Alertas" aria-label="Alertas"></button>
       <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa"></button>
-      <button class="chip btn" id="bMute" title="Silencio (M)" aria-label="Silencio"></button>
+      <button class="chip btn" id="bCom" title="Comunicaciones" aria-label="Comunicaciones"></button>
+      <button class="chip btn" id="bMap" title="Mapa (M)" aria-label="Mapa"></button>
+      <button class="chip btn" id="bCrew" title="Tripulación (C)" aria-label="Tripulación"></button>
+      <button class="chip btn" id="bMute" title="Silencio (N)" aria-label="Silencio"></button>
       <button class="chip btn" id="bMenu" title="Menú" aria-label="Menú"></button>
     </div>
   </div>
@@ -212,8 +219,8 @@ const DATA = (function () {
       liveData: 'Datos en vivo de DONKI (últimos 30 días)', fallback: 'Copia local de registros históricos', achievements: 'Logros', stats: 'Estadísticas',
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
-      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
-      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
+      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa · M mapa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
+      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', sorted: 'Los residuos ya están separados: ahora recíclalos.', mealwait: 'Ya se preparó una comida hace poco: espera unas horas.', nofresh: 'No queda fruta ni verdura fresca suficiente.', nopacked: 'No quedan raciones de reserva suficientes.', noslot: 'No hay huecos libres en el almacén de muestras.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
       start: 'Start mission', cont: 'Continue', manual: 'Learning manual', earthConn: 'Earth Connection', sources: 'Science sources',
@@ -246,15 +253,15 @@ const DATA = (function () {
       liveData: 'Live DONKI data (last 30 days)', fallback: 'Local copy of historical records', achievements: 'Achievements', stats: 'Statistics',
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
-      helpMove: 'Move with WASD or arrows · E to interact · P pause', helpTouch: 'Use the joystick to move and the E button to interact',
-      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
+      helpMove: 'Move with WASD or arrows · E to interact · P pause · M map', helpTouch: 'Use the joystick to move and the E button to interact',
+      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', sorted: 'Waste is already sorted: now recycle it.', mealwait: 'A meal was prepared recently: wait a few hours.', nofresh: 'Not enough fresh produce left.', nopacked: 'Not enough reserve rations left.', noslot: 'No free slots in the sample storage.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };
 
   const ROOMS = {
-    bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Módulo de vida', en: 'Habitation module' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
-    reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Reciclaje de agua y oxígeno', en: 'Water & oxygen recycling' },
-    rad: { es: 'Protección radiológica y bahía del rover', en: 'Radiation shelter & rover bay' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
+    bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
+    reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Soporte vital', en: 'Life support' },
+    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
     hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
@@ -596,18 +603,30 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
+  const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
+  function startMusic() {
+    if (!ctx || mus || !musicOn) return;
+    try {
+      const bus = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; bus.gain.value = musicVol * 0.5; lp.connect(bus); bus.connect(master);
+      const os = CH[0].map((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.value = 0.18; o.connect(g); g.connect(lp); o.start(); return o; });
+      let k = 0; const iv = setInterval(() => { k = (k + 1) % CH.length; os.forEach((o, i) => o.frequency.setTargetAtTime(CH[k][i], ctx.currentTime, 1.6)); }, 8000);
+      mus = { os, bus, iv };
+    } catch (e) { mus = null; }
+  }
+  function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
       const t = ctx.currentTime + (when || 0), o = ctx.createOscillator(), a = ctx.createGain();
       o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(g || 0.3, t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, (g || 0.3) * curMul), t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(a); a.connect(master); o.start(t); o.stop(t + d + 0.02);
     } catch (e) { /* ignore */ }
   }
@@ -622,7 +641,9 @@ const Sfx = (function () {
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
     step: () => tone(90, 0.04, 'triangle', 0, 0.04)
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); (P[k] || P.click)(); },
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();
 /* =====================================================================
@@ -639,10 +660,43 @@ const NPCDATA = (function () {
     agri: { name: { es: 'Teo', en: 'Teo' }, spec: { es: 'Agrónomo · invernadero y cultivos', en: 'Agronomist · greenhouse and crops' } }
   };
   // Guía de cada sección (si el jugador lleva ese traje, habla Control de Misión)
-  const GUIDE = { bridge: 'commander', life: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer' };
+  const GUIDE = { bridge: 'commander', life: 'medic', med: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer', food: 'agri', kitchen: 'medic', samples: 'scientist', workshop: 'engineer', waste: 'engineer' };
 
   // 5 pasos: presentarse · para qué sirve · sistemas · misión · cómo interactuar
   const TALK = {
+    med: [
+      { es: 'Soy Sofía. Esta es la enfermería: aquí revisamos cómo está la tripulación.', en: 'I am Sofía. This is the sick bay: here we check how the crew is doing.' },
+      { es: 'Miramos el ánimo, el descanso y la radiación recibida. Si alguien está mal, lo vemos aquí primero.', en: 'We look at morale, rest and the radiation received. If someone is struggling, we see it here first.' },
+      { es: 'La consola 🩺 muestra el estado de cada persona. Son datos del juego, no diagnósticos médicos reales.', en: 'The 🩺 console shows each person\'s status. These are game data, not real medical diagnoses.' }
+    ],
+    food: [
+      { es: '¡Hola! Soy Teo. Este es el almacén de alimentos, separado del invernadero.', en: 'Hi! I am Teo. This is the food storage, separate from the greenhouse.' },
+      { es: 'Aquí entran las cosechas y las raciones de reserva. Lo fresco se estropea antes que lo envasado, sobre todo sin frío.', en: 'Harvests and reserve rations come in here. Fresh food spoils sooner than packed food, especially without cold.' },
+      { es: 'En la consola 🧺 ves cuánta comida queda, para cuántos días, y puedes encender o apagar el frío. Es un modelo simplificado.', en: 'At the 🧺 console you see how much food is left, for how many days, and you can turn the cold on or off. It is a simplified model.' },
+      { es: 'Tu misión: abre la consola del almacén y mira las reservas. Después te abro la cocina.', en: 'Your mission: open the storage console and check the supplies. Then I will open the kitchen for you.' }
+    ],
+    kitchen: [
+      { es: 'Soy Sofía otra vez. Esta es la cocina y el comedor.', en: 'Sofía again. This is the kitchen and mess.' },
+      { es: 'Comer bien mantiene el ánimo. Aquí eliges el tamaño de las raciones y preparas comidas con recetas sencillas.', en: 'Eating well keeps morale up. Here you choose ration size and prepare meals with simple recipes.' },
+      { es: 'Planificar es clave: raciones pequeñas ahorran comida pero cansan; las grandes animan pero gastan más.', en: 'Planning is key: small rations save food but tire people; large ones cheer them up but use more.' },
+      { es: 'Tu misión: prepara una comida en la consola 🥗. Una ensalada fresca o una ración caliente valen.', en: 'Your mission: prepare a meal at the 🥗 console. A fresh salad or a hot ration both work.' }
+    ],
+    samples: [
+      { es: 'Soy Leo. Este es el almacén de muestras: aquí llegan las muestras que trae el rover.', en: 'I am Leo. This is the sample storage: samples brought by the rover arrive here.' },
+      { es: 'Cada muestra tiene un identificador, su origen, la fecha y su estado. Si no se guarda a tiempo, se deteriora.', en: 'Every sample has an ID, an origin, a date and a condition. If it is not stored in time, it degrades.' },
+      { es: 'Son muestras ficticias del juego, no muestras reales de la NASA. Se clasifican, se guardan y se mandan al laboratorio.', en: 'These are fictional game samples, not real NASA samples. They are classified, stored and sent to the lab.' },
+      { es: 'Tu misión: clasifica y guarda una muestra en la consola 🧪.', en: 'Your mission: classify and store one sample at the 🧪 console.' }
+    ],
+    workshop: [
+      { es: 'Soy Ana. Este es el taller de mantenimiento.', en: 'I am Ana. This is the maintenance workshop.' },
+      { es: 'Aquí se fabrican repuestos con los materiales de la base. Con un repuesto a mano, el mantenimiento es más rápido y no gasta materiales.', en: 'Spare parts are made here from the base materials. With a part at hand, maintenance is faster and uses no materials.' },
+      { es: 'Tu misión: fabrica un repuesto en la consola 🛠. Cuesta 6 kg de materiales y unas horas.', en: 'Your mission: make a spare part at the 🛠 console. It costs 6 kg of materials and a few hours.' }
+    ],
+    waste: [
+      { es: 'Ana de nuevo. Esto es la gestión de residuos.', en: 'Ana again. This is waste management.' },
+      { es: 'Nada se tira: separamos, clasificamos y reciclamos los residuos para recuperar materiales. Es economía circular.', en: 'Nothing is thrown away: we sort, classify and recycle waste to recover materials. That is circular economy.' },
+      { es: 'Tu misión: en la consola ♻️ separa un lote de residuos y luego recíclalo. Separar antes rinde más.', en: 'Your mission: at the ♻️ console sort a batch of waste and then recycle it. Sorting first gives more.' }
+    ],
     bridge: [
       { es: '¡Bienvenida, bienvenido a bordo! Te hablo desde el puente de mando: aquí se toman las decisiones de la base.', en: 'Welcome aboard! I am speaking from the command bridge: this is where base decisions are made.' },
       { es: 'Arriba tienes el HUD: oxígeno, agua, energía, protección, alimentos y bienestar. Verde es bien, ámbar ⚠ es atención y rojo ⛔ es urgente.', en: 'At the top is the HUD: oxygen, water, energy, protection, food and wellbeing. Green is fine, amber ⚠ needs attention, red ⛔ is urgent.' },
@@ -698,6 +752,11 @@ const NPCDATA = (function () {
     c1: { t: { es: 'Activación de la colonia', en: 'Colony activation' }, b: { es: 'Conoce el puente, el módulo de vida y el reactor, y pon en marcha la energía.', en: 'Get to know the bridge, habitation module and reactor, and get power going.' } },
     c2: { t: { es: 'Recuperación del ciclo de agua', en: 'Water cycle recovery' }, b: { es: 'Repara el reciclador, calibra el oxígeno y estabiliza el agua.', en: 'Repair the recycler, calibrate oxygen and stabilize water.' } },
     c3: { t: { es: 'Primer cultivo', en: 'First crop' }, b: { es: 'Aprende a sembrar, cuidar y cosechar plantas.', en: 'Learn to plant, tend and harvest crops.' } },
+    x1: { t: { es: 'Almacén de alimentos', en: 'Food storage' }, b: { es: 'Conoce el almacén y consulta las reservas de comida.', en: 'Get to know the storage and check the food supplies.' } },
+    x2: { t: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, b: { es: 'Planifica las raciones y prepara una comida.', en: 'Plan the rations and prepare a meal.' } },
+    x3: { t: { es: 'Almacén de muestras', en: 'Sample storage' }, b: { es: 'Clasifica y guarda una muestra.', en: 'Classify and store a sample.' } },
+    x4: { t: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, b: { es: 'Fabrica un repuesto.', en: 'Make a spare part.' } },
+    x5: { t: { es: 'Gestión de residuos', en: 'Waste management' }, b: { es: 'Separa y recicla residuos.', en: 'Sort and recycle waste.' } },
     c4: { t: { es: 'Exploración científica', en: 'Science exploration' }, b: { es: 'Analiza muestras y comprende las condiciones del entorno.', en: 'Analyze samples and understand the environment.' } }
   };
   const KEY = {
@@ -719,12 +778,24 @@ const NPCDATA = (function () {
     talk_lab: { es: 'Visita el laboratorio', en: 'Visit the lab' },
     analyze1: { es: 'Analiza una muestra', en: 'Analyze a sample' },
     spec_open: { es: 'Usa el espectrómetro', en: 'Use the spectrometer' },
-    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' }
+    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' },
+    talk_food: { es: 'Visita el almacén de alimentos', en: 'Visit the food storage' },
+    store_open: { es: 'Abre la consola del almacén y mira las reservas', en: 'Open the storage console and check the supplies' },
+    talk_kitchen: { es: 'Visita la cocina y comedor', en: 'Visit the kitchen and mess' },
+    cook1: { es: 'Prepara una comida', en: 'Prepare a meal' },
+    talk_samples: { es: 'Visita el almacén de muestras', en: 'Visit the sample storage' },
+    sstore1: { es: 'Clasifica y guarda una muestra', en: 'Classify and store a sample' },
+    talk_workshop: { es: 'Visita el taller de mantenimiento', en: 'Visit the maintenance workshop' },
+    craft1: { es: 'Fabrica un repuesto', en: 'Make a spare part' },
+    talk_waste: { es: 'Visita la gestión de residuos', en: 'Visit waste management' },
+    sort1: { es: 'Separa un lote de residuos', en: 'Sort a batch of waste' },
+    recycle1: { es: 'Recicla residuos en materiales', en: 'Recycle waste into materials' }
   };
   // Dónde guiar al jugador para cada objetivo (consola o sala)
   const KEYTARGET = { talk_bridge: 'room:bridge', cmd_resources: 'cmd', talk_life: 'room:life', med_open: 'med', talk_reactor: 'room:reactor', power_action: 'reactor',
     talk_water: 'room:water', rec_fixed: 'water', o2_cal: 'o2', water_hold: 'water', talk_gh: 'room:gh', plant3: 'plant', water1: 'plant', feed1: 'plant', harvest1: 'plant:0:0',
-    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log' };
+    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log',
+    talk_food: 'room:food', store_open: 'store', talk_kitchen: 'room:kitchen', cook1: 'kitchen', talk_samples: 'room:samples', sstore1: 'sampler', talk_workshop: 'room:workshop', craft1: 'work', talk_waste: 'room:waste', sort1: 'wastec', recycle1: 'wastec' };
 
   // Quién informa de cada incidente
   const INC_NPC = { solar_storm: 'scientist', power_drop: 'engineer', dust_storm: 'engineer', water_fail: 'engineer', pressure_leak: 'medic', comms_blackout: 'commander',
@@ -904,6 +975,98 @@ const Icons = (function () {
   }
   function setText(node, str) { node.textContent = ''; for (const n of decor(str)) node.append(n.nodeType ? n : document.createTextNode(n)); }
   return { names: Object.keys(I), el, draw, decor, setText, byEmoji, I };
+})();
+
+/* =====================================================================
+   VOICE — texto a voz con la Web Speech API.
+   Los identificadores npc_<rol>_<idioma> son internos del videojuego (no de
+   ningún proveedor). Las voces reales se detectan en el dispositivo con
+   speechSynthesis.getVoices() y se actualizan con el evento voiceschanged.
+   Si no hay síntesis de voz, el juego sigue funcionando con subtítulos.
+   ===================================================================== */
+const Voice = (function () {
+  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator'];
+  const LANGS = ['es', 'en'];
+  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0] };
+  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator' };
+  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance !== 'undefined';
+  const profiles = {};
+  for (const role of ROLES) for (const lang of LANGS) {
+    const id = 'npc_' + role + '_' + lang;
+    profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
+  }
+  // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
+  function persist() { Store.set('audio', cfg); }
+
+  let list = [], armed = false, cur = null, pend = [], last = null;
+  const listeners = [];
+  function refresh() {
+    if (!supported) { list = []; return; }
+    try { list = (window.speechSynthesis.getVoices() || []).map((v) => ({ uri: v.voiceURI, name: v.name, lang: v.lang, def: !!v.default, v })); } catch (e) { list = []; }
+    listeners.forEach((f) => { try { f(); } catch (e) { /* ignore */ } });
+  }
+  if (supported) {
+    refresh();
+    try { window.speechSynthesis.addEventListener('voiceschanged', refresh); } catch (e) { window.speechSynthesis.onvoiceschanged = refresh; }
+  }
+  const langOf = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
+  const voicesFor = (lang) => list.filter((v) => langOf(v).split('-')[0] === lang);
+
+  /** Prioridad: 1 voiceURI guardada y disponible · 2 nombre exacto · 3 voz del idioma · 4 voz por defecto del navegador · 5 sin voz (solo texto). */
+  function resolve(profileId) {
+    const p = profiles[profileId]; if (!p || !supported || !list.length) return { voice: null, how: 'none' };
+    let v = p.preferredVoiceURI && list.find((x) => x.uri === p.preferredVoiceURI); if (v) return { voice: v, how: 'uri' };
+    v = p.preferredVoiceName && list.find((x) => x.name === p.preferredVoiceName); if (v) return { voice: v, how: 'name' };
+    const L = voicesFor(p.language); if (L.length) return { voice: L.find((x) => x.def) || L[0], how: 'lang' };
+    v = list.find((x) => x.def) || null; if (v) return { voice: v, how: 'default' };
+    return { voice: null, how: 'none' };
+  }
+  const clean = (t) => String(t == null ? '' : t).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}]/gu, ' ').replace(/\s+/g, ' ').trim();
+  function profileFor(role, lang) { return 'npc_' + (GAME2ROLE[role] || role || 'narrator') + '_' + (lang === 'en' ? 'en' : 'es'); }
+
+  let onSub = null;
+  function emitSub(p, text, level) { if (onSub && cfg.subs) onSub({ who: p.characterRole, profileId: p.profileId, text, level }); }
+  function startNext() {
+    if (cur || !pend.length) return;
+    const it = pend.shift(), p = profiles[it.profileId], r = resolve(it.profileId);
+    if (!it.silent) emitSub(p, it.text, it.level);
+    if (!supported || !cfg.tts || !armed || !r.voice) { pend = []; return; } // solo texto (subtítulos)
+    try {
+      const u = new window.SpeechSynthesisUtterance(it.text);
+      u.voice = r.voice.v; u.lang = r.voice.lang || p.language; u.rate = Math.max(0.5, Math.min(2, p.rate * cfg.rate)); u.pitch = p.pitch;
+      u.volume = Math.max(0, Math.min(1, p.volume * cfg.vVoice * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
+      cur = it; u.onend = u.onerror = () => { if (cur === it) { cur = null; startNext(); } };
+      window.speechSynthesis.speak(u);
+    } catch (e) { cur = null; }
+  }
+  /** Narra un texto con el perfil indicado. level: 'crit' | 'warn' | 'info'. Sin solapes: lo crítico interrumpe; lo informativo espera y solo se guarda el último. */
+  function speak(profileId, text, o) {
+    o = o || {}; text = clean(text); if (!text || !profiles[profileId]) return false;
+    const level = o.level || 'info';
+    last = { profileId, text, level };
+    const it = { profileId, text, level, silent: !!o.silent };
+    if (level === 'crit') { stop(true); pend = [it]; } else { pend = pend.filter((x) => x.level !== 'info' || level !== 'info'); pend.push(it); if (pend.length > 3) pend.shift(); }
+    startNext(); return true;
+  }
+  function stop(keepLast) { pend = []; cur = null; if (supported) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } } }
+  function repeat() { if (last) { const l = last; speak(l.profileId, l.text, { level: l.level }); return true; } return false; }
+  function say(role, lang, text, o) { return speak(profileFor(role, lang), text, o); }
+  function setPreferred(profileId, uri) {
+    const p = profiles[profileId]; if (!p) return;
+    const v = uri ? list.find((x) => x.uri === uri) : null;
+    p.preferredVoiceURI = v ? v.uri : null; p.preferredVoiceName = v ? v.name : null;
+    if (v) cfg.saved[profileId] = { uri: v.uri, name: v.name }; else delete cfg.saved[profileId];
+    persist();
+  }
+  /** Cuántas voces distintas usan realmente los seis perfiles de un idioma. */
+  function distinct(lang) { const u = new Set(); for (const r of ROLES) { const x = resolve('npc_' + r + '_' + lang); if (x.voice) u.add(x.voice.uri); } return u.size; }
+  function test(profileId, text) { const was = armed; armed = true; speak(profileId, text, { level: 'info', silent: false }); armed = was || armed; }
+  const arm = () => { armed = true; };
+  if (typeof document !== 'undefined') { document.addEventListener('pointerdown', arm, { once: true }); document.addEventListener('keydown', arm, { once: true }); }
+  return { supported, ROLES, LANGS, profiles, cfg, persist, get voices() { return list; }, voicesFor, resolve, speak, say, stop, repeat, setPreferred, distinct, test, arm, profileFor, clean, refresh,
+    get speaking() { return !!cur; }, get last() { return last; }, set onSubtitle(f) { onSub = f; }, onChange: (f) => listeners.push(f), get armed() { return armed; } };
 })();
 /* =====================================================================
    LEVELS — Dos niveles de lenguaje sobre el mismo contenido científico.
@@ -1143,6 +1306,15 @@ const Sim = (function () {
     { id: 'c3', unlock: 'lab', keys: ['talk_gh', 'plant3', 'water1', 'feed1', 'harvest1'] },
     { id: 'c4', unlock: 'rad', keys: ['talk_lab', 'analyze1', 'spec_open', 'log_open'] }
   ];
+  // Ampliación de la base: cada zona nueva se abre al completar la anterior. No bloquea misiones ni emergencias.
+  const EXP = [
+    { id: 'x1', unlock: 'kitchen', keys: ['talk_food', 'store_open'] },
+    { id: 'x2', unlock: 'samples', keys: ['talk_kitchen', 'cook1'] },
+    { id: 'x3', unlock: 'workshop', keys: ['talk_samples', 'sstore1'] },
+    { id: 'x4', unlock: 'waste', keys: ['talk_workshop', 'craft1'] },
+    { id: 'x5', unlock: null, keys: ['talk_waste', 'sort1', 'recycle1'] }
+  ];
+  const ALLROOMS = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
 
   /* ---------- Incidentes (plantillas) ---------- */
@@ -1216,17 +1388,18 @@ const Sim = (function () {
       beds: [], crew: [], jobs: [], inc: [], log: [], incSeq: 1,
       cm: { q: [], inbox: [], seq: 1, nextDaily: 20 },
       m: {}, samples: 0, science: 0, pts: 0, morale: 78, rest: 75,
+      pant: { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] }, sampleList: [], sampleSeq: 1, parts: 0, sorted: false,
       z: { water: 0, food: 0, power: 0, press: 0, well: 0 },
       lastEv: 0, pw: {}, lf: {}, d: {}, pendingCards: [], quiz: {},
       st: { waterUsed: 0, waterRec: 0, eGen: 0, eUsed: 0, foodProd: 0, foodCons: 0, incTot: 0, incRes: 0, quizOk: 0, quizTot: 0,
-        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {} }
+        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {}, spoiled: 0, meals: 0, crafted: 0 }
     };
     if (scen === 'mars') S.lightMin = Math.round(rr(S, 4, 20) * 10) / 10; // real: ~3 a ~22 min según posiciones orbitales
     for (let i = 0; i < 6; i++) S.beds.push({ light: 0.7, plants: [null, null, null] });
     ['romaine', 'mizuna', 'romaine'].forEach((sp, k) => { S.beds[0].plants[k] = newPlant(S, sp, 0.35 + 0.05 * k); });
     S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     S.playerRole = 'commander';
-    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, reactor: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0 };
+    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, med: 1, reactor: 1, water: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0, xi: 0 };
     for (let i = 0; i < 5; i++) S.crew.push({ role: ROLES[i], zone: 'hab', dose: 0 });
     for (let i = 1; i <= 7; i++) S.m[i] = { st: 'idle', var: 0, stars: 0, hold: 0, t0: 0, att: 0, prog: 0, data: {} };
     derive(S);
@@ -1239,10 +1412,15 @@ const Sim = (function () {
     S.log.push({ n: S.logN, t: Math.round(S.t * 100) / 100, sev, k, p: p || {} });
     if (S.log.length > 250) S.log.splice(0, S.log.length - 250);
   }
-  function campDone() { return { i: CAMP.length, unlocked: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1 }, basicDone: true, hold: 0, inc: 0 }; }
+  function campDone() { return { i: CAMP.length, unlocked: Object.assign({}, ALLROOMS), f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1, x1: 1, x2: 1, x3: 1, x4: 1, x5: 1 }, basicDone: true, hold: 0, inc: 0, xi: EXP.length }; }
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
     if (!S.camp) S.camp = campDone();
+    { const C = S.camp; C.unlocked.med = 1; if (C.xi == null) { C.xi = 0; if (C.basicDone) { C.unlocked.food = 1; } } }
+    if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
+    if (!S.sampleList) { S.sampleList = []; S.sampleSeq = 1; const n = Math.max(0, Math.round(S.samples || 0)); S.samples = 0; if (n) addSamples(S, n, 'legacy'); }
+    if (S.parts == null) S.parts = 0; if (S.sorted == null) S.sorted = false;
+    if (S.st) { S.st.spoiled = S.st.spoiled || 0; S.st.meals = S.st.meals || 0; S.st.crafted = S.st.crafted || 0; }
     if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
     if (!S.playerRole) S.playerRole = 'commander';
@@ -1252,8 +1430,8 @@ const Sim = (function () {
     S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
     return S;
   }
-  function campFlag(S, key) { if (S.camp && !S.camp.basicDone) S.camp.f[key] = 1; }
-  function campCnt(S, key) { if (S.camp && !S.camp.basicDone) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
+  function campFlag(S, key) { if (S.camp) S.camp.f[key] = 1; }
+  function campCnt(S, key) { if (S.camp) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
   function plantsList(S) { const out = []; S.beds.forEach((b, bi) => b.plants.forEach((p, k) => { if (p) out.push({ p, bi, k }); })); return out; }
   const pct = (r) => (r.max > 0 ? r.v / r.max : 0);
   function status(S, key) {
@@ -1404,6 +1582,7 @@ const Sim = (function () {
       { id: 'press', p: 1, kw: 0.3 + 0.5 * M.leak },
       { id: 'comms', p: 2, kw: 0.8 * S.cap.comms },
       { id: 'shield', p: 2, kw: 0.2 + 0.2 * sy.shield.lvl },
+      { id: 'cold', p: 3, kw: S.pant.cold && S.pant.fresh > 0.01 ? 0.1 : 0 },
       { id: 'lab', p: 3, kw: S.jobs.some((j) => j.kind === 'analyze' || j.kind === 'experiment') ? 1.5 * S.cap.lab : 0 },
       { id: 'rover', p: 3, kw: sy.rover.batt < 100 ? 1.0 : 0 },
       { id: 'isru', p: 3, kw: sy.isru.on ? P.ISRU_KW : 0 },
@@ -1501,9 +1680,15 @@ const Sim = (function () {
     r.nutr.v -= fert; r.nutr.cons = fert / h;
 
     /* --- Alimentos --- */
-    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons;
+    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons * (RATION[S.pant.ration] || 1);
     r.food.cons = fUse; r.food.prod = 0;
     r.food.v -= fUse * h; S.st.foodCons += fUse * h;
+    { // Almacén: se come primero lo fresco; lo fresco se deteriora más sin refrigeración (modelo educativo simplificado)
+      const Pn = S.pant; Pn.fresh = Math.max(0, Pn.fresh - fUse * h);
+      const cf = Pn.cold && !S.emergency ? (lf.cold == null ? 1 : lf.cold) : 0, spoil = Math.min(Pn.fresh, r.food.v) * (0.01 - 0.0092 * cf) * h;
+      if (spoil > 0) { Pn.fresh -= spoil; r.food.v -= spoil; S.st.spoiled += spoil; }
+      for (const e of S.sampleList) if (e.state === 'new' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
+    }
     r.waste.prod = S.N * (P.WASTE_PER_PERSON_DAY / 24); r.waste.v += r.waste.prod * h; // envases y residuos sólidos
 
     /* --- Radiación --- */
@@ -1535,7 +1720,7 @@ const Sim = (function () {
       clamp(pct(r.food) / 0.25, 0, 1), clamp(pct(r.water) / 0.2, 0, 1), lf.therm];
     const hq = q.reduce((a, b) => a + b, 0) / q.length;
     const medic = bonus(S, 'medic') ? 6 : 0;
-    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic;
+    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic + (S.pant.ration === 'high' ? 3 : S.pant.ration === 'low' ? -4 : 0);
     S.morale = clamp(S.morale + (mT - S.morale) * Math.min(1, 0.04 * h), 0, 100);
     S.rest = clamp(S.rest + (28 + 66 * hq - S.rest) * Math.min(1, 0.05 * h), 0, 100);
     r.well.v = 0.6 * S.morale + 0.4 * S.rest;
@@ -1630,15 +1815,38 @@ const Sim = (function () {
     d.day = Math.floor(S.t / 24) + 1; d.hour = S.t % 24;
   }
 
+  /* ---------- Instalaciones: muestras, almacén, cocina, taller y residuos (modelo educativo) ---------- */
+  const SAMPLE_CATS = ['regolith', 'rock', 'ice'];
+  const SAMPLE_SLOTS = 8;
+  /** Registra muestras ficticias de juego (no son muestras reales de NASA). La categoría real depende del identificador, sin usar el generador aleatorio. */
+  function addSamples(S, n, origin) {
+    for (let i = 0; i < n; i++) {
+      const seq = S.sampleSeq++, cat = SAMPLE_CATS[(seq * 5 + (origin ? origin.length : 0)) % 3];
+      S.sampleList.push({ id: 'MS-' + String(seq).padStart(3, '0'), seq, origin: origin || 'rover', t: S.t, cat, label: null, state: 'new', slot: null, an: 'pending', ok: false, sci: 0 });
+    }
+    S.samples += n; S.st.samplesTot += n;
+  }
+  const sampleFresh = (e) => e.state === 'new' || e.state === 'degraded';
+  function pantryLog(S, k, kg, w) { const L = S.pant.log; L.push({ t: Math.round(S.t * 10) / 10, k, kg: Math.round(kg * 100) / 100, w: w || '' }); if (L.length > 40) L.splice(0, L.length - 40); }
+  const RATION = { low: 0.8, normal: 1, high: 1.15 };
+  const freeSlot = (S) => { for (let i = 1; i <= SAMPLE_SLOTS; i++) { const id = 'A' + i; if (!S.sampleList.some((e) => e.slot === id)) return id; } return null; };
+
   /* ---------- Trabajos ---------- */
   function finishJob(S, j) {
     const sy = S.sys;
     if (j.kind === 'shield') { sy.shield.lvl = Math.min(3, sy.shield.lvl + 1); sy.shield.h = Math.max(sy.shield.h, 90); log(S, 'ok', 'job.shield', { lvl: sy.shield.lvl }); }
     if (j.kind === 'shelter') { sy.shield.cap = Math.min(5, sy.shield.cap + 1); log(S, 'ok', 'job.shelter', { cap: sy.shield.cap }); }
-    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'analyze') {
+      const e = S.sampleList.find((x) => x.id === j.sid);
+      const sci = e ? (e.state === 'degraded' ? 7 : 12) + (e.ok ? 3 : 0) : 12;
+      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; }
+      S.science += sci; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {});
+    }
+    if (j.kind === 'cook') { S.morale = Math.min(100, S.morale + j.mor); S.r.well.v = Math.min(100, S.r.well.v + 2); S.st.meals++; log(S, 'ok', 'job.cook', {}); }
+    if (j.kind === 'craft') { S.parts++; S.st.crafted++; log(S, 'ok', 'job.craft', {}); }
     if (j.kind === 'nutr') { S.r.nutr.v += 4; log(S, 'ok', 'job.nutr', {}); }
     if (j.kind === 'experiment') { S.science += 8; S.morale += 4; log(S, 'ok', 'job.experiment', {}); }
-    if (j.kind === 'recycle') { S.r.mat.v += 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
+    if (j.kind === 'recycle') { S.r.mat.v += j.sorted ? 8 : 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
     if (j.kind === 'maint') { sy[j.sys].h = Math.min(100, sy[j.sys].h + 35); log(S, 'ok', 'job.maint', { sys: j.sys }); }
   }
 
@@ -1665,18 +1873,48 @@ const Sim = (function () {
     },
     maint: (S, p) => {
       if (S.jobs.some((j) => j.kind === 'maint')) return 'busy';
+      if (S.parts > 0) { S.parts--; S.jobs.push({ kind: 'maint', h: 1.8, kw: 0.6, sys: p.sys || 'reactor', part: true }); return; } // con repuesto: más rápido y sin gastar materiales
       if (S.r.mat.v < 4) return 'nomat';
       S.r.mat.v -= 4; S.jobs.push({ kind: 'maint', h: 3, kw: 0.6, sys: p.sys || 'reactor' });
+    },
+    craft: (S) => {
+      if (S.jobs.some((j) => j.kind === 'craft')) return 'busy';
+      if (S.r.mat.v < 6) return 'nomat';
+      S.r.mat.v -= 6; S.jobs.push({ kind: 'craft', h: S.playerRole === 'engineer' ? 2 : 3, kw: 0.8 }); campCnt(S, 'craft');
+    },
+    sort: (S) => {
+      if (S.sorted) return 'sorted';
+      if (S.r.waste.v < 6) return 'nowaste';
+      S.sorted = true; campCnt(S, 'sort'); step(S, 1);
+    },
+    cold: (S, p) => { S.pant.cold = !!p.v; },
+    ration: (S, p) => { if (!RATION[p.v]) return 'err'; S.pant.ration = p.v; },
+    cook: (S, p) => {
+      if (S.jobs.some((j) => j.kind === 'cook')) return 'busy';
+      if (S.t - S.pant.mealT < 8) return 'mealwait';
+      const salad = p.r !== 'ration', kg = salad ? 1.5 : 1;
+      if (salad ? S.pant.fresh < kg : S.r.food.v - S.pant.fresh < kg) return salad ? 'nofresh' : 'nopacked';
+      if (salad) S.pant.fresh -= kg; S.r.food.v -= kg; S.pant.mealT = S.t; pantryLog(S, 'out', kg, salad ? 'salad' : 'ration');
+      S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 }); campCnt(S, 'cook');
+    },
+    sstore: (S, p) => {
+      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
+      if (!SAMPLE_CATS.includes(p.label)) return 'err';
+      const sl = freeSlot(S); if (!sl) return 'noslot';
+      e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded'; campCnt(S, 'sstore');
     },
     recycle: (S) => {
       if (S.jobs.some((j) => j.kind === 'recycle')) return 'busy';
       if (S.r.waste.v < 6) return 'nowaste';
-      S.r.waste.v -= 6; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8 });
+      S.r.waste.v -= 6; const so = S.sorted; S.sorted = false; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8, sorted: so }); campCnt(S, 'recycle');
     },
-    analyze: (S) => {
+    analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0 });
+      const pend = S.sampleList.filter((x) => x.an === 'pending');
+      const e = (p && p.id ? pend.find((x) => x.id === p.id) : null) || pend.find((x) => x.state === 'stored') || pend[0];
+      if (!e) return 'nosample';
+      e.an = 'inlab'; S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0, sid: e.id });
     },
     experiment: (S) => {
       if (S.jobs.some((j) => j.kind === 'experiment')) return 'busy';
@@ -1718,7 +1956,7 @@ const Sim = (function () {
     },
     eva: (S) => {
       if (S.r.o2.v < 0.5) return 'err';
-      S.r.o2.v -= 0.2; S.samples++; S.st.samplesTot++; S.r.mat.v += 1; S.pts += 5;
+      S.r.o2.v -= 0.2; addSamples(S, 1, 'eva'); S.r.mat.v += 1; S.pts += 5;
     },
     sleep: (S) => { S.rest = clamp(S.rest + 30, 0, 100); S.morale = clamp(S.morale + 4, 0, 100); step(S, 4); },
     rec: (S) => { S.morale = clamp(S.morale + 9, 0, 100); step(S, 2); },
@@ -1760,6 +1998,7 @@ const Sim = (function () {
     const b = S.beds[bed], pl = b && b.plants[slot];
     if (!pl || pl.prog < 1) return null;
     const c = CROPS[pl.sp], y = c.y * (pl.hp / 100) * (pl.prune > 1 ? 0.8 : 1);
+    S.pant.fresh += y; pantryLog(S, 'in', y, pl.sp);
     S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[pl.sp] = (S.st.crops[pl.sp] || 0) + 1;
     S.seeds[pl.sp] = (S.seeds[pl.sp] || 0) + c.seeds; S.morale = clamp(S.morale + c.mor, 0, 100); S.r.waste.v += 0.15;
     const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[pl.sp] = 1; }
@@ -1801,7 +2040,7 @@ const Sim = (function () {
         break;
       case 'rover': {
         const n = Math.max(0, Math.round(fin(res.samples, 0)));
-        S.samples += n; S.st.samplesTot += n; S.r.mat.v += fin(res.regolith, 0);
+        addSamples(S, n, 'rover'); S.r.mat.v += fin(res.regolith, 0);
         sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++;
         const m7 = S.m[7];
         if (m7.st === 'active' && ok && n >= m7.data.target) finishMission(S, 7, res.score > 0.75 ? 3 : 2);
@@ -1847,7 +2086,7 @@ const Sim = (function () {
     const id = CAMP[C.i] && CAMP[C.i].id;
     if (id === 'c2') { const inc = S.inc.find((i) => !i.res && i.type === 'water_fail') || addInc(S, 'water_fail', { sev: 'warn' }); C.inc = inc.id; }
     if (id === 'c3') S.beds[0].plants.forEach((pl) => { if (pl) pl.prog = Math.max(pl.prog, 0.86); });
-    if (id === 'c4') { S.samples += 2; S.st.samplesTot += 2; }
+    if (id === 'c4') addSamples(S, 2, 'camp');
     if (id) log(S, 'info', 'camp.start', { id });
   }
   function campKeyDone(S, key) {
@@ -1859,6 +2098,11 @@ const Sim = (function () {
       case 'feed1': return (n.feed || 0) >= 1;
       case 'harvest1': return (n.harvest || 0) >= 1;
       case 'analyze1': return (n.analyze || 0) >= 1;
+      case 'cook1': return (n.cook || 0) >= 1;
+      case 'sstore1': return (n.sstore || 0) >= 1;
+      case 'craft1': return (n.craft || 0) >= 1;
+      case 'sort1': return (n.sort || 0) >= 1;
+      case 'recycle1': return (n.recycle || 0) >= 1;
       default: return !!C.f[key];
     }
   }
@@ -1866,15 +2110,36 @@ const Sim = (function () {
     const C = S.camp; if (!C || C.basicDone) return null;
     const D = CAMP[C.i]; return { id: D.id, unlock: D.unlock, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
   }
+  function expStart(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    C.cnt = {};
+    if (D.id === 'x3' && !S.sampleList.some((e) => e.an === 'pending' && (e.state === 'new' || e.state === 'degraded'))) addSamples(S, 1, 'camp');
+    if (D.id === 'x4') S.r.mat.v = Math.max(S.r.mat.v, 10);
+    if (D.id === 'x5') S.r.waste.v = Math.max(S.r.waste.v, 8);
+    log(S, 'info', 'camp.exp.start', { id: D.id });
+  }
+  function expStatus(S) {
+    const C = S.camp; if (!C || !C.basicDone || C.xi == null || C.xi >= EXP.length) return null;
+    const D = EXP[C.xi]; return { id: D.id, unlock: D.unlock, i: C.xi, n: EXP.length, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
+  }
+  function expStep(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    if (D.keys.every((k) => campKeyDone(S, k))) {
+      C.done[D.id] = 1; if (D.unlock) C.unlocked[D.unlock] = 1; S.pts += 60; S.morale = clamp(S.morale + 4, 0, 100);
+      log(S, 'ok', 'camp.exp', { id: D.id, room: D.unlock });
+      C.xi++; if (C.xi < EXP.length) expStart(S);
+    }
+  }
   function campStep(S, h) {
-    const C = S.camp; if (!C || C.basicDone) return;
+    const C = S.camp; if (!C) return;
+    if (C.basicDone) { if (C.xi != null && C.xi < EXP.length) expStep(S); return; }
     const D = CAMP[C.i];
     if (D.id === 'c2') { C.hold = S.d.rec >= 0.78 && S.d.water >= 0.3 && !S.inc.some((i) => i.id === C.inc && !i.res) ? C.hold + h : 0; if (C.hold >= 6) C.f.water_hold = 1; }
     if (D.keys.every((k) => campKeyDone(S, k))) {
       C.done[D.id] = 1; C.unlocked[D.unlock] = 1; S.pts += 80; S.morale = clamp(S.morale + 5, 0, 100);
       log(S, 'ok', 'camp.done', { id: D.id, room: D.unlock });
       C.i++;
-      if (C.i >= CAMP.length) { C.basicDone = true; log(S, 'ok', 'camp.basic', {}); }
+      if (C.i >= CAMP.length) { C.basicDone = true; C.unlocked.food = 1; C.xi = 0; expStart(S); log(S, 'ok', 'camp.basic', {}); }
       else campStart(S);
     }
   }
@@ -2005,7 +2270,7 @@ const Sim = (function () {
     };
   }
 
-  return { DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -2766,26 +3031,28 @@ const Flora = (function () {
    cámara, render Canvas 2D, partículas y minimapa.
    ===================================================================== */
 const World = (function () {
-  const TS = 32, W = 60, H = 56;
+  const TS = 32, W = 100, H = 56;
   const VOID = 0, WALL = 1, FLOOR = 2, DOOR = 3, OUT = 4;
   const RECTS = {
-    life: [2, 2, 17, 11], bridge: [22, 2, 37, 11], lab: [42, 2, 57, 11],
-    gh: [2, 17, 17, 28], water: [22, 17, 37, 28], reactor: [42, 17, 57, 28],
-    rad: [6, 34, 53, 44], hall: [2, 13, 57, 15], v1: [9, 30, 10, 32], v2: [29, 30, 30, 32], v3: [49, 30, 50, 32],
+    life: [2, 2, 17, 11], bridge: [22, 2, 37, 11], lab: [42, 2, 57, 11], kitchen: [62, 2, 77, 11], med: [82, 2, 97, 11],
+    gh: [2, 17, 17, 28], water: [22, 17, 37, 28], reactor: [42, 17, 57, 28], food: [62, 17, 77, 28], samples: [82, 17, 97, 28],
+    rad: [6, 34, 53, 44], waste: [62, 34, 77, 44], workshop: [82, 34, 97, 44],
+    hall: [2, 13, 97, 15], v1: [9, 30, 10, 32], v2: [29, 30, 30, 32], v3: [49, 30, 50, 32], v4: [69, 30, 70, 32], v5: [89, 30, 90, 32], v6: [54, 38, 61, 40], v7: [78, 38, 81, 40],
     lock: [28, 46, 31, 47], pad: [20, 49, 39, 54]
   };
   const SHELTER = [38, 36, 47, 44];
   const PAL = {
     bridge: ['#1b2a55', '#1f3062'], life: ['#2d2346', '#33284f'], gh: ['#183a2a', '#1c4331'], reactor: ['#3a2414', '#432a17'],
     water: ['#0f3446', '#123b50'], rad: ['#2a2f3a', '#30353f'], lab: ['#2b2550', '#312a5a'], hall: ['#1a1f2e', '#1d2334'],
-    v1: ['#1a1f2e', '#1d2334'], v2: ['#1a1f2e', '#1d2334'], v3: ['#1a1f2e', '#1d2334'], lock: ['#3a3426', '#41392a']
+    v1: ['#1a1f2e', '#1d2334'], v2: ['#1a1f2e', '#1d2334'], v3: ['#1a1f2e', '#1d2334'], v4: ['#1a1f2e', '#1d2334'], v5: ['#1a1f2e', '#1d2334'], v6: ['#1a1f2e', '#1d2334'], v7: ['#1a1f2e', '#1d2334'], lock: ['#3a3426', '#41392a'],
+    kitchen: ['#3d2a22', '#46302a'], med: ['#1f3a44', '#244350'], food: ['#33361e', '#3a3d23'], samples: ['#1d3a3f', '#224247'], waste: ['#2a3326', '#2f3a2b'], workshop: ['#333338', '#3a3a40']
   };
-  const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff' };
+  const ROOMCOL = { bridge: '#4f7dff', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff', kitchen: '#ff8f6b', med: '#5fd3e8', food: '#c8d44a', samples: '#4fe0c9', waste: '#8fbf6a', workshop: '#b8b8c4' };
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [];
   let staticCv = null, scen = 'moon';
   const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
-  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1 };
+  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
@@ -2805,6 +3072,7 @@ const World = (function () {
     const D = (x, y, kind, rooms) => { grid[y][x] = DOOR; grid[y][x + 1] = DOOR; doors.push({ x, y, open: 0, kind: kind || 'auto', snd: 0, rooms }); };
     const TOP = { 9: 'life', 29: 'bridge', 49: 'lab' }, MID = { 9: 'gh', 29: 'water', 49: 'reactor' };
     for (const x of [9, 29, 49]) { D(x, 12, 'auto', [TOP[x]]); D(x, 16, 'auto', [MID[x]]); D(x, 29, 'auto', [MID[x], 'rad']); D(x, 33, 'auto', ['rad']); }
+    for (const x of [69, 89]) { D(x, 12, 'auto', [x === 69 ? 'kitchen' : 'med']); D(x, 16, 'auto', [x === 69 ? 'food' : 'samples']); D(x, 29, 'auto', [x === 69 ? 'food' : 'samples', x === 69 ? 'waste' : 'workshop']); D(x, 33, 'auto', [x === 69 ? 'waste' : 'workshop']); }
     D(29, 45, 'inner', ['rad']); D(29, 48, 'outer', ['rad']);
     furn = []; consoles = [];
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
@@ -2814,8 +3082,8 @@ const World = (function () {
     C('cmd', 'bridge', 25, 3, 'manage', '🖥️'); C('comms', 'bridge', 30, 3, 'interact', '📡'); C('earth', 'bridge', 34, 3, 'investigate', '🌎');
     F(23, 9, 2, 2, 'crate'); F(35, 8, 2, 3, 'lockers'); C('wardrobe', 'bridge', 34, 10, 'interact', '🧥');
     // Módulo de vida
-    for (let i = 0; i < 3; i++) F(3 + i * 3, 3, 2, 3, 'bunk');
-    C('bed', 'life', 4, 7, 'rest', '🛏️'); F(13, 3, 3, 2, 'medbed'); C('med', 'life', 16, 3, 'manage', '🩺'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
+    for (let i = 0; i < 5; i++) F(3 + i * 3, 3, 2, 3, 'bunk'); F(15, 8, 2, 3, 'lockers');
+    C('bed', 'life', 4, 7, 'rest', '🛏️'); F(9, 8, 3, 2, 'table'); C('rec', 'life', 12, 9, 'interact', '🎲');
     // Invernadero
     for (let i = 0; i < 6; i++) F(3 + (i % 3) * 4, 19 + Math.floor(i / 3) * 5, 3, 2, 'planter', { bed: i });
     C('gh', 'gh', 16, 18, 'manage', '🌱'); F(15, 26, 2, 2, 'tank');
@@ -2834,6 +3102,19 @@ const World = (function () {
     // Laboratorio
     C('lab', 'lab', 44, 3, 'investigate', '🔬'); C('spec', 'lab', 50, 3, 'investigate', '🌈'); C('log', 'lab', 56, 9, 'investigate', '📚');
     F(45, 7, 4, 2, 'table'); F(51, 7, 3, 2, 'table'); F(55, 3, 2, 2, 'rack');
+    // Cocina y comedor
+    F(62, 2, 16, 1, 'window'); F(63, 3, 7, 1, 'stove'); F(71, 3, 5, 1, 'shelf'); F(64, 7, 4, 2, 'table'); F(70, 7, 4, 2, 'table'); F(75, 8, 2, 3, 'lockers');
+    // Enfermería
+    F(84, 3, 3, 2, 'medbed'); F(89, 3, 3, 2, 'medbed'); C('med', 'med', 95, 3, 'manage', '🩺'); F(92, 8, 3, 2, 'table'); F(83, 8, 2, 3, 'lockers');
+    // Almacén de alimentos
+    F(63, 18, 3, 2, 'shelf'); F(66, 18, 3, 2, 'shelf'); F(72, 18, 4, 2, 'shelf'); F(63, 24, 2, 2, 'crate'); F(66, 24, 2, 2, 'crate'); F(73, 24, 4, 3, 'cold');
+    // Almacén de muestras
+    for (const cx of [83, 86, 92, 95]) F(cx, 18, 3, 2, 'cabinet'); F(84, 24, 4, 2, 'table'); F(92, 24, 4, 3, 'cold');
+    // Gestión de residuos
+    for (const bx of [63, 66, 73, 76]) F(bx, 35, 2, 2, 'bin'); F(70, 40, 5, 3, 'recycler'); F(63, 41, 2, 2, 'crate');
+    // Taller de mantenimiento
+    F(83, 36, 6, 2, 'benchs'); F(91, 35, 4, 2, 'tools'); F(84, 41, 3, 2, 'crate'); F(90, 40, 4, 3, 'lathe');
+    C('kitchen', 'kitchen', 76, 3, 'manage', '🥗'); C('store', 'food', 76, 18, 'manage', '🧺'); C('sampler', 'samples', 88, 22, 'manage', '🧪'); C('wastec', 'waste', 76, 38, 'manage', '♻️'); C('work', 'workshop', 96, 38, 'manage', '🛠');
     // Muestras exteriores
     samples = [{ x: 23.5, y: 51.5 }, { x: 35.5, y: 52.5 }, { x: 27.5, y: 53.5 }, { x: 33.5, y: 50.5 }].map((s) => Object.assign(s, { taken: false }));
     // Solidez
@@ -2845,19 +3126,27 @@ const World = (function () {
   const N = {
     life_c: [7, 9.5], life_d: [10, 11.5], bridge_c: [30, 9.5], bridge_d: [30, 11.5], lab_c: [50, 9.5], lab_d: [50, 11.5],
     ha: [10, 14.5], hb: [30, 14.5], hc: [50, 14.5],
-    gh_t: [10, 16.5], gh_c: [10, 23.5], gh_b: [10, 28.5], v1: [10, 31], bay_a_d: [10, 33.5], bay_a: [10, 34.5],
-    wa_t: [30, 16.5], wa_c: [30, 25.5], wa_b: [30, 28.5], v2: [30, 31], bay_b_d: [30, 33.5], bay_b: [30, 34.5],
-    re_t: [50, 16.5], re_c: [54, 25.5], re_m: [50, 25.5], re_b: [50, 28.5], v3: [50, 31], bay_c_d: [50, 33.5], bay_c: [50, 34.5],
-    bay_s: [36, 34.5], sh_d: [36, 39.5], sh_c: [43, 39.5], sh_c2: [43, 41], bay_r: [18, 34.5], bay_r2: [18, 38.5]
+    gh_t: [10, 16.5], gh_p: [10.5, 18.5], gh_c: [10.5, 23.5], gh_b: [10.5, 28.5], v1: [10, 31], bay_a_d: [10, 33.5], bay_a: [10, 34.5],
+    wa_t: [30, 16.5], wa_p: [30, 19.2], wa_q: [27.5, 20.5], wa_r: [27.5, 24.2], wa_c: [30, 25.5], wa_b: [30, 28.5], v2: [30, 31], bay_b_d: [30, 33.5], bay_b: [30, 34.5],
+    re_t: [50, 16.5], re_t2: [50, 18.3], re_w1: [46.5, 18.3], re_w2: [46.5, 25.5], re_c: [54, 25.5], re_m: [50, 25.5], re_b: [50, 28.5], v3: [50, 31], bay_c_d: [50, 33.5], bay_c: [50, 34.5],
+    bay_s: [36, 34.5], sh_d: [36, 39.5], sh_c: [43, 39.5], sh_c2: [43, 41], bay_r: [18, 34.5], bay_r2: [18, 38.5],
+    hd: [70, 14.5], he: [90, 14.5], kit_c: [69, 9.5], kit_d: [70, 11.5], med_c: [90, 7.5], med_d: [90, 11.5],
+    fd_t: [70, 16.5], fd_c: [70, 22.5], fd_b: [70, 28.5], v4n: [70, 31], ws_d: [70, 33.5], ws_c: [70, 38.5],
+    sa_t: [90, 16.5], sa_c: [90, 22.5], sa_b: [90, 28.5], v5n: [90, 31], wk_d: [90, 33.5], wk_c: [90, 39.5],
+    bay_e: [51, 39.5], cor6: [58, 39.5], cor7: [79.5, 39.5]
   };
   const E = [['life_c', 'life_d'], ['life_d', 'ha'], ['bridge_c', 'bridge_d'], ['bridge_d', 'hb'], ['lab_c', 'lab_d'], ['lab_d', 'hc'], ['ha', 'hb'], ['hb', 'hc'],
-    ['ha', 'gh_t'], ['gh_t', 'gh_c'], ['gh_c', 'gh_b'], ['gh_b', 'v1'], ['v1', 'bay_a_d'], ['bay_a_d', 'bay_a'],
-    ['hb', 'wa_t'], ['wa_t', 'wa_c'], ['wa_c', 'wa_b'], ['wa_b', 'v2'], ['v2', 'bay_b_d'], ['bay_b_d', 'bay_b'],
-    ['hc', 're_t'], ['re_t', 're_m'], ['re_m', 're_c'], ['re_m', 're_b'], ['re_b', 'v3'], ['v3', 'bay_c_d'], ['bay_c_d', 'bay_c'],
-    ['bay_a', 'bay_r'], ['bay_r', 'bay_b'], ['bay_r', 'bay_r2'], ['bay_b', 'bay_s'], ['bay_s', 'bay_c'], ['bay_s', 'sh_d'], ['sh_d', 'sh_c'], ['sh_c', 'sh_c2']];
+    ['ha', 'gh_t'], ['gh_t', 'gh_p'], ['gh_p', 'gh_c'], ['gh_c', 'gh_b'], ['gh_b', 'v1'], ['v1', 'bay_a_d'], ['bay_a_d', 'bay_a'],
+    ['hb', 'wa_t'], ['wa_t', 'wa_p'], ['wa_p', 'wa_q'], ['wa_q', 'wa_r'], ['wa_r', 'wa_c'], ['wa_c', 'wa_b'], ['wa_b', 'v2'], ['v2', 'bay_b_d'], ['bay_b_d', 'bay_b'],
+    ['hc', 're_t'], ['re_t', 're_t2'], ['re_t2', 're_w1'], ['re_w1', 're_w2'], ['re_w2', 're_m'], ['re_m', 're_c'], ['re_m', 're_b'], ['re_b', 'v3'], ['v3', 'bay_c_d'], ['bay_c_d', 'bay_c'],
+    ['bay_a', 'bay_r'], ['bay_r', 'bay_b'], ['bay_r', 'bay_r2'], ['bay_b', 'bay_s'], ['bay_s', 'bay_c'], ['bay_s', 'sh_d'], ['sh_d', 'sh_c'], ['sh_c', 'sh_c2'],
+    ['hc', 'hd'], ['hd', 'he'], ['hd', 'kit_d'], ['kit_d', 'kit_c'], ['he', 'med_d'], ['med_d', 'med_c'],
+    ['hd', 'fd_t'], ['fd_t', 'fd_c'], ['fd_c', 'fd_b'], ['fd_b', 'v4n'], ['v4n', 'ws_d'], ['ws_d', 'ws_c'],
+    ['he', 'sa_t'], ['sa_t', 'sa_c'], ['sa_c', 'sa_b'], ['sa_b', 'v5n'], ['v5n', 'wk_d'], ['wk_d', 'wk_c'],
+    ['bay_c', 'bay_e'], ['bay_e', 'cor6'], ['cor6', 'ws_c'], ['ws_c', 'cor7'], ['cor7', 'wk_c']];
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
-  const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
-  const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2' };
+  const HOME = { engineer: ['re_c', 're_m', 'wa_c', 'wk_c'], scientist: ['lab_c', 'lab_d', 'sa_c'], medic: ['med_c', 'life_c', 'med_d'], agri: ['gh_c', 'gh_t', 'fd_c'] };
+  const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2', kitchen: 'kit_c', med: 'med_c', food: 'fd_c', samples: 'sa_c', waste: 'ws_c', workshop: 'wk_c' };
   const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
     if (a === b) return [b];
@@ -2988,7 +3277,7 @@ const World = (function () {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role].filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
+        if (b.wait <= 0) { const night = S.t >= 24 && (S.t % 24 >= 23 || S.t % 24 < 5); const h = (night ? ['life_c', 'life_d'] : HOME[b.role]).filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -3057,7 +3346,7 @@ const World = (function () {
     for (const f of furn) drawFurn(c, f);
     // Etiquetas de sala
     c.font = 'bold 15px system-ui'; c.textAlign = 'center';
-    for (const k of ['bridge', 'life', 'lab', 'gh', 'water', 'reactor', 'rad']) {
+    for (const k of ['bridge', 'life', 'lab', 'gh', 'water', 'reactor', 'rad', 'kitchen', 'med', 'food', 'samples', 'waste', 'workshop']) {
       const R = RECTS[k], cx = ((R[0] + R[2] + 1) / 2) * TS, cy = (R[3] + 0.75) * TS;
       c.fillStyle = 'rgba(0,0,0,.45)'; const t = tr(DATA.ROOMS[k]); const w = c.measureText(t).width + 16; rr(c, cx - w / 2, cy - 14, w, 22, 8); c.fill();
       c.fillStyle = ROOMCOL[k]; c.fillText(t, cx, cy + 2);
@@ -3092,6 +3381,12 @@ const World = (function () {
       case 'tools': c.fillStyle = '#3a3f4f'; c.fillRect(x, y + 4, w, h - 8); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(x + 12 + i * 20, y + 10); c.lineTo(x + 12 + i * 20, y + h - 10); c.stroke(); } break;
       case 'shieldwall': c.fillStyle = '#5d6470'; c.fillRect(x, y, w, h); c.fillStyle = '#ffc24a'; c.fillRect(x, y + h / 2 - 3, w, 6); break;
       case 'benchs': c.fillStyle = '#4b5160'; rr(c, x, y + 4, w, h - 8, 6); c.fill(); break;
+      case 'shelf': c.fillStyle = '#4a4a30'; c.fillRect(x, y, w, h); c.fillStyle = '#c8d44a'; for (let i = 0; i < Math.floor(w / 18); i++) { c.fillRect(x + 6 + i * 18, y + 6, 12, h / 2 - 8); c.fillStyle = i % 2 ? '#ff8f6b' : '#c8d44a'; c.fillRect(x + 6 + i * 18, y + h / 2 + 2, 12, h / 2 - 8); } break;
+      case 'stove': c.fillStyle = '#5b4439'; rr(c, x, y, w, h, 4); c.fill(); for (let i = 0; i < Math.floor(w / 56) + 1; i++) { c.fillStyle = '#1a1411'; c.beginPath(); c.arc(x + 20 + i * 48, y + h / 2, 9, 0, 7); c.fill(); c.strokeStyle = '#ff8f6b'; c.lineWidth = 2; c.stroke(); } break;
+      case 'cold': c.fillStyle = '#d9eef5'; rr(c, x + 2, y + 2, w - 4, h - 4, 6); c.fill(); c.strokeStyle = '#7fd0e8'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#7fd0e8'; c.fillRect(x + 8, y + 8, w - 16, 5); c.fillStyle = '#2b6278'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('❄', x + w / 2, y + h / 2 + 6); break;
+      case 'cabinet': c.fillStyle = '#244a50'; rr(c, x, y, w, h, 4); c.fill(); c.strokeStyle = '#4fe0c9'; c.lineWidth = 2; c.stroke(); for (let i = 0; i < 3; i++) { c.fillStyle = '#0d2326'; c.fillRect(x + 6, y + 6 + i * (h / 3 - 2), w - 12, h / 3 - 8); } break;
+      case 'bin': c.fillStyle = ({ 63: '#3f6a3a', 66: '#3a5f7a', 73: '#7a6a3a', 76: '#6a3a3a' })[f.x] || '#3f6a3a'; rr(c, x + 3, y + 3, w - 6, h - 6, 8); c.fill(); c.strokeStyle = '#0006'; c.lineWidth = 3; c.stroke(); c.fillStyle = '#0005'; c.fillRect(x + 8, y + 8, w - 16, 6); break;
+      case 'lathe': c.fillStyle = '#44464f'; rr(c, x, y, w, h, 6); c.fill(); c.fillStyle = '#ffc24a'; c.fillRect(x + 8, y + 10, w - 16, 8); c.fillStyle = '#9aa0ae'; c.beginPath(); c.arc(x + w - 22, y + h / 2 + 6, 14, 0, 7); c.fill(); break;
       case 'rack': c.fillStyle = '#3a3463'; c.fillRect(x, y, w, h); c.fillStyle = '#9a8cff'; for (let i = 0; i < 4; i++) c.fillRect(x + 6, y + 8 + i * 13, w - 12, 5); break;
     }
     c.restore();
@@ -3188,7 +3483,7 @@ const World = (function () {
     ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     // Secciones bloqueadas
-    if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
+    if (S && S.camp) for (const k in MAIN) if (locked(k)) {
       const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
       ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; { const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4); }
     }
@@ -3241,6 +3536,13 @@ const World = (function () {
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
   }
 
+  /** Ruta real (grafo de puertas y pasillos) desde el jugador hasta una sala; null si está bloqueada o no existe. */
+  function route(room) {
+    const to = ROOMNODE[room]; if (!to || locked(room)) return null;
+    const a = nearestNode(player.x, player.y), p = bfs(a, to).map((k) => [N[k][0], N[k][1]]);
+    return [[player.x, player.y]].concat(p);
+  }
+  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, room: roomName(b.x, b.y) })); }
   function roomCenter(k) { const R = RECTS[k]; if (!R) return null; const n = N[ROOMNODE[k]]; return n ? [n[0], n[1]] : [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2]; }
   function consolePos(id) { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; }
   function state() { return { role: player.role, px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
@@ -3256,7 +3558,7 @@ const World = (function () {
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
 
-  return { setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
+  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, bfs, N } };
 })();
 /* =====================================================================
@@ -3610,7 +3912,8 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    applyAudio();
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -3682,7 +3985,7 @@ const Game = (function () {
         toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
         Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
       }
-      if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
+      if (e.k === 'm.done') { { const [t, b] = logText(e); narrate(t + (b ? '. ' + b : ''), { level: 'info' }); } stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
       if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
       if (e.k === 'res.solar_storm') unlock('shelter');
@@ -3765,6 +4068,7 @@ const Game = (function () {
     Icons.setText($('#bAlerts'), (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon));
     $('#bSpeed').textContent = 'x' + speed;
     Icons.setText($('#bPause'), paused ? '▶' : '⏸');
+    { const bc = $('#bCrew'); Icons.setText(bc, '🧑‍🚀 ' + tr(Chars.ROLES[S.playerRole || 'commander'].name).split(' ')[0]); bc.title = (LANG === 'es' ? 'Tripulación (C) · juegas con ' : 'Crew (C) · you play as ') + tr(Chars.ROLES[S.playerRole || 'commander'].name); }
     const hint = $('#hint');
     const hi = settings.hints ? nextHint() : null;
     if (hi) { Icons.setText(hint, hi.t); hint.classList.remove('hidden'); } else hint.classList.add('hidden');
@@ -3797,6 +4101,14 @@ const Game = (function () {
       }
     }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
+    const xs = !act && Sim.expStatus(S);
+    if (xs) {
+      const k = xs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '', p = tg.startsWith('room:') ? World.roomCenter(tg.slice(5)) : World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[xs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
     const T = {
@@ -3824,6 +4136,7 @@ const Game = (function () {
     Sfx.init();
     const tgt = e.target && e.target.tagName;
     if (mgRun && mgRun.g && !mgRun.g.done) { mgRun.g.keys[e.key] = true; const d = MG.defs[mgRun.kind]; if (d.key) d.key(mgRun.g, e.key, true); if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault(); if (e.key !== 'Escape') return; }
+    if ((e.key === 'm' || e.key === 'M') && running && tgt !== 'INPUT' && tgt !== 'SELECT' && !(mgRun && mgRun.g)) { toggleMap(); e.preventDefault(); return; }
     if (e.key === 'Escape') { if (modalOpen() && running) { pop(); e.preventDefault(); } else if (running) pauseMenu(); return; }
     if (modalOpen()) return;
     if (!running) return;
@@ -3832,7 +4145,9 @@ const Game = (function () {
     if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
     if (e.key === 'e' || e.key === 'E' || e.key === 'Enter' || e.key === ' ') interact();
     if (e.key === 'p' || e.key === 'P') togglePause();
-    if (e.key === 'm' || e.key === 'M') toggleMute();
+    if (e.key === 'n' || e.key === 'N') toggleMute();
+    if (e.key === 'c' || e.key === 'C') openCrew();
+    if (e.key === 'v' || e.key === 'V') repeatVoice();
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -3954,7 +4269,7 @@ const Game = (function () {
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
-        btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
+        btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
     );
@@ -4013,7 +4328,7 @@ const Game = (function () {
     const chk = (k) => { const c = h('input', { type: 'checkbox', onchange: (e) => { s[k] = e.target.checked; applySettings(); updateHud(); } }); c.checked = !!s[k]; c.style.width = '24px'; c.style.height = '24px'; return c; };
     const size = h('select', { 'aria-label': _('textSize'), onchange: (e) => { s.scale = +e.target.value; applySettings(); } }, [1, 1.15, 1.3].map((v) => { const o = h('option', { value: v }, Math.round(v * 100) + '%'); if (v === s.scale) o.selected = true; return o; }));
     push(panel('⚙️ ' + _('settings'), h('div', null,
-      row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
+      btn('🔊 ' + (LANG === 'es' ? 'Audio y voces…' : 'Audio & voices…'), audioPanel), row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
       row('🌐 Idioma / Language', btn(_('lang'), () => { s.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); pop(); if (running) { buildHud(); updateHud(); } else mainMenu(); })),
       h('hr'), h('p', { class: 'small muted' }, LANG === 'es' ? 'Pruebas del motor: 100 simulaciones con semillas distintas. No cambian tu partida ni tu progreso.' : 'Engine tests: 100 simulations with different seeds. They do not change your game or progress.'),
       btn('🧪 ' + _('selftest'), () => selfTestPanel()),
@@ -4036,6 +4351,7 @@ const Game = (function () {
   }
   /* =================== CONSOLAS =================== */
   const CNAME = {
+    store: { es: 'Almacén de alimentos', en: 'Food storage' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, sampler: { es: 'Almacén de muestras', en: 'Sample storage' }, work: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, wastec: { es: 'Gestión de residuos', en: 'Waste management' },
     cmd: { es: 'Consola de mando', en: 'Command console' }, comms: { es: 'Comunicaciones', en: 'Communications' }, earth: { es: 'Conexión con la Tierra', en: 'Earth Connection' },
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
@@ -4051,13 +4367,12 @@ const Game = (function () {
     if (c.id === 'plant') return plantCard(c.bed, c.slot);
     if (c.id === 'wardrobe') return wardrobePanel();
     const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
-    if (!allowed(c.id)) return gatePanel(c.id, ROOM_OF[c.id]);
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
-      shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
+      shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
   }
   function incHere(rooms, body) {
@@ -4081,6 +4396,12 @@ const Game = (function () {
 
   /* ---------- Panel de consecuencias ---------- */
   const DMETA = {
+    cold: { u: { es: '0,1 kW mientras haya comida fresca', en: '0.1 kW while there is fresh food' }, r: { es: 'Apagado, lo fresco se estropea unas 10 veces más rápido.', en: 'Switched off, fresh food spoils about 10 times faster.' }, b: { es: 'Con frío, la comida fresca dura mucho más.', en: 'With cold, fresh food lasts much longer.' } },
+    ration: { u: { es: 'Cambia cuánta comida come la tripulación', en: 'Changes how much food the crew eats' }, r: { es: 'Reducidas: baja el ánimo. Abundantes: se gasta más comida.', en: 'Small: morale drops. Large: more food is used.' }, b: { es: 'Ajusta comida y ánimo según la situación.', en: 'Balances food and morale for the situation.' } },
+    cook: { u: { es: 'Comida (1 a 1,5 kg) y 0,6 kW durante 2 h', en: 'Food (1 to 1.5 kg) and 0.6 kW for 2 h' }, r: { es: 'Gasta comida de las reservas.', en: 'Uses food from the supplies.' }, b: { es: 'Sube el ánimo y el bienestar.', en: 'Raises morale and wellbeing.' } },
+    sstore: { u: { es: 'Un hueco del almacén de muestras', en: 'One slot in the sample storage' }, r: { es: 'Si clasificas mal, la muestra rinde menos ciencia.', en: 'A wrong classification yields less science.' }, b: { es: 'La muestra queda conservada y localizable.', en: 'The sample stays preserved and traceable.' } },
+    craft: { u: { es: '6 kg de materiales y 0,8 kW durante 3 h', en: '6 kg of materials and 0.8 kW for 3 h' }, r: { es: 'Gasta materiales.', en: 'Uses materials.' }, b: { es: '+1 repuesto: el mantenimiento será más rápido y barato.', en: '+1 spare part: maintenance will be faster and cheaper.' } },
+    sort: { u: { es: '1 hora de trabajo', en: '1 hour of work' }, r: { es: 'Necesitas al menos 6 kg de residuos.', en: 'You need at least 6 kg of waste.' }, b: { es: 'El próximo reciclaje recupera 8 kg en vez de 5.', en: 'The next recycling recovers 8 kg instead of 5.' } },
     lights: { u: { es: 'Electricidad para las luces LED', en: 'Electricity for LED lights' }, r: { es: 'Menos batería para otros sistemas, sobre todo de noche o con polvo.', en: 'Less battery for other systems, especially at night or with dust.' }, b: { es: 'Las plantas crecen más rápido.', en: 'Plants grow faster.' } },
     irrig: { u: { es: 'Agua del tanque', en: 'Tank water' }, r: { es: 'Si el agua baja mucho, el generador de O₂ también se queda sin agua.', en: 'If water drops a lot, the O₂ generator also runs out.' }, b: { es: 'Cultivos sanos y crecimiento.', en: 'Healthy crops and growth.' } },
     reactor: { u: { es: 'Vida útil del reactor (desgaste)', en: 'Reactor lifetime (wear)' }, r: { es: 'Más potencia = más desgaste y mantenimiento.', en: 'More power = more wear and maintenance.' }, b: { es: 'Más kW disponibles.', en: 'More kW available.' } },
@@ -4169,6 +4490,16 @@ const Game = (function () {
     });
   }
   function campaignCard() {
+    const es = LANG === 'es', C = S.camp, xs = Sim.expStatus(S);
+    if (!C) return null;
+    const exp = C.basicDone ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🏗 ' + (es ? 'Ampliación de la base' : 'Base expansion')),
+      h('div', { class: 'row' }, Sim.EXP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.xi ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t), C.done[d.id] ? 'ok' : i === C.xi ? 'info' : ''))),
+      xs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[xs.id].t) + ': '), tr(NPCDATA.CAMP[xs.id].b)), h('ul', null, xs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k]))))) :
+        h('p', { class: 'small' }, es ? '✔ Completada. Las trece instalaciones están abiertas. Opcional: no bloquea las misiones.' : '✔ Complete. All thirteen facilities are open. Optional: it never blocks missions.')) : null;
+    return h('div', null, campaignCardBasic(), exp);
+  }
+  function campaignCardBasic() {
     const es = LANG === 'es', C = S.camp;
     if (!C) return null;
     const cs = Sim.campStatus(S);
@@ -4176,7 +4507,7 @@ const Game = (function () {
       h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
       h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
       cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
-        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones principales están abiertas.' : '✔ Complete. The seven main sections are open.'));
   }
   function missionsTab() {
     const campLock = S.camp && !S.camp.basicDone;
@@ -4194,7 +4525,7 @@ const Game = (function () {
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
           campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
-          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); else narrate(tr(DATA.MIS[id].t) + '. ' + tr(DATA.MIS[id].vars[S.m[id].var]), { silent: true }); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));
@@ -4307,7 +4638,13 @@ const Game = (function () {
 
   /* ---------- Paneles de salas ---------- */
   function medPanel() {
-    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(),
+    const es = LANG === 'es', medic = S.playerRole === 'medic';
+    const worst = ['o2', 'water', 'food', 'power'].map((k) => ({ k, st: Sim.status(S, k) })).filter((x) => x.st !== 'ok').sort((a, b) => (b.st === 'crit') - (a.st === 'crit'));
+    const detail = medic ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginTop: '10px' } }, h('h3', null, '🩺 ' + (es ? 'Revisión detallada de la médica' : 'Medic detailed review')),
+      h('table', null, h('tbody', null, S.crew.map((c) => { const rate = S.t > 1 ? c.dose / (S.t / 24) : 0, left = rate > 0.001 ? Math.max(0, (S.limit - c.dose) / rate) : null; return statRow(tr(Chars.ROLES[c.role].name), fmt(rate, 2) + ' mSv/' + (es ? 'día' : 'day') + (left == null ? '' : ' · ' + (es ? 'límite en ' : 'limit in ') + fmt(left, 0) + (es ? ' días' : ' days'))); }))),
+      h('p', { class: 'small' }, worst.length ? (es ? 'Lo que más afecta al ánimo ahora: ' : 'What hurts morale most right now: ') + worst.map((x) => _(x.k)).join(', ') + '.' : (es ? 'Ahora nada afecta mucho al ánimo.' : 'Nothing hurts morale much right now.')),
+      h('p', { class: 'small muted' }, es ? 'Estimación del modelo del juego a partir del promedio hasta ahora; no es un diagnóstico médico real.' : 'Game-model estimate from the average so far; not a real medical diagnosis.')) : (es ? null : null);
+    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(), detail,
       h('table', { style: { marginTop: '10px' } }, h('tbody', null, sysRow('thermal'), sysRow('press'), statRow(LANG === 'es' ? 'Temperatura' : 'Temperature', fmt(S.sys.thermal.T) + ' °C'), statRow(LANG === 'es' ? 'Presión' : 'Pressure', fmt(S.sys.press.P) + ' kPa'))),
       h('p', { class: 'small muted' }, LANG === 'es' ? 'NASA OSDR reúne investigaciones sobre cómo el espacio afecta a seres vivos. No es un sistema médico en tiempo real: aquí las dosis son estimaciones del modelo.' : 'NASA OSDR gathers research on how space affects living things. It is not a real-time medical system: doses here are model estimates.'))));
   }
@@ -4468,7 +4805,7 @@ const Game = (function () {
   }
   function nextCall() {
     radio.cur = radio.q.shift() || null; radio.t = 0;
-    if (radio.cur) Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info');
+    if (radio.cur) { Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info'); narrateCall(radio.cur); }
     renderRadio();
   }
   function dismissCall() { nextCall(); }
@@ -4496,6 +4833,7 @@ const Game = (function () {
         c.cons ? h('div', { class: 'small muted r-cons' }, '⚠ ' + (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons) : null,
         h('div', { class: 'row', style: { gap: '6px', marginTop: '2px' } },
           btn('✔ ' + (es ? 'Entendido' : 'Got it'), dismissCall, 'sm primary'),
+          btn('🔁 ' + (es ? 'Repetir mensaje' : 'Repeat message'), () => { Voice.stop(); narrateCall(c); }, 'sm'),
           c.target ? btn('📍 ' + (es ? 'Marcar ubicación' : 'Mark location'), () => { World.setMarker(c.target, c.loc); toast(es ? 'Ubicación marcada en el minimapa' : 'Location marked on the minimap', c.loc, 'info'); }, 'sm') : null,
           c.console ? btn('🖥️ ' + (es ? 'Consultar sistema' : 'Check system'), () => { openConsole({ id: c.console }); }, 'sm') : null,
           c.why ? btn('❓ ' + (es ? 'Ver explicación' : 'See explanation'), () => (DATA.EVT[c.why] ? whyPanel(c.why) : null), 'sm') : null)));
@@ -4529,6 +4867,8 @@ const Game = (function () {
       return true;
     }
     if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'camp.exp') { const g = ND.GUIDE[p.room] || 'commander'; call({ key: 'cx' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: p.room ? (es ? 'Se ha abierto: ' : 'Now open: ') + tr(DATA.ROOMS[p.room]) + '. ' + (es ? 'Ve a conocerla: te espero allí.' : 'Go and see it: I will meet you there.') : (es ? 'Las trece instalaciones ya están abiertas.' : 'All thirteen facilities are now open.'), loc: p.room ? tr(DATA.ROOMS[p.room]) : '', target: p.room ? World.roomCenter(p.room) : null }); World.setAct('all', 'celebrate', 3); return true; }
+    if (k === 'camp.exp.start') { const C = ND.CAMP[p.id]; call({ key: 'csx' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva ampliación: ' : 'New expansion: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'crop.dead') { call({ key: 'dead' + e.n, sev: 'warn', who: 'agri', title: es ? 'Se perdió una planta' : 'A plant died', desc: (p.sp ? tr(Flora.SPECIES[p.sp].name) + ' · ' : '') + (es ? 'jardinera ' : 'planter ') + p.bed, loc: tr(DATA.ROOMS.gh), act: es ? 'Revisa humedad, luz y nutrientes de las otras plantas.' : 'Check moisture, light and nutrients of the other plants.', target: World.plantPos(p.bed - 1, 1), console: 'gh' }); return true; }
     if (k === 'job.analyze') { call({ key: 'an' + e.n, sev: 'ok', who: 'scientist', title: es ? 'Análisis terminado' : 'Analysis done', desc: es ? 'La muestra contiene minerales típicos del regolito. +12 puntos de ciencia.' : 'The sample has typical regolith minerals. +12 science points.' }); return true; }
@@ -4565,9 +4905,10 @@ const Game = (function () {
         h('div', { class: 'row', style: { justifyContent: 'space-between' } },
           h('span', { class: 'small muted' }, (i + 1) + ' / ' + lines.length),
           h('div', { class: 'row' }, i < lines.length - 1 ? btn(_('skip'), finish, 'sm') : null, btn(i < lines.length - 1 ? _('next') + ' ▶' : (LANG === 'es' ? '¡Entendido!' : 'Got it!'), () => { if (i < lines.length - 1) { i++; s.replaceChild(draw(), s.firstChild); focusFirst(s); } else finish(); }, 'primary', { autofocus: true }))));
+      Voice.speak(Voice.profileFor(ND.GUIDE[room], LANG), tr(lines[i]), { level: 'info', silent: true });
       return box;
     };
-    function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
+    function finish() { Voice.stop(); pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
   }
   function talkData(room) {
@@ -4612,32 +4953,19 @@ const Game = (function () {
       return h('div', { class: 'card', style: cur ? { borderColor: 'var(--accent)' } : {} },
         h('div', { class: 'row', style: { flexWrap: 'nowrap', alignItems: 'flex-start' } }, cv, h('div', { class: 'col', style: { gap: '4px' } },
           h('h3', null, tr(R.name)), h('span', { class: 'small' }, tr(DATA.ROLE_T[role].b)),
-          h('span', { class: 'small muted' }, (es ? 'Opera: ' : 'Operates: ') + ROOMS_OF[role].map((r) => tr(DATA.ROOMS[r])).join(', ')),
+          h('span', { class: 'small muted' }, (es ? 'Suele trabajar en: ' : 'Usually works in: ') + ROOMS_OF[role].map((r) => tr(DATA.ROOMS[r])).join(', ')),
           h('span', { class: 'small muted' }, '◆ ' + tr(R.acc)))),
-        cur ? tag('✔ ' + (es ? 'Lo llevas puesto' : 'You are wearing it'), 'ok') : btn('🧥 ' + (es ? 'Ponerse este traje' : 'Wear this suit'), () => {
+        cur ? tag('✔ ' + (es ? 'Es tu personaje actual' : 'Your current character'), 'ok') : btn('🧑‍🚀 ' + (es ? 'Jugar con este personaje' : 'Play as this crew member'), () => {
           World.setPlayerRole(role); Sim.setPlayerRole(S, role); saveRun(); pop();
-          toast((es ? 'Ahora eres: ' : 'You are now: ') + tr(R.name), es ? 'El especialista titular te acompaña como apoyo.' : 'The regular specialist stays on as support.', 'ok');
+          toast((es ? 'Ahora juegas con: ' : 'You now play as: ') + tr(R.name), es ? 'El anterior sigue en la base como compañero.' : 'The previous one stays in the base as a crewmate.', 'ok');
         }, 'primary sm'));
     });
-    push(panel('🧥 ' + (es ? 'Vestuario de especialistas' : 'Specialist wardrobe'), h('div', null,
-      h('p', { class: 'small' }, S.camp && !S.camp.basicDone ? (es ? 'Durante la familiarización puedes operar todo. Después, cada sección pedirá su especialista.' : 'During familiarization you can operate everything. Afterwards, each section needs its specialist.') : (es ? 'Cada sección necesita su especialista. Pasillos y zonas comunes son libres, y en una emergencia cualquiera puede reparar.' : 'Each section needs its specialist. Corridors and common areas are open, and in an emergency anyone can repair.')),
+    push(panel('🧑‍🚀 ' + (es ? 'Tripulación' : 'Crew'), h('div', null,
+      h('p', { class: 'small' }, es ? 'El comandante puede hacerlo todo. Cambiar de personaje es opcional: cada especialista solo aporta una ventaja. El cambio es inmediato y no pierdes ni misiones ni progreso.' : 'The commander can do everything. Switching is optional: each specialist only adds an advantage. The switch is instant and you lose no missions or progress.'),
       h('div', { class: 'grid2' }, cards))));
   }
-  function allowed(id) {
-    if (!S || !S.camp || !S.camp.basicDone) return true;
-    const need = ND.ACCESS[id]; return !need || need.includes(S.playerRole);
-  }
-  function gatePanel(id, room) {
-    const es = LANG === 'es', need = ND.ACCESS[id];
-    const incs = Sim.activeInc(S).filter((i) => i.room === room && i.fix && S.t >= i.from);
-    const storm = id === 'shield' && S.inc.some((i) => i.type === 'solar_storm' && !i.res) && !S.proto;
-    push(panel('🔐 ' + (es ? 'Se necesita otro especialista' : 'Another specialist is needed'), h('div', null,
-      h('p', null, (es ? 'Esta operación la realiza: ' : 'This operation is done by: ') + need.map((r) => tr(Chars.ROLES[r].name)).join(es ? ' o ' : ' or ') + '.'),
-      h('p', { class: 'small muted' }, (es ? 'Llevas el traje de ' : 'You are wearing the ') + tr(Chars.ROLES[S.playerRole].name) + (es ? '. Cámbialo en el vestuario 🧥 del puente de mando.' : ' suit. Change it at the 🧥 wardrobe on the bridge.')),
-      h('div', { class: 'row' }, btn('📍 ' + (es ? 'Marcar el vestuario' : 'Mark the wardrobe'), () => { World.setMarker(World.consolePos('wardrobe'), 'wardrobe'); pop(); }, 'primary'),
-        incs.map((i) => btn('🔧 ' + (es ? 'Reparación de emergencia: ' : 'Emergency repair: ') + tr(DATA.EVT[i.type].t), () => { pop(); repairFlow(i); }, 'danger')),
-        storm ? btn('🚨 ' + (es ? 'Activar protocolo de refugio (emergencia)' : 'Turn on shelter protocol (emergency)'), () => { pop(); confirmDecision('proto', { v: true }, es ? 'Protocolo de refugio' : 'Shelter protocol'); }, 'danger') : null)), { narrow: true }));
-  }
+  /** El comandante (y cualquier especialista) puede operar todas las consolas: el especialista solo aporta ventajas. */
+  function allowed() { return true; }
 
   /* ---------- Ficha de planta ---------- */
   const ISSUE = {
@@ -4870,9 +5198,394 @@ const Game = (function () {
   /* ---------- Pregunta de comprensión por nivel ---------- */
   const QV = { 1: ['drop', 'door', 'bolt'], 2: ['air', 'leaf', 'thermo'], 3: ['sun', 'shield', 'earth'], 4: ['rover', 'gear', 'thermo'], 5: ['shield', 'earth', 'moon'], 6: ['bolt', 'leaf', 'air'], 7: ['antenna', 'clock', 'rover'] };
   const quizOf = (id) => (isAdv() ? DATA.QUIZ_A[id] : DATA.QUIZ[id]);
+
+  /* =====================================================================
+     MAPA COMPLETO DE LA BASE (tecla M) y selector de tripulación (tecla C)
+     El mapa se dibuja a partir de World.RECTS, del estado de la partida
+     y del grafo de rutas real; no tiene datos propios de geometría.
+     ===================================================================== */
+  const MAPFN = {
+    bridge: { es: 'Centro de operaciones: misiones, comunicaciones con la Tierra, alertas y vestuario.', en: 'Operations center: missions, Earth communications, alerts and wardrobe.' },
+    life: { es: 'Dormitorios: camas, taquillas y descanso de la tripulación.', en: 'Crew quarters: beds, lockers and crew rest.' },
+    med: { es: 'Enfermería: revisión de la tripulación y condiciones de habitabilidad.', en: 'Sick bay: crew checks and habitability conditions.' },
+    kitchen: { es: 'Cocina y comedor: raciones y comidas de la tripulación.', en: 'Kitchen & mess: rations and crew meals.' },
+    food: { es: 'Almacén de alimentos: reservas, conservación y cosechas.', en: 'Food storage: reserves, preservation and harvests.' },
+    samples: { es: 'Almacén de muestras: recibe y conserva las muestras del rover.', en: 'Sample storage: receives and keeps the rover samples.' },
+    workshop: { es: 'Taller de mantenimiento: herramientas, piezas y reparaciones.', en: 'Maintenance workshop: tools, parts and repairs.' },
+    waste: { es: 'Gestión de residuos: separación y recuperación de materiales.', en: 'Waste management: sorting and material recovery.' },
+    gh: { es: 'Invernadero: plantas individuales, riego, luz LED y cosecha.', en: 'Greenhouse: individual plants, irrigation, LED light and harvest.' },
+    reactor: { es: 'Reactor y energía: generación, baterías, consumos y prioridades.', en: 'Reactor & power: generation, batteries, loads and priorities.' },
+    water: { es: 'Soporte vital: oxígeno, reciclaje de agua, presión y calidad del aire.', en: 'Life support: oxygen, water recycling, pressure and air quality.' },
+    rad: { es: 'Bahía del rover, esclusa y refugio contra la radiación.', en: 'Rover bay, airlock and radiation shelter.' },
+    lab: { es: 'Laboratorio: análisis de muestras, espectrómetro y registro de resultados.', en: 'Lab: sample analysis, spectrometer and results log.' },
+    hall: { es: 'Pasillo que conecta las salas del puesto avanzado.', en: 'Corridor linking the outpost rooms.' },
+    lock: { es: 'Esclusa: paso entre el interior y la superficie.', en: 'Airlock: passage between inside and the surface.' },
+    pad: { es: 'Superficie exterior: aquí se recogen muestras con el traje puesto.', en: 'Outside surface: samples are collected here in a suit.' }
+  };
+  const MAPSYS = { bridge: ['comms'], life: ['thermal', 'press'], med: ['thermal', 'press'], gh: ['gh'], reactor: ['reactor', 'solar'], water: ['o2', 'rec'], rad: ['shield', 'isru'], lab: ['lab'] };
+  const ROLECOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
+  const isCorr = (k) => /^v\d$/.test(k);
+
+  function mapOpen() { return stack.length > 0 && !!stack[stack.length - 1]._map; }
+  function toggleMap() {
+    if (mapOpen()) { pop(); return; }
+    if (!running || modalOpen() || !S) return;
+    openMap();
+  }
+
+  function openMap() {
+    const es = LANG === 'es', D = World.DIM, RC = World.RECTS;
+    const st = { sel: null, route: false, z: 1, cx: D.W / 2, cy: D.H / 2, drag: null, moved: false };
+    const CW = 720, CH = 560;
+    const cvm = h('canvas', { width: CW, height: CH, class: 'mapcv', tabindex: '0', role: 'img', 'aria-label': es ? 'Mapa completo del puesto avanzado. Pulsa una sala para ver su ficha. Flechas para desplazar, más y menos para el zoom.' : 'Full outpost map. Select a room to see its card. Arrows to pan, plus and minus to zoom.' });
+    const info = h('div', { class: 'mapinfo', 'aria-live': 'polite' });
+    const sc = () => Math.min(CW / D.W, CH / D.H) * st.z;
+    const X = (x) => CW / 2 + (x - st.cx) * sc(), Y = (y) => CH / 2 + (y - st.cy) * sc();
+    const rname = (k) => tr(DATA.ROOMS[k] || { es: k, en: k });
+    const alertsIn = (k) => S.inc.filter((i) => !i.res && S.t >= i.from && i.room === k);
+    const crewIn = (k) => World.crew().filter((m) => m.room === k);
+    const roomOf = (k) => (isCorr(k) ? 'hall' : k);
+    const ids = () => Object.keys(RC);
+
+    function draw(t) {
+      const x = cvm.getContext('2d'), s = sc();
+      x.clearRect(0, 0, CW, CH); x.fillStyle = '#070b18'; x.fillRect(0, 0, CW, CH);
+      x.lineJoin = 'round';
+      for (const k of ids()) {
+        const R = RC[k], lk = World.roomLocked(roomOf(k)), col = World.ROOMCOL[k] || (k === 'pad' ? '#9a7b58' : '#5a6890');
+        const rx = X(R[0]), ry = Y(R[1]), rw = (R[2] - R[0] + 1) * s, rh = (R[3] - R[1] + 1) * s;
+        x.fillStyle = lk ? '#151a29' : col + '4d'; x.fillRect(rx, ry, rw, rh);
+        if (lk) { x.save(); x.beginPath(); x.rect(rx, ry, rw, rh); x.clip(); x.strokeStyle = '#ffffff22'; x.lineWidth = 2; for (let d = -rh; d < rw; d += 14) { x.beginPath(); x.moveTo(rx + d, ry + rh); x.lineTo(rx + d + rh, ry); x.stroke(); } x.restore(); }
+        const sel = roomOf(k) === st.sel;
+        x.strokeStyle = sel ? '#ffc24a' : lk ? '#6b7388' : col; x.lineWidth = sel ? 3 : 1.5; x.strokeRect(rx, ry, rw, rh);
+      }
+      // puertas y esclusas (las del mundo real)
+      for (const d of World.doorList()) {
+        const lockd = d.kind !== 'auto';
+        x.fillStyle = lockd ? '#ffc24a' : '#38d6ff'; x.fillRect(X(d.x), Y(d.y) + s * 0.2, 2 * s, Math.max(3, s * 0.6));
+      }
+      // etiquetas e iconos de estado
+      for (const k of ids()) {
+        if (isCorr(k)) continue;
+        const R = RC[k], lk = World.roomLocked(k), cx = X((R[0] + R[2] + 1) / 2), cy = Y((R[1] + R[3] + 1) / 2), rw = (R[2] - R[0] + 1) * s;
+        const fs = Math.max(10, Math.min(15, 9 + st.z * 2));
+        x.font = '700 ' + fs + 'px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillStyle = lk ? '#9aa3bb' : '#f2f6ff'; x.strokeStyle = '#0008'; x.lineWidth = 3;
+        x.strokeText(rname(k), cx, cy + (lk ? 14 : 0), rw - 6); x.fillText(rname(k), cx, cy + (lk ? 14 : 0), rw - 6);
+        if (lk) { Icons.draw(x, 'lock', cx, cy - 8, 22, '#ffc24a'); }
+        const al = alertsIn(k);
+        if (al.length) {
+          const crit = al.some((i) => i.sev === 'crit'), pul = 0.55 + 0.45 * Math.sin(t / 220);
+          x.save(); x.globalAlpha = pul; x.strokeStyle = crit ? '#ff6b6b' : '#ffc24a'; x.lineWidth = 4; x.strokeRect(X(R[0]) + 2, Y(R[1]) + 2, rw - 4, (R[3] - R[1] + 1) * s - 4); x.restore();
+          Icons.draw(x, crit ? 'crit' : 'warn', X(R[2] + 1) - 14, Y(R[1]) + 14, 20, crit ? '#ff6b6b' : '#ffc24a');
+        }
+      }
+      // ruta
+      if (st.route && st.sel) {
+        const pts = World.route(st.sel);
+        if (pts && pts.length > 1) {
+          x.save(); x.strokeStyle = '#38d6ff'; x.lineWidth = 4; x.setLineDash([10, 8]); x.lineDashOffset = -t / 40; x.beginPath();
+          pts.forEach((p, i) => (i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1])))); x.stroke(); x.restore();
+        }
+      }
+      // objetivo activo y destino marcado
+      const hi = nextHint();
+      if (hi && hi.p) Icons.draw(x, 'target', X(hi.p[0]), Y(hi.p[1]), 22, '#ffc24a');
+      const mk = World.marker;
+      if (mk) { x.strokeStyle = '#ff6b6b'; x.lineWidth = 3; x.beginPath(); x.arc(X(mk.p[0]), Y(mk.p[1]), 10 + 3 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'pin', X(mk.p[0]), Y(mk.p[1]) - 16, 20, '#ff6b6b'); }
+      // tripulación (NPC) y jugador
+      for (const m of World.crew()) { x.fillStyle = ROLECOL[m.role]; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.arc(X(m.x), Y(m.y), 6, 0, 7); x.fill(); x.stroke(); }
+      const P = World.player;
+      x.fillStyle = '#fff'; x.beginPath(); x.arc(X(P.x), Y(P.y), 8, 0, 7); x.fill(); x.strokeStyle = '#38d6ff'; x.lineWidth = 3; x.stroke();
+      x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom';
+      x.strokeText(es ? 'Tú' : 'You', X(P.x), Y(P.y) - 11); x.fillText(es ? 'Tú' : 'You', X(P.x), Y(P.y) - 11);
+    }
+
+    function card() {
+      info.innerHTML = '';
+      const k = st.sel;
+      if (!k) {
+        info.append(h('p', { class: 'small muted' }, es ? 'Selecciona una sala para ver su ficha. Tú eres el punto blanco; los puntos de color son tus compañeros.' : 'Select a room to see its card. You are the white dot; the colored dots are your crewmates.'),
+          h('div', { class: 'row small' }, Object.keys(ROLECOL).map((r) => h('span', { class: 'chip', style: { borderColor: ROLECOL[r] } }, h('i', { style: { background: ROLECOL[r], width: '10px', height: '10px', borderRadius: '50%', display: 'inline-block' } }), ' ' + tr(Chars.ROLES[r].name)))));
+        return;
+      }
+      const lk = World.roomLocked(k), al = alertsIn(k), crew = crewIn(k), here = World.roomName(World.player.x, World.player.y) === k;
+      const sys = (MAPSYS[k] || []).filter((q) => S.sys[q] && S.sys[q].h != null);
+      const cs = lk ? Sim.campStatus(S) : null;
+      info.append(
+        h('div', { class: 'row', style: { alignItems: 'center' } }, h('h3', { style: { margin: 0 } }, rname(k)),
+          lk ? tag('🔒 ' + (es ? 'Bloqueada' : 'Locked'), 'warn') : al.length ? tag((al.some((i) => i.sev === 'crit') ? '⛔ ' : '⚠ ') + (es ? 'Con alerta' : 'Alert'), al.some((i) => i.sev === 'crit') ? 'crit' : 'warn') : tag('✔ ' + (es ? 'Disponible' : 'Available'), 'ok'),
+          here ? tag('📍 ' + (es ? 'Estás aquí' : 'You are here'), 'ok') : null),
+        h('p', { class: 'small' }, tr(MAPFN[k] || { es: '', en: '' })),
+        lk ? h('p', { class: 'small' }, es ? 'Acceso bloqueado: ' + (cs ? 'se abre al avanzar en «' + tr(NPCDATA.CAMP[cs.id].t) + '».' : 'completa la misión de familiarización en curso.') + ' Las emergencias nunca quedan bloqueadas.' : 'Access locked: ' + (cs ? 'it opens as you progress in "' + tr(NPCDATA.CAMP[cs.id].t) + '".' : 'finish the current familiarization mission.') + ' Emergencies are never blocked.') : null,
+        sys.length ? h('p', { class: 'small' }, (es ? 'Sistemas: ' : 'Systems: ') + sys.map((q) => tr(DATA.SYS_T[q]) + ' ' + Math.round(S.sys[q].h) + ' %').join(' · ')) : null,
+        al.length ? h('p', { class: 'small' }, '⚠ ' + al.map((i) => tr(DATA.EVT[i.type].t)).join(' · ')) : null,
+        crew.length ? h('p', { class: 'small' }, (es ? 'Aquí: ' : 'Here: ') + crew.map((m) => tr(Chars.ROLES[m.role].name)).join(', ')) : null,
+        h('div', { class: 'row' },
+          btn('📍 ' + (es ? 'Marcar destino' : 'Mark destination'), () => { World.setMarker(World.roomCenter(k), rname(k)); toast(es ? 'Destino marcado' : 'Destination marked', rname(k), 'ok'); card(); }, 'primary sm'),
+          lk ? null : btn((st.route ? '✖ ' : '🗺 ') + (st.route ? (es ? 'Ocultar ruta' : 'Hide route') : (es ? 'Mostrar ruta' : 'Show route')), () => { st.route = !st.route; card(); }, 'sm'),
+          btn('🎯 ' + (es ? 'Centrar en la sala' : 'Center on room'), () => { const R = RC[k]; st.cx = (R[0] + R[2] + 1) / 2; st.cy = (R[1] + R[3] + 1) / 2; }, 'sm ghost')));
+    }
+
+    function pick(px, py) {
+      const s = sc(), wx = (px - CW / 2) / s + st.cx, wy = (py - CH / 2) / s + st.cy;
+      const k = ids().find((q) => { const R = RC[q]; return wx >= R[0] && wx < R[2] + 1 && wy >= R[1] && wy < R[3] + 1; });
+      st.sel = k ? roomOf(k) : null; if (!st.sel) st.route = false; card();
+    }
+    const clampC = () => { st.cx = Math.max(0, Math.min(D.W, st.cx)); st.cy = Math.max(0, Math.min(D.H, st.cy)); };
+    const zoom = (d) => { st.z = Math.max(1, Math.min(3.5, st.z * d)); if (st.z === 1) { st.cx = D.W / 2; st.cy = D.H / 2; } clampC(); };
+    const toCv = (e) => { const r = cvm.getBoundingClientRect(); return [(e.clientX - r.left) * CW / r.width, (e.clientY - r.top) * CH / r.height]; };
+    cvm.addEventListener('pointerdown', (e) => { cvm.setPointerCapture(e.pointerId); st.drag = toCv(e); st.moved = false; });
+    cvm.addEventListener('pointermove', (e) => {
+      if (!st.drag) return; const p = toCv(e), dx = p[0] - st.drag[0], dy = p[1] - st.drag[1];
+      if (Math.abs(dx) + Math.abs(dy) > 5) st.moved = true;
+      if (st.moved && st.z > 1) { st.cx -= dx / sc(); st.cy -= dy / sc(); clampC(); st.drag = p; }
+    });
+    cvm.addEventListener('pointerup', (e) => { if (st.drag && !st.moved) { const p = toCv(e); pick(p[0], p[1]); } st.drag = null; });
+    cvm.addEventListener('wheel', (e) => { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
+    cvm.addEventListener('keydown', (e) => {
+      const stp = 3 / st.z * 2;
+      if (e.key === 'ArrowLeft') st.cx -= stp; else if (e.key === 'ArrowRight') st.cx += stp; else if (e.key === 'ArrowUp') st.cy -= stp; else if (e.key === 'ArrowDown') st.cy += stp;
+      else if (e.key === '+' || e.key === '=') zoom(1.25); else if (e.key === '-' || e.key === '_') zoom(0.8); else return;
+      clampC(); e.preventDefault();
+    });
+
+    const tools = h('div', { class: 'row' },
+      btn('＋', () => zoom(1.25), 'sm', { 'aria-label': 'Zoom +' }), btn('－', () => zoom(0.8), 'sm', { 'aria-label': 'Zoom -' }),
+      btn('📍 ' + (es ? 'Centrar en mí' : 'Center on me'), () => { st.cx = World.player.x; st.cy = World.player.y; if (st.z < 2) st.z = 2; clampC(); }, 'sm'),
+      btn('↔ ' + (es ? 'Ver mundo completo' : 'Full view'), () => { st.z = 1; st.cx = D.W / 2; st.cy = D.H / 2; }, 'sm ghost'),
+      h('span', { class: 'small muted' }, es ? 'Azul: puertas · naranja: esclusa. Cierra con M o Esc; el tiempo está en pausa.' : 'Blue: doors · orange: airlock. Close with M or Esc; time is paused.'));
+    const body = h('div', { class: 'col' }, tools, cvm, info);
+    const s = push(panel('🗺 ' + (es ? 'Mapa de la base' : 'Base map'), body), { sticky: true, onclose: () => { clearInterval(iv); } });
+    s._map = true;
+    const iv = setInterval(() => { if (!s.isConnected) { clearInterval(iv); return; } draw(performance.now()); }, 90);
+    card(); draw(performance.now());
+    return s;
+  }
+
+  function openCrew() { if (!S || !running || modalOpen()) return; wardrobePanel(); }
+
+  /* =====================================================================
+     INSTALACIONES NUEVAS: almacén de alimentos, cocina, almacén de muestras,
+     taller y gestión de residuos. Todas las acciones pasan por Sim.decide
+     (panel de consecuencias) y usan el estado real de la simulación.
+     Modelo educativo simplificado: no sustituye datos de agencias espaciales.
+     ===================================================================== */
+  const barEl = (v, max, cls) => h('div', { class: 'meter', style: { cursor: 'default', minWidth: '120px' } }, h('div', { class: 'bar' }, h('i', { style: { width: Math.max(0, Math.min(100, (v / max) * 100)) + '%', background: cls === 'warn' ? 'var(--warning)' : cls === 'crit' ? 'var(--danger)' : '' } })));
+  const lvlOf = (v, max, warn, crit) => (v / max <= crit ? 'crit' : v / max <= warn ? 'warn' : 'ok');
+  const dayHour = (t) => { const d = Math.floor(t / 24) + 1, hh = Math.floor(t % 24); return (LANG === 'es' ? 'día ' : 'day ') + d + ' · ' + String(hh).padStart(2, '0') + ':00'; };
+  const FOODN = { romaine: { es: 'lechuga romana', en: 'romaine lettuce' }, mizuna: { es: 'mizuna', en: 'mizuna' }, radish: { es: 'rábano', en: 'radish' }, chili: { es: 'chile', en: 'chili' }, zinnia: { es: 'flor comestible', en: 'edible flower' } };
+  const CATN = { regolith: { es: 'Regolito (polvo y suelo)', en: 'Regolith (dust and soil)' }, rock: { es: 'Roca', en: 'Rock' }, ice: { es: 'Hielo', en: 'Ice' } };
+  const STN = { new: { es: 'Recibida', en: 'Received' }, stored: { es: 'Conservada', en: 'Preserved' }, degraded: { es: 'Deteriorada', en: 'Degraded' } };
+  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
+
+  function foodModel() {
+    const df = Sim.DIFFS[S.diff], per = Sim.P.FOOD_PER_PERSON_DAY * df.cons * (Sim.RATION[S.pant.ration] || 1);
+    const total = S.r.food.v, fresh = Math.min(S.pant.fresh, total), packed = Math.max(0, total - fresh), perDay = per * S.N;
+    return { total, fresh, packed, perDay, per, days: perDay > 0 ? total / perDay : 99 };
+  }
+
+  /* ---------- Almacén de alimentos ---------- */
+  function storePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv'; Sim.campFlag(S, 'store_open');
+    livePanel(() => {
+      const m = foodModel(), P = S.pant, lvl = lvlOf(m.total, S.r.food.max, 0.3, 0.12);
+      const crops = Object.keys(S.st.crops || {});
+      return panel('🧺 ' + consoleName('store'), h('div', null, incHere(['gh']),
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, (es ? 'Reservas' : 'Supplies')),
+            barEl(m.total, S.r.food.max, lvl === 'ok' ? '' : lvl),
+            adv ? h('table', null, h('tbody', null, statRow(es ? 'Total' : 'Total', fmt(m.total, 1) + ' kg', lvl), statRow(es ? 'Fresco' : 'Fresh', fmt(m.fresh, 1) + ' kg'), statRow(es ? 'Raciones de reserva' : 'Reserve rations', fmt(m.packed, 1) + ' kg'),
+              statRow(es ? 'Consumo de la tripulación' : 'Crew consumption', fmt(m.perDay, 2) + ' kg/' + (es ? 'día' : 'day')), statRow(es ? 'Autonomía' : 'Supply left', fmt(m.days, 1) + (es ? ' días' : ' days')))) :
+              h('div', null, h('p', null, (es ? 'Comida para unos ' : 'Food for about ') + Math.floor(m.days) + (es ? ' días.' : ' days.')), h('p', { class: 'small' }, (es ? 'Fresca: ' : 'Fresh: ') + fmt(m.fresh, 1) + ' kg · ' + (es ? 'de reserva: ' : 'reserve: ') + fmt(m.packed, 1) + ' kg'))),
+          h('div', { class: 'card' }, h('h3', null, '❄ ' + (es ? 'Frío y conservación' : 'Cold storage')),
+            h('p', { class: 'small' }, es ? 'Lo fresco se estropea más rápido sin frío. El frigorífico gasta un poco de energía (0,1 kW).' : 'Fresh food spoils faster without cold. The fridge uses a little energy (0.1 kW).'),
+            tag(P.cold ? '✔ ' + (es ? 'Frigorífico encendido' : 'Fridge on') : '⚠ ' + (es ? 'Frigorífico apagado' : 'Fridge off'), P.cold ? 'ok' : 'warn'),
+            h('p', { class: 'small muted' }, (es ? 'Comida estropeada hasta ahora: ' : 'Spoiled so far: ') + fmt(S.st.spoiled, 2) + ' kg'),
+            btn(P.cold ? '⏹ ' + (es ? 'Apagar frío' : 'Turn cold off') : '▶ ' + (es ? 'Encender frío' : 'Turn cold on'), () => confirmDecision('cold', { v: !P.cold }, es ? 'Frigorífico' : 'Fridge'), 'sm'))),
+        h('h3', null, (es ? 'Tipos de alimento' : 'Food types')),
+        h('p', { class: 'small' }, (es ? 'Cosechado en la base: ' : 'Grown in the base: ') + (crops.length ? crops.map((k) => tr(FOODN[k] || { es: k, en: k }) + ' ×' + S.st.crops[k]).join(' · ') : (es ? 'todavía nada (cultiva en el invernadero)' : 'nothing yet (grow in the greenhouse)')) + (es ? '. Y raciones de reserva liofilizadas.' : '. Plus freeze-dried reserve rations.')),
+        h('h3', null, (es ? 'Entradas y salidas' : 'Stock in and out')),
+        P.log.length ? h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, es ? 'Cuándo' : 'When'), h('th', null, es ? 'Movimiento' : 'Movement'), h('th', null, es ? 'Cantidad' : 'Amount'))),
+          h('tbody', null, P.log.slice(-8).reverse().map((e) => h('tr', null, h('td', null, dayHour(e.t)), h('td', null, (e.k === 'in' ? '▲ ' + (es ? 'Entra cosecha: ' : 'Harvest in: ') : '▼ ' + (es ? 'Sale para cocina: ' : 'Out to kitchen: ')) + (FOODN[e.w] ? tr(FOODN[e.w]) : e.w === 'salad' ? (es ? 'ensalada' : 'salad') : e.w === 'ration' ? (es ? 'ración' : 'ration') : e.w)), h('td', null, fmt(e.kg, 2) + ' kg')))))) :
+          h('p', { class: 'small muted' }, es ? 'Aún no hay movimientos. Las cosechas entran aquí y la cocina saca alimentos.' : 'No movements yet. Harvests come in here and the kitchen takes food out.'),
+        h('p', { class: 'small muted' }, es ? 'Modelo educativo simplificado del deterioro de alimentos.' : 'Simplified educational model of food spoilage.')));
+    });
+  }
+
+  /* ---------- Cocina y comedor ---------- */
+  function kitchenPanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    livePanel(() => {
+      const m = foodModel(), P = S.pant, wait = Math.max(0, 8 - (S.t - P.mealT)), hh = S.t % 24;
+      const next = [8, 13, 20].map((x) => (x > hh ? x - hh : x + 24 - hh)).reduce((a, b) => Math.min(a, b));
+      const RN = { low: { es: 'Raciones reducidas', en: 'Small rations' }, normal: { es: 'Raciones normales', en: 'Normal rations' }, high: { es: 'Raciones abundantes', en: 'Large rations' } };
+      const RD = { low: { es: 'Gasta un 20 % menos de comida, pero baja el ánimo.', en: 'Uses 20% less food, but lowers morale.' }, normal: { es: 'Equilibrio entre comida y ánimo.', en: 'Balance between food and morale.' }, high: { es: 'Sube el ánimo, pero gasta un 15 % más de comida.', en: 'Raises morale, but uses 15% more food.' } };
+      return panel('🥗 ' + consoleName('kitchen'), h('div', null,
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, es ? 'Raciones disponibles' : 'Rations available'),
+            adv ? h('table', null, h('tbody', null, statRow(es ? 'Comida total' : 'Total food', fmt(m.total, 1) + ' kg'), statRow(es ? 'Por persona y día' : 'Per person per day', fmt(m.per, 2) + ' kg'), statRow(es ? 'Autonomía' : 'Supply left', fmt(m.days, 1) + (es ? ' días' : ' days')))) :
+              h('p', null, (es ? 'Hay comida para unos ' : 'There is food for about ') + Math.floor(m.days) + (es ? ' días.' : ' days.')),
+            h('p', { class: 'small muted' }, es ? 'Referencia orientativa: una persona necesita unas 2 500 kcal al día (varía; no es consejo médico).' : 'Rough reference: a person needs about 2,500 kcal a day (it varies; not medical advice).'),
+            h('p', { class: 'small' }, (es ? 'Próxima comida del horario: en ' : 'Next scheduled meal: in ') + fmt(next, 0) + ' h (08:00 · 13:00 · 20:00)')),
+          h('div', { class: 'card' }, h('h3', null, es ? 'Plan de raciones' : 'Ration plan'),
+            ['low', 'normal', 'high'].map((k) => h('div', { class: 'row', style: { margin: '4px 0', alignItems: 'center' } },
+              P.ration === k ? tag('✔ ' + tr(RN[k]), 'ok') : btn(tr(RN[k]), () => confirmDecision('ration', { v: k }, tr(RN[k])), 'sm'), h('span', { class: 'small muted' }, tr(RD[k])))))),
+        h('h3', null, es ? 'Preparar una comida' : 'Prepare a meal'),
+        h('p', { class: 'small' }, wait > 0 ? '⏳ ' + (es ? 'Se puede preparar otra comida especial en ' : 'Another special meal can be prepared in ') + fmt(wait, 1) + ' h.' : (es ? 'Una comida especial cada 8 horas sube el ánimo de la tripulación.' : 'One special meal every 8 hours lifts the crew morale.')),
+        h('div', { class: 'row' },
+          btn('🥗 ' + (es ? 'Ensalada fresca (1,5 kg de lo fresco)' : 'Fresh salad (1.5 kg of fresh produce)'), () => confirmDecision('cook', { r: 'salad' }, es ? 'Ensalada fresca' : 'Fresh salad'), 'primary'),
+          btn('🍲 ' + (es ? 'Ración caliente de reserva (1 kg)' : 'Hot reserve ration (1 kg)'), () => confirmDecision('cook', { r: 'ration' }, es ? 'Ración caliente' : 'Hot ration'))),
+        h('p', { class: 'small muted' }, (es ? 'Comidas preparadas hasta ahora: ' : 'Meals prepared so far: ') + S.st.meals + '. ' + (es ? 'Enseña a planificar la comida y gestionar reservas.' : 'It teaches food planning and managing supplies.'))));
+    });
+  }
+
+  /* ---------- Almacén de muestras ---------- */
+  function samplePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    livePanel(() => {
+      const L = S.sampleList, open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
+      const used = L.filter((e) => e.slot && e.an !== 'done').length, left = Sim.SAMPLE_SLOTS - used;
+      const row = (e) => {
+        const fresh = e.state === 'new' || e.state === 'degraded';
+        return h('div', { class: 'card', style: e.state === 'degraded' ? { borderColor: 'var(--warning)' } : {} },
+          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
+            e.an === 'inlab' ? tag('🔬 ' + (es ? 'En el laboratorio' : 'In the lab'), 'ok') : null),
+          h('p', { class: 'small' }, (es ? 'Origen: ' : 'Origin: ') + tr(ORIGN[e.origin] || ORIGN.rover) + ' · ' + (es ? 'recogida: ' : 'collected: ') + dayHour(e.t) + ' · ' + (es ? 'categoría: ' : 'category: ') + (e.label ? tr(CATN[e.label]) : (es ? 'sin clasificar' : 'not classified')) + ' · ' + (es ? 'ubicación: ' : 'location: ') + (e.slot ? (es ? 'estante ' : 'shelf ') + e.slot : '—')),
+          fresh && e.an === 'pending' ? h('div', { class: 'row' }, h('span', { class: 'small' }, es ? 'Clasifica y guarda:' : 'Classify and store:'),
+            Sim.SAMPLE_CATS.map((c) => btn(tr(CATN[c]), () => confirmDecision('sstore', { id: e.id, label: c }, e.id + ' · ' + tr(CATN[c])), 'sm'))) : null,
+          e.an === 'pending' && e.state !== 'new' ? h('div', { class: 'row' }, btn('🔬 ' + (es ? 'Enviar al laboratorio' : 'Send to the lab'), () => confirmDecision('analyze', { id: e.id }, e.id), 'primary sm')) : null,
+          e.an === 'pending' && e.state === 'new' ? h('p', { class: 'small muted' }, es ? 'Sin guardar se deteriora en 24 h.' : 'Unstored, it degrades within 24 h.') : null);
+      };
+      return panel('🧪 ' + consoleName('sampler'), h('div', null,
+        h('p', { class: 'small' }, (es ? 'Huecos libres: ' : 'Free slots: ') + left + '/' + Sim.SAMPLE_SLOTS + ' · ' + (es ? 'por analizar: ' : 'to analyze: ') + S.samples + ' · ' + (es ? 'análisis completados: ' : 'analyses done: ') + done.length),
+        open.length ? open.map(row) : h('p', { class: 'muted' }, es ? 'No hay muestras. Recógelas con el rover o saliendo al exterior.' : 'No samples yet. Collect them with the rover or by going outside.'),
+        done.length ? h('div', null, h('h3', null, es ? 'Análisis registrados' : 'Recorded analyses'),
+          h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'ID'), h('th', null, es ? 'Categoría' : 'Category'), h('th', null, es ? 'Conservación' : 'Condition'), h('th', null, es ? 'Ciencia' : 'Science'))),
+            h('tbody', null, done.slice(-6).reverse().map((e) => h('tr', null, h('td', null, e.id), h('td', null, e.label ? tr(CATN[e.label]) : '—'), h('td', null, tr(STN[e.state])), h('td', null, '+' + e.sci))))))) : null,
+        adv ? h('p', { class: 'small muted' }, es ? 'Clasificar bien una muestra da +3 de ciencia; una muestra deteriorada rinde menos (7 en vez de 12).' : 'A correct classification gives +3 science; a degraded sample yields less (7 instead of 12).') : null,
+        h('p', { class: 'small muted' }, es ? 'Son muestras ficticias de juego: no son muestras reales de NASA.' : 'These are fictional game samples: they are not real NASA samples.')));
+    });
+  }
+
+  /* ---------- Taller de mantenimiento ---------- */
+  function workPanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    const SYSK = ['reactor', 'solar', 'o2', 'rec', 'thermal', 'press', 'comms', 'shield'];
+    livePanel(() => panel('🛠 ' + consoleName('work'), h('div', null, incHere(['reactor', 'water', 'life', 'rad', 'bridge']),
+      h('div', { class: 'grid2' },
+        h('div', { class: 'card' }, h('h3', null, es ? 'Inventario técnico' : 'Technical stock'),
+          h('table', null, h('tbody', null, statRow(es ? 'Piezas de repuesto' : 'Spare parts', S.parts), statRow(es ? 'Materiales' : 'Materials', fmt(S.r.mat.v, 1) + ' kg', lvlOf(S.r.mat.v, S.r.mat.max, 0.12, 0.05)), statRow(es ? 'Piezas fabricadas' : 'Parts made', S.st.crafted))),
+          S.jobs.filter((j) => j.kind === 'craft' || j.kind === 'maint').map((j) => h('p', { class: 'small' }, '⏳ ' + (j.kind === 'craft' ? (es ? 'Fabricando repuesto: ' : 'Making a part: ') : (es ? 'Mantenimiento: ' : 'Maintenance: ')) + fmt(j.h, 1) + ' h')),
+          btn('⚙ ' + (es ? 'Fabricar un repuesto (6 kg de materiales)' : 'Make a spare part (6 kg of materials)'), () => confirmDecision('craft', {}, es ? 'Fabricar repuesto' : 'Make spare part'), 'primary'),
+          h('p', { class: 'small muted' }, es ? 'Con un repuesto, el mantenimiento dura menos y no gasta materiales. La ingeniera Ana fabrica más rápido.' : 'With a spare part, maintenance is shorter and uses no materials. Engineer Ana makes parts faster.')),
+        h('div', { class: 'card' }, h('h3', null, es ? 'Mantenimiento de equipos' : 'Equipment maintenance'),
+          SYSK.filter((k) => S.sys[k]).map((k) => h('div', { class: 'row', style: { alignItems: 'center', margin: '3px 0' } },
+            h('span', { style: { minWidth: '140px' } }, tr(DATA.SYS_T[k]) + (adv ? ' ' + Math.round(S.sys[k].h) + ' %' : '')), barEl(S.sys[k].h, 100, S.sys[k].h < 30 ? 'crit' : S.sys[k].h < 70 ? 'warn' : ''),
+            btn('🔧', () => confirmDecision('maint', { sys: k }, tr(DATA.SYS_T[k])), 'sm', { 'aria-label': (es ? 'Mantener ' : 'Maintain ') + tr(DATA.SYS_T[k]) }))))))));
+  }
+
+  /* ---------- Gestión de residuos ---------- */
+  function wastePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv', w = S.r.waste, lvl = w.v / w.max >= 0.9 ? 'crit' : w.v / w.max >= 0.75 ? 'warn' : 'ok';
+    livePanel(() => panel('♻️ ' + consoleName('wastec'), h('div', null,
+      h('div', { class: 'grid2' },
+        h('div', { class: 'card' }, h('h3', null, es ? 'Residuos almacenados' : 'Stored waste'), barEl(w.v, w.max, lvl === 'ok' ? '' : lvl),
+          adv ? h('table', null, h('tbody', null, statRow(es ? 'Nivel' : 'Level', fmt(w.v, 1) + ' / ' + w.max + ' kg', lvl), statRow(es ? 'Producción' : 'Production', fmt(w.prod * 24, 2) + ' kg/' + (es ? 'día' : 'day')), statRow(es ? 'Materiales recuperados' : 'Recovered materials', fmt(S.r.mat.v, 1) + ' kg'))) :
+            h('p', null, lvl === 'ok' ? (es ? 'Hay sitio de sobra.' : 'Plenty of room.') : (es ? '¡Se está llenando! Recicla pronto.' : 'It is filling up! Recycle soon.'))),
+        h('div', { class: 'card' }, h('h3', null, es ? 'Separar y reciclar' : 'Sort and recycle'),
+          h('p', { class: 'small' }, es ? 'Separar antes de reciclar recupera más material: 8 kg en vez de 5.' : 'Sorting before recycling recovers more material: 8 kg instead of 5.'),
+          S.sorted ? tag('✔ ' + (es ? 'Lote separado, listo para reciclar' : 'Batch sorted, ready to recycle'), 'ok') : btn('🗂 ' + (es ? 'Separar residuos (1 h)' : 'Sort waste (1 h)'), () => confirmDecision('sort', {}, es ? 'Separar' : 'Sort'), 'sm'),
+          h('div', { class: 'row', style: { marginTop: '6px' } }, btn('♻️ ' + (es ? 'Reciclar 6 kg en materiales' : 'Recycle 6 kg into materials'), () => confirmDecision('recycle', {}, es ? 'Reciclaje' : 'Recycling'), 'primary')),
+          S.jobs.filter((j) => j.kind === 'recycle').map((j) => h('p', { class: 'small' }, '⏳ ' + (es ? 'Reciclando: ' : 'Recycling: ') + fmt(j.h, 1) + ' h')))),
+      h('p', { class: 'small muted' }, es ? 'Economía circular: lo que sobra se convierte en materiales para reparar y construir. El reciclado gasta energía.' : 'Circular economy: leftovers become materials for repairs and building. Recycling uses energy.'))));
+  }
+
+  /* =====================================================================
+     AUDIO Y VOCES: subtítulos, panel de configuración y narración de los NPC.
+     Si no hay síntesis de voz, todo sigue funcionando con texto.
+     ===================================================================== */
+  function applyAudio() {
+    const c = Voice.cfg;
+    Sfx.setSfx(c.sfx); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+  }
+  let subEl = null, subT = 0;
+  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' } };
+  function ensureSubs() {
+    if (subEl) return subEl;
+    subEl = h('div', { id: 'subs', class: 'hidden', role: 'status', 'aria-live': 'polite' });
+    document.body.append(subEl); return subEl;
+  }
+  function showSub(s) {
+    const el = ensureSubs(), es = LANG === 'es';
+    el.innerHTML = '';
+    el.append(h('b', null, tr(ROLEN[s.who] || ROLEN.narrator) + ': '), h('span', null, s.text),
+      btn('🔁', () => Voice.repeat(), 'sm ghost', { 'aria-label': es ? 'Repetir mensaje' : 'Repeat message', title: es ? 'Repetir (V)' : 'Repeat (V)' }),
+      btn('⏹', () => { Voice.stop(); el.classList.add('hidden'); }, 'sm ghost', { 'aria-label': es ? 'Detener' : 'Stop' }));
+    el.classList.remove('hidden');
+    clearTimeout(subT); subT = setTimeout(() => el.classList.add('hidden'), Math.max(4000, s.text.split(/\s+/).length * 420));
+  }
+  Voice.onSubtitle = showSub;
+  const lvlOfSev = (s) => (s === 'crit' ? 'crit' : s === 'warn' ? 'warn' : 'info');
+  /** Narrador general (instrucciones, resúmenes). silent: el texto ya está visible en pantalla, no hace falta subtítulo extra. */
+  function narrate(text, o) { return Voice.say('control', LANG, text, Object.assign({ level: 'info' }, o || {})); }
+  /** Narración de una llamada de radio: nombre y datos ya salen en la tarjeta de radio, que hace de subtítulo. */
+  function narrateCall(c) {
+    if (!c) return;
+    const es = LANG === 'es';
+    const txt = [c.title, c.desc, c.loc, c.act, (c.sev === 'crit' || isAdv()) && c.cons ? (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons : ''].filter(Boolean).join('. ');
+    Voice.speak(Voice.profileFor(c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
+  }
+  function repeatVoice() { if (radio.cur) { Voice.stop(); narrateCall(radio.cur); } else if (!Voice.repeat()) toast(LANG === 'es' ? 'No hay ningún mensaje que repetir' : 'No message to repeat', '', 'info'); }
+
+  function audioPanel() {
+    const es = LANG === 'es', c = Voice.cfg;
+    const build = () => {
+      const lang = LANG, vs = Voice.voices, mine = Voice.voicesFor(lang);
+      const chk = (k, after) => { const i = h('input', { type: 'checkbox', onchange: (e) => { c[k] = e.target.checked; Voice.persist(); applyAudio(); if (after) after(); } }); i.checked = !!c[k]; i.style.width = '24px'; i.style.height = '24px'; return i; };
+      const sld = (label, get, set, min, max, step, fmtf) => { const out = h('b', null, fmtf(get())); const r = h('input', { type: 'range', min, max, step, value: get(), 'aria-label': label, oninput: (e) => { set(+e.target.value); out.textContent = fmtf(+e.target.value); } }); return h('label', { class: 'col', style: { margin: '6px 0' } }, h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('span', null, label), out), r); };
+      const pc = (v) => Math.round(v * 100) + ' %';
+      const row = (label, ctrl) => h('label', { class: 'row', style: { justifyContent: 'space-between', margin: '6px 0' } }, h('span', null, label), ctrl);
+      const dist = Voice.distinct(lang);
+      const status = !Voice.supported ? (es ? 'Este navegador no ofrece síntesis de voz: el juego funciona igual con subtítulos y texto.' : 'This browser has no speech synthesis: the game works the same with subtitles and text.')
+        : !vs.length ? (es ? 'No se detectó ninguna voz en este dispositivo (a veces tardan en cargar). El juego usa subtítulos.' : 'No voice detected on this device (they can take a while to load). The game uses subtitles.')
+        : (es ? 'Voces detectadas: ' + vs.length + ' · en este idioma: ' + mine.length + ' · voces distintas en uso: ' + dist + '.' : 'Voices detected: ' + vs.length + ' · in this language: ' + mine.length + ' · distinct voices in use: ' + dist + '.');
+      const honest = Voice.supported && vs.length && dist <= 1 ? h('p', { class: 'small tag warn' }, es ? 'Solo hay una voz disponible para este idioma: todos los personajes usan esa misma voz, con tono y velocidad distintos. No son voces diferentes.' : 'Only one voice is available for this language: every character uses that same voice with different pitch and speed. They are not different voices.') : null;
+      const sample = es ? 'Hola, soy tu compañero de la base. Esta es mi voz.' : 'Hi, I am your crewmate on the base. This is my voice.';
+      const rows = Voice.ROLES.map((role) => {
+        const id = 'npc_' + role + '_' + lang, p = Voice.profiles[id], r = Voice.resolve(id);
+        const sel = h('select', { 'aria-label': tr(ROLEN[role]), disabled: !vs.length ? true : null, onchange: (e) => { Voice.setPreferred(id, e.target.value || null); refreshAudio(); } },
+          h('option', { value: '' }, es ? 'Automática (por idioma)' : 'Automatic (by language)'),
+          (mine.length ? mine : vs).map((v) => { const o = h('option', { value: v.uri }, v.name + ' (' + v.lang + ')'); if (p.preferredVoiceURI === v.uri) o.selected = true; return o; }));
+        const how = { uri: es ? 'guardada' : 'saved', name: es ? 'por nombre' : 'by name', lang: es ? 'por idioma' : 'by language', default: es ? 'voz por defecto del navegador' : 'browser default voice', none: es ? 'solo texto' : 'text only' }[r.how];
+        return h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between', alignItems: 'center' } }, h('b', null, tr(ROLEN[role])), btn('🔊 ' + (es ? 'Probar' : 'Test'), () => Voice.test(id, sample), 'sm', { disabled: !r.voice ? true : null })),
+          sel, h('div', { class: 'small muted' }, (es ? 'Se usa: ' : 'Using: ') + (r.voice ? r.voice.name + ' · ' : '') + how));
+      });
+      return panel('🔊 ' + (es ? 'Audio y voces' : 'Audio & voices'), h('div', null,
+        h('p', { class: 'small' }, status), honest,
+        h('h3', null, es ? 'Volúmenes' : 'Volumes'),
+        sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Velocidad de narración' : 'Narration speed', () => c.rate, (v) => { c.rate = v; Voice.persist(); }, 0.6, 1.5, 0.05, (v) => '×' + (+v).toFixed(2)),
+        h('h3', null, es ? 'Activar o desactivar' : 'Switches'),
+        row('🗣 ' + (es ? 'Voz de los personajes (TTS)' : 'Character voices (TTS)'), chk('tts', () => { if (!c.tts) Voice.stop(); })),
+        row('🎵 ' + (es ? 'Música' : 'Music'), chk('music')), row('🔔 ' + (es ? 'Sonidos y alertas' : 'Sounds and alerts'), chk('sfx')), row('💬 ' + (es ? 'Subtítulos' : 'Subtitles'), chk('subs')),
+        row('🌐 ' + (es ? 'Idioma' : 'Language'), btn(_('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); if (running) { buildHud(); updateHud(); } refreshAudio(); })),
+        h('div', { class: 'row' }, btn('🔁 ' + (es ? 'Repetir último mensaje' : 'Repeat last message'), () => repeatVoice(), 'sm'), btn('⏹ ' + (es ? 'Detener voz' : 'Stop voice'), () => Voice.stop(), 'sm')),
+        h('h3', null, es ? 'Voz de cada personaje' : 'Voice of each character'),
+        h('p', { class: 'small muted' }, es ? 'Elige una voz de las que ofrece tu dispositivo y pulsa Probar. La elección se guarda sola. Los identificadores npc_* son internos del juego.' : 'Pick one of the voices your device offers and press Test. Your choice is saved automatically. The npc_* IDs are internal to the game.'),
+        h('div', { class: 'grid2' }, rows),
+        h('p', { class: 'small muted' }, Store.ok ? (es ? 'Las preferencias se guardan en este navegador.' : 'Preferences are saved in this browser.') : (es ? 'El almacenamiento está bloqueado: las preferencias valen solo durante esta sesión.' : 'Storage is blocked: preferences only last for this session.'))));
+    };
+    const s = push(build());
+    const refreshAudio = () => { if (s.isConnected) refresh(s, build); };
+    Voice.onChange(() => { if (s.isConnected && !s.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) refreshAudio(); });
+  }
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
-    const D = MG.defs[kind];
+    const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
     let lvl = { explorer: 1, engineer: 2, commander: 3 }[S ? S.diff : 'explorer'] || 1;
     const effTxt = {
       wiring: opts.inc ? (LANG === 'es' ? 'Repara el incidente seleccionado.' : 'Repairs the selected incident.') : (LANG === 'es' ? 'Mejora la salud de ' : 'Improves health of ') + tr(DATA.SYS_T[opts.sys || 'reactor']) + '.',
@@ -5061,7 +5774,7 @@ const Game = (function () {
     const es = LANG === 'es';
     const sec = (t, ...p) => h('div', { class: 'card' }, h('h3', null, t), p.map((x) => (typeof x === 'string' ? h('p', null, x) : x)));
     const body = h('div', null, h('div', { class: 'grid2' },
-      sec('🎮 ' + (es ? 'Controles' : 'Controls'), es ? 'Ordenador: WASD o flechas para moverte, E / Enter / Espacio para interactuar, P pausa, M silencio, Esc cierra paneles.' : 'Computer: WASD or arrows to move, E / Enter / Space to interact, P pause, M mute, Esc closes panels.', es ? 'Táctil: joystick abajo a la izquierda y botón E grande.' : 'Touch: joystick bottom-left and big E button.'),
+      sec('🎮 ' + (es ? 'Controles' : 'Controls'), es ? 'Ordenador: WASD o flechas para moverte, E / Enter / Espacio para interactuar, P pausa, M mapa, C tripulación, N silencio, Esc cierra paneles.' : 'Computer: WASD or arrows to move, E / Enter / Space to interact, P pause, M map, C crew, N mute, Esc closes panels.', es ? 'Táctil: joystick abajo a la izquierda y botón E grande.' : 'Touch: joystick bottom-left and big E button.'),
       sec('📊 ' + (es ? 'Los 5 indicadores' : 'The 5 indicators'), es ? 'Soporte vital (oxígeno y agua), energía, protección contra radiación, alimentos y bienestar. Cada uno tiene consumo, producción, máximo, umbral de advertencia (⚠ ámbar) y crítico (⛔ rojo).' : 'Life support (oxygen and water), energy, radiation protection, food and wellbeing. Each has use, production, maximum, a warning threshold (⚠ amber) and critical (⛔ red).'),
       sec('🔗 ' + (es ? 'Todo está conectado' : 'Everything is connected'), es ? 'Más luz para las plantas = más comida pero menos batería. El oxígeno se fabrica con agua y electricidad. Reforzar el blindaje gasta materiales y energía. El panel de consecuencias te muestra el efecto antes de confirmar.' : 'More plant light = more food but less battery. Oxygen is made from water and electricity. Reinforcing shielding uses materials and energy. The consequences panel shows the effect before you confirm.'),
       sec('📡 ' + (es ? 'Comunicaciones' : 'Communications'), es ? 'Los mensajes tardan: Luna ≈1,3 s; Marte 3–22 min (datos reales). En el juego 1 minuto-luz ≈ 1 hora simulada para que lo notes. La Tierra responde con datos atrasados.' : 'Messages take time: Moon ≈1.3 s; Mars 3–22 min (real data). In the game 1 light-minute ≈ 1 simulated hour so you notice it. Earth replies with old data.'),
@@ -5183,6 +5896,10 @@ const Game = (function () {
     $('#bSpeed').addEventListener('click', () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; updateHud(); Sfx.play('click'); });
     $('#bPause').addEventListener('click', () => togglePause());
     $('#bMute').addEventListener('click', () => toggleMute());
+    $('#bCom').addEventListener('click', () => { if (running && !modalOpen()) openConsole({ id: 'comms' }); });
+    $('#bMap').addEventListener('click', () => toggleMap());
+    miniCv.addEventListener('click', () => toggleMap());
+    $('#bCrew').addEventListener('click', () => openCrew());
     $('#bMenu').addEventListener('click', () => pauseMenu());
     $('#bAlerts').addEventListener('click', () => openCmd('log'));
     $('#actBtn').addEventListener('click', () => interact());
@@ -5195,7 +5912,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

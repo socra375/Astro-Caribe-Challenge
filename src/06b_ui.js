@@ -1,5 +1,6 @@
   /* =================== CONSOLAS =================== */
   const CNAME = {
+    store: { es: 'Almacén de alimentos', en: 'Food storage' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, sampler: { es: 'Almacén de muestras', en: 'Sample storage' }, work: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, wastec: { es: 'Gestión de residuos', en: 'Waste management' },
     cmd: { es: 'Consola de mando', en: 'Command console' }, comms: { es: 'Comunicaciones', en: 'Communications' }, earth: { es: 'Conexión con la Tierra', en: 'Earth Connection' },
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
@@ -15,13 +16,12 @@
     if (c.id === 'plant') return plantCard(c.bed, c.slot);
     if (c.id === 'wardrobe') return wardrobePanel();
     const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
-    if (!allowed(c.id)) return gatePanel(c.id, ROOM_OF[c.id]);
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
-      shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
+      shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
   }
   function incHere(rooms, body) {
@@ -45,6 +45,12 @@
 
   /* ---------- Panel de consecuencias ---------- */
   const DMETA = {
+    cold: { u: { es: '0,1 kW mientras haya comida fresca', en: '0.1 kW while there is fresh food' }, r: { es: 'Apagado, lo fresco se estropea unas 10 veces más rápido.', en: 'Switched off, fresh food spoils about 10 times faster.' }, b: { es: 'Con frío, la comida fresca dura mucho más.', en: 'With cold, fresh food lasts much longer.' } },
+    ration: { u: { es: 'Cambia cuánta comida come la tripulación', en: 'Changes how much food the crew eats' }, r: { es: 'Reducidas: baja el ánimo. Abundantes: se gasta más comida.', en: 'Small: morale drops. Large: more food is used.' }, b: { es: 'Ajusta comida y ánimo según la situación.', en: 'Balances food and morale for the situation.' } },
+    cook: { u: { es: 'Comida (1 a 1,5 kg) y 0,6 kW durante 2 h', en: 'Food (1 to 1.5 kg) and 0.6 kW for 2 h' }, r: { es: 'Gasta comida de las reservas.', en: 'Uses food from the supplies.' }, b: { es: 'Sube el ánimo y el bienestar.', en: 'Raises morale and wellbeing.' } },
+    sstore: { u: { es: 'Un hueco del almacén de muestras', en: 'One slot in the sample storage' }, r: { es: 'Si clasificas mal, la muestra rinde menos ciencia.', en: 'A wrong classification yields less science.' }, b: { es: 'La muestra queda conservada y localizable.', en: 'The sample stays preserved and traceable.' } },
+    craft: { u: { es: '6 kg de materiales y 0,8 kW durante 3 h', en: '6 kg of materials and 0.8 kW for 3 h' }, r: { es: 'Gasta materiales.', en: 'Uses materials.' }, b: { es: '+1 repuesto: el mantenimiento será más rápido y barato.', en: '+1 spare part: maintenance will be faster and cheaper.' } },
+    sort: { u: { es: '1 hora de trabajo', en: '1 hour of work' }, r: { es: 'Necesitas al menos 6 kg de residuos.', en: 'You need at least 6 kg of waste.' }, b: { es: 'El próximo reciclaje recupera 8 kg en vez de 5.', en: 'The next recycling recovers 8 kg instead of 5.' } },
     lights: { u: { es: 'Electricidad para las luces LED', en: 'Electricity for LED lights' }, r: { es: 'Menos batería para otros sistemas, sobre todo de noche o con polvo.', en: 'Less battery for other systems, especially at night or with dust.' }, b: { es: 'Las plantas crecen más rápido.', en: 'Plants grow faster.' } },
     irrig: { u: { es: 'Agua del tanque', en: 'Tank water' }, r: { es: 'Si el agua baja mucho, el generador de O₂ también se queda sin agua.', en: 'If water drops a lot, the O₂ generator also runs out.' }, b: { es: 'Cultivos sanos y crecimiento.', en: 'Healthy crops and growth.' } },
     reactor: { u: { es: 'Vida útil del reactor (desgaste)', en: 'Reactor lifetime (wear)' }, r: { es: 'Más potencia = más desgaste y mantenimiento.', en: 'More power = more wear and maintenance.' }, b: { es: 'Más kW disponibles.', en: 'More kW available.' } },
@@ -133,6 +139,16 @@
     });
   }
   function campaignCard() {
+    const es = LANG === 'es', C = S.camp, xs = Sim.expStatus(S);
+    if (!C) return null;
+    const exp = C.basicDone ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🏗 ' + (es ? 'Ampliación de la base' : 'Base expansion')),
+      h('div', { class: 'row' }, Sim.EXP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.xi ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t), C.done[d.id] ? 'ok' : i === C.xi ? 'info' : ''))),
+      xs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[xs.id].t) + ': '), tr(NPCDATA.CAMP[xs.id].b)), h('ul', null, xs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k]))))) :
+        h('p', { class: 'small' }, es ? '✔ Completada. Las trece instalaciones están abiertas. Opcional: no bloquea las misiones.' : '✔ Complete. All thirteen facilities are open. Optional: it never blocks missions.')) : null;
+    return h('div', null, campaignCardBasic(), exp);
+  }
+  function campaignCardBasic() {
     const es = LANG === 'es', C = S.camp;
     if (!C) return null;
     const cs = Sim.campStatus(S);
@@ -140,7 +156,7 @@
       h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
       h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
       cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
-        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones principales están abiertas.' : '✔ Complete. The seven main sections are open.'));
   }
   function missionsTab() {
     const campLock = S.camp && !S.camp.basicDone;
@@ -158,7 +174,7 @@
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
           campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
-          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); else narrate(tr(DATA.MIS[id].t) + '. ' + tr(DATA.MIS[id].vars[S.m[id].var]), { silent: true }); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));
@@ -271,7 +287,13 @@
 
   /* ---------- Paneles de salas ---------- */
   function medPanel() {
-    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(),
+    const es = LANG === 'es', medic = S.playerRole === 'medic';
+    const worst = ['o2', 'water', 'food', 'power'].map((k) => ({ k, st: Sim.status(S, k) })).filter((x) => x.st !== 'ok').sort((a, b) => (b.st === 'crit') - (a.st === 'crit'));
+    const detail = medic ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginTop: '10px' } }, h('h3', null, '🩺 ' + (es ? 'Revisión detallada de la médica' : 'Medic detailed review')),
+      h('table', null, h('tbody', null, S.crew.map((c) => { const rate = S.t > 1 ? c.dose / (S.t / 24) : 0, left = rate > 0.001 ? Math.max(0, (S.limit - c.dose) / rate) : null; return statRow(tr(Chars.ROLES[c.role].name), fmt(rate, 2) + ' mSv/' + (es ? 'día' : 'day') + (left == null ? '' : ' · ' + (es ? 'límite en ' : 'limit in ') + fmt(left, 0) + (es ? ' días' : ' days'))); }))),
+      h('p', { class: 'small' }, worst.length ? (es ? 'Lo que más afecta al ánimo ahora: ' : 'What hurts morale most right now: ') + worst.map((x) => _(x.k)).join(', ') + '.' : (es ? 'Ahora nada afecta mucho al ánimo.' : 'Nothing hurts morale much right now.')),
+      h('p', { class: 'small muted' }, es ? 'Estimación del modelo del juego a partir del promedio hasta ahora; no es un diagnóstico médico real.' : 'Game-model estimate from the average so far; not a real medical diagnosis.')) : (es ? null : null);
+    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(), detail,
       h('table', { style: { marginTop: '10px' } }, h('tbody', null, sysRow('thermal'), sysRow('press'), statRow(LANG === 'es' ? 'Temperatura' : 'Temperature', fmt(S.sys.thermal.T) + ' °C'), statRow(LANG === 'es' ? 'Presión' : 'Pressure', fmt(S.sys.press.P) + ' kPa'))),
       h('p', { class: 'small muted' }, LANG === 'es' ? 'NASA OSDR reúne investigaciones sobre cómo el espacio afecta a seres vivos. No es un sistema médico en tiempo real: aquí las dosis son estimaciones del modelo.' : 'NASA OSDR gathers research on how space affects living things. It is not a real-time medical system: doses here are model estimates.'))));
   }
