@@ -113,7 +113,8 @@ const Sim = (function () {
     o = o || {};
     const scen = o.scen === 'mars' ? 'mars' : 'moon';
     const adv = o.mode === 'adv';
-    const diff = !adv ? 'explorer' : o.diff === 'commander' ? 'commander' : 'engineer'; // Junior = guiado; Ingeniero = estándar o exigente
+    // Sin `indep` (partidas y pruebas anteriores): Junior = guiado; Ingeniero = estándar o exigente. Con `indep` (asistente de inicio): la dificultad se elige aparte de la edad.
+    const diff = o.indep && DIFFS[o.diff] ? o.diff : !adv ? 'explorer' : o.diff === 'commander' ? 'commander' : 'engineer';
     const df = DIFFS[diff];
     const seed = (o.seed >>> 0) || 1;
     const S = {
