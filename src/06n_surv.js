@@ -186,4 +186,35 @@
     survReset(); const o = lastStart; if (!o) { mainMenu(); return; }
     popAll(); newRun(o.scen, o.diff, o.opts);
   }
-  const survDebug = { noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };
+  /* ---------- Modo presentación: acceso directo a todas las secciones (base completa, todas las salas abiertas) ---------- */
+  function presentPanel() {
+    stopPlay(); popAll(); const es = LANG === 'es'; let sc = settings.scen === 'mars' ? 'mars' : 'moon';
+    const lv = ['explorer', 'engineer', 'commander'].includes(settings.diff) ? settings.diff : 'explorer';
+    const run = (extra, then) => { newRun(sc, lv, Object.assign({ mode: settings.mode || 'junior', indep: true, age: settings.age || null }, extra || {})); if (then) then(); };
+    const base = (then) => () => run({ skipCamp: true }, then);
+    const suitUp = () => { Ex.equip(S); S.ex.suit.on = true; S.ex.suit.o2 = 100; S.ex.suit.en = 100; };
+    const demo = (cause) => base(() => { paused = true; startGameOver(cause); });
+    const sec = [
+      ['🎬', es ? 'Carga e inicio' : 'Loading and start', () => bootLoad(), 'pres-load'],
+      ['🧭', es ? 'Asistente: edad, misión, dificultad' : 'Wizard: age, mission, difficulty', () => setupScreen(), 'pres-wizard'],
+      ['🚀', es ? 'Viaje espacial (cabina, encendido, lanzamiento)' : 'Space trip (cabin, ignition, launch)', () => run({}), 'pres-trip'],
+      ['🛬', es ? 'Llegada y aterrizaje de la colonia' : 'Arrival and colony landing', () => run({}, () => landDebug.skipTrip()), 'pres-land'],
+      ['🏗', es ? 'Base completa (todas las salas)' : 'Full base (all rooms)', base(), 'pres-base'],
+      ['🧑‍🚀', es ? 'Exterior con traje y rover' : 'Outside with suit and rover', base(() => { World.setFloor(2); suitUp(); World.player.x = 72; World.player.y = 87.5; }), 'pres-eva'],
+      ['⚡', es ? 'Núcleo energético (piso 3)' : 'Energy core (floor 3)', base(() => World.arrive(3, true)), 'pres-core'],
+      ['🛗', es ? 'Elevadores y pisos (piso 2)' : 'Elevators and floors (floor 2)', base(() => World.arrive(2, true)), 'pres-floors'],
+      ['📻', es ? 'Radio con la Tierra (EarthLink)' : 'Radio to Earth (EarthLink)', base(() => elToggle(true)), 'pres-radio'],
+      ['🗺', es ? 'Mapa general con pisos' : 'Overview map with floors', base(() => toggleMap()), 'pres-map']
+    ];
+    const over = [['cold', es ? 'Congelación' : 'Freezing'], ['rover', es ? 'Rover' : 'Rover'], ['food', es ? 'Hambre' : 'Hunger'], ['dose', es ? 'Radiación' : 'Radiation'], ['core', es ? 'Núcleo' : 'Core']];
+    const planet = h('div', { class: 'row', style: { justifyContent: 'center' } });
+    const drawPlanet = () => { planet.replaceChildren(...[['moon', es ? 'Luna' : 'Moon'], ['mars', 'Marte']].map(([id, nm]) => h('button', { class: 'btn', type: 'button', 'aria-pressed': sc === id ? 'true' : 'false', 'data-planet': id, style: sc === id ? { borderColor: 'var(--accent)', boxShadow: '0 0 0 3px rgba(56,214,255,.3)' } : {}, onclick: () => { Sfx.play('click'); sc = id; settings.scen = id; Store.set('settings', settings); drawPlanet(); } }, nm))); };
+    drawPlanet();
+    showScreen(h('div', { class: 'panel cine-panel' }, h('h2', null, '🎬 ' + (es ? 'Modo presentación' : 'Presentation mode')),
+      h('p', { class: 'muted' }, es ? 'Entra directo a cada sección con todas las salas abiertas. Elige el planeta y pulsa la sección que quieras mostrar.' : 'Jump straight into each section with every room open. Pick the planet and press the section you want to show.'), planet,
+      h('div', { class: 'menu-grid' }, sec.map(([ic, nm, fn, id]) => btn(ic + ' ' + nm, fn, '', { 'data-act': id }))),
+      h('h3', null, es ? 'Pantallas de derrota (demostración, no pierdes la partida)' : 'Defeat screens (demo, you do not lose the run)'),
+      h('div', { class: 'menu-grid' }, over.map(([k, nm]) => btn('☠ ' + nm, demo(k), '', { 'data-act': 'pres-over-' + k }))),
+      h('div', { class: 'row', style: { marginTop: '12px' } }, btn(_('back'), () => mainMenu(), 'primary', { 'data-act': 'pres-back' }))), 'cine');
+  }
+  const survDebug = { presentPanel, noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };

@@ -38,6 +38,9 @@ No hace falta instalar nada. Si el navegador bloquea `localStorage` (modo privad
 
 Los minijuegos tienen controles de teclado y de puntero o táctiles (se explican en cada pantalla de instrucciones).
 
+## Modo presentación
+En el menú principal, **Modo presentación** abre un panel con un botón por sección para entrar directo con todas las salas abiertas: carga e inicio, asistente, viaje espacial, llegada y aterrizaje, base completa, exterior con traje y rover, núcleo energético (piso 3), elevadores y pisos, radio con la Tierra, mapa general y las cinco pantallas de derrota (son demostraciones: no pierdes la partida). Se elige antes la Luna o Marte. Pruebas: `node tests/present.js` (19).
+
 ## Supervivencia y Game Over
 La partida se puede perder, siempre por condiciones reales del simulador, **con avisos antes** y sin azar (dependen de lo que hace el jugador y de recursos visibles). Cada derrota tiene una animación corta, muestra la **causa** y ofrece **REINTENTAR**.
 
@@ -475,6 +478,10 @@ node tests/start.js
 
 ```bash
 node tests/survival.js
+```
+
+```bash
+node tests/present.js
 ```
 
 **Integración continua:** `.github/workflows/pruebas.yml` ejecuta en GitHub Actions, en cada PR y en cada cambio en `main`, la comprobación de que `index.html` coincide con `src/`, las 100 simulaciones, el contraste, las pruebas e2e, las de exploración exterior, las de EarthLink Radio y las de cámaras en Chromium. Guarda las capturas como artefacto. Un PR solo está «en verde» si pasan todas.
