@@ -16,7 +16,8 @@ const World = (function () {
   const player = { floor: 1, x: Layout.START[0], y: Layout.START[1], dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
   const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
-  const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
+  // Todas las salas son accesibles desde el principio: las misiones ya no cierran puertas (el progreso de la campaña solo marca el ritmo de los sistemas y los avisos).
+  const locked = () => false;
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false, zoomMul = 1, fitAll = false;
   const isTube = (r) => /^t\d/.test(r || '');
   let camInit = false, camRT = 0, camCx = 0, camCy = 0, camZ = 1, veilCache = { room: null, d: null }, hullBuf = [], fxVeh = null, steamT = 0, boardAnim = null, shelIn = null, collect = null, camDrive = 0, noRov = false, needSuitT = -9;

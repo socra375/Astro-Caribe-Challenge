@@ -447,7 +447,6 @@ const Game = (function () {
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
-        btn('🎬 ' + lt('Modo presentación', 'Presentation mode'), presentPanel, '', { 'data-act': 'present' }),
         Store.get('runBackup', null) ? btn('💾 ' + lt('Restaurar copia de seguridad', 'Restore backup'), restoreBackupPanel, '', { 'data-act': 'backup-menu' }) : null,
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('🛰️ ' + lt('Archivo de misión: ver la llegada', 'Mission file: watch the arrival'), replayArrival), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
