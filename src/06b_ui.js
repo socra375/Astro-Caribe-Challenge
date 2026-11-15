@@ -15,7 +15,6 @@
     if (c.id === 'plant') return plantCard(c.bed, c.slot);
     if (c.id === 'wardrobe') return wardrobePanel();
     const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
-    if (!allowed(c.id)) return gatePanel(c.id, ROOM_OF[c.id]);
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');

@@ -24,7 +24,9 @@ No hace falta instalar nada. Si el navegador bloquea `localStorage` (modo privad
 | Moverse | WASD o flechas | Joystick virtual (abajo a la izquierda) |
 | Interactuar | E, Enter o Espacio | Botón grande **E** o botón de interacción |
 | Pausa | P o botón ❚❚ | Botón ❚❚ |
-| Silenciar | M o botón 🔊 | Botón 🔊 |
+| Mapa completo (pausa el tiempo) | M o botón del mapa; minimapa | Botón del mapa o toque en el minimapa |
+| Elegir personaje (opcional) | C o botón de tripulación | Botón de tripulación |
+| Silenciar | N o botón 🔊 | Botón 🔊 |
 | Cerrar panel | Esc | ✕ |
 | Velocidad del tiempo | botón x1 / x2 / x4 | igual |
 

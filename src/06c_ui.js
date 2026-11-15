@@ -189,7 +189,7 @@
     const es = LANG === 'es';
     const sec = (t, ...p) => h('div', { class: 'card' }, h('h3', null, t), p.map((x) => (typeof x === 'string' ? h('p', null, x) : x)));
     const body = h('div', null, h('div', { class: 'grid2' },
-      sec('🎮 ' + (es ? 'Controles' : 'Controls'), es ? 'Ordenador: WASD o flechas para moverte, E / Enter / Espacio para interactuar, P pausa, M silencio, Esc cierra paneles.' : 'Computer: WASD or arrows to move, E / Enter / Space to interact, P pause, M mute, Esc closes panels.', es ? 'Táctil: joystick abajo a la izquierda y botón E grande.' : 'Touch: joystick bottom-left and big E button.'),
+      sec('🎮 ' + (es ? 'Controles' : 'Controls'), es ? 'Ordenador: WASD o flechas para moverte, E / Enter / Espacio para interactuar, P pausa, M mapa, C tripulación, N silencio, Esc cierra paneles.' : 'Computer: WASD or arrows to move, E / Enter / Space to interact, P pause, M map, C crew, N mute, Esc closes panels.', es ? 'Táctil: joystick abajo a la izquierda y botón E grande.' : 'Touch: joystick bottom-left and big E button.'),
       sec('📊 ' + (es ? 'Los 5 indicadores' : 'The 5 indicators'), es ? 'Soporte vital (oxígeno y agua), energía, protección contra radiación, alimentos y bienestar. Cada uno tiene consumo, producción, máximo, umbral de advertencia (⚠ ámbar) y crítico (⛔ rojo).' : 'Life support (oxygen and water), energy, radiation protection, food and wellbeing. Each has use, production, maximum, a warning threshold (⚠ amber) and critical (⛔ red).'),
       sec('🔗 ' + (es ? 'Todo está conectado' : 'Everything is connected'), es ? 'Más luz para las plantas = más comida pero menos batería. El oxígeno se fabrica con agua y electricidad. Reforzar el blindaje gasta materiales y energía. El panel de consecuencias te muestra el efecto antes de confirmar.' : 'More plant light = more food but less battery. Oxygen is made from water and electricity. Reinforcing shielding uses materials and energy. The consequences panel shows the effect before you confirm.'),
       sec('📡 ' + (es ? 'Comunicaciones' : 'Communications'), es ? 'Los mensajes tardan: Luna ≈1,3 s; Marte 3–22 min (datos reales). En el juego 1 minuto-luz ≈ 1 hora simulada para que lo notes. La Tierra responde con datos atrasados.' : 'Messages take time: Moon ≈1.3 s; Mars 3–22 min (real data). In the game 1 light-minute ≈ 1 simulated hour so you notice it. Earth replies with old data.'),
@@ -311,6 +311,9 @@
     $('#bSpeed').addEventListener('click', () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; updateHud(); Sfx.play('click'); });
     $('#bPause').addEventListener('click', () => togglePause());
     $('#bMute').addEventListener('click', () => toggleMute());
+    $('#bMap').addEventListener('click', () => toggleMap());
+    miniCv.addEventListener('click', () => toggleMap());
+    $('#bCrew').addEventListener('click', () => openCrew());
     $('#bMenu').addEventListener('click', () => pauseMenu());
     $('#bAlerts').addEventListener('click', () => openCmd('log'));
     $('#actBtn').addEventListener('click', () => interact());

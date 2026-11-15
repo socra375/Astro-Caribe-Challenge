@@ -40,7 +40,7 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -254,6 +254,7 @@ const Game = (function () {
     Sfx.init();
     const tgt = e.target && e.target.tagName;
     if (mgRun && mgRun.g && !mgRun.g.done) { mgRun.g.keys[e.key] = true; const d = MG.defs[mgRun.kind]; if (d.key) d.key(mgRun.g, e.key, true); if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault(); if (e.key !== 'Escape') return; }
+    if ((e.key === 'm' || e.key === 'M') && running && tgt !== 'INPUT' && tgt !== 'SELECT' && !(mgRun && mgRun.g)) { toggleMap(); e.preventDefault(); return; }
     if (e.key === 'Escape') { if (modalOpen() && running) { pop(); e.preventDefault(); } else if (running) pauseMenu(); return; }
     if (modalOpen()) return;
     if (!running) return;
@@ -262,7 +263,8 @@ const Game = (function () {
     if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
     if (e.key === 'e' || e.key === 'E' || e.key === 'Enter' || e.key === ' ') interact();
     if (e.key === 'p' || e.key === 'P') togglePause();
-    if (e.key === 'm' || e.key === 'M') toggleMute();
+    if (e.key === 'n' || e.key === 'N') toggleMute();
+    if (e.key === 'c' || e.key === 'C') openCrew();
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });

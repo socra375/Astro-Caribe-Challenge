@@ -37,7 +37,7 @@ const DATA = (function () {
       liveData: 'Datos en vivo de DONKI (últimos 30 días)', fallback: 'Copia local de registros históricos', achievements: 'Logros', stats: 'Estadísticas',
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
-      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
+      helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa · M mapa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
       busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
@@ -71,7 +71,7 @@ const DATA = (function () {
       liveData: 'Live DONKI data (last 30 days)', fallback: 'Local copy of historical records', achievements: 'Achievements', stats: 'Statistics',
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
-      helpMove: 'Move with WASD or arrows · E to interact · P pause', helpTouch: 'Use the joystick to move and the E button to interact',
+      helpMove: 'Move with WASD or arrows · E to interact · P pause · M map', helpTouch: 'Use the joystick to move and the E button to interact',
       busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };

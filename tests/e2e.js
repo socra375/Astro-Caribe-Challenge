@@ -65,8 +65,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Tiempo simulado avanza', t1 > t0 + 0.2, (t1 - t0).toFixed(2));
   // Panel de consecuencias (agua)
   await page.evaluate(() => Game._debug.openConsole('water'));
-  ok('Sin el especialista adecuado se explica y se dirige al vestuario', await page.getByRole('button', { name: /Marcar el vestuario/ }).isVisible());
-  ok('La emergencia se puede reparar con cualquier especialista', await page.getByRole('button', { name: /Reparación de emergencia/ }).isVisible());
+  ok('El comandante abre cualquier consola sin cambiar de personaje', !(await page.getByText(/Se necesita otro especialista/).count()) && await page.evaluate(() => Game.S.playerRole === 'commander') && await page.locator('.panel h2').count() > 0);
   await closeAll(page);
   await page.evaluate(() => { World.setPlayerRole('engineer'); Sim.setPlayerRole(Game.S, 'engineer'); });
   await page.evaluate(() => Game._debug.openConsole('water'));
@@ -253,15 +252,49 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('La guía de la bahía del rover se presenta', await pg.getByText(/bahía del rover/).first().isVisible()); await skipTalk();
   // Permisos después de la familiarización y vestuario
   await pg.evaluate(() => { World.player.x = 10; World.player.y = 23.5; Game._debug.openConsole('gh'); });
-  ok('Tras la familiarización, el invernadero pide al agrónomo', await pg.getByText(/Se necesita otro especialista/).isVisible());
+  ok('Tras la familiarización, el comandante sigue pudiendo operar el invernadero', !(await pg.getByText(/Se necesita otro especialista/).count()) && await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
   await closeAll(pg);
   await pg.evaluate(() => Game._debug.wardrobePanel());
-  await pg.locator('.card', { hasText: 'Agrónomo' }).getByRole('button', { name: /Ponerse/ }).click();
+  await pg.locator('.card', { hasText: 'Agrónomo' }).getByRole('button', { name: /Jugar con este personaje/ }).click();
   const rl = await pg.evaluate(() => [Game.S.playerRole, World.player.role, World._test.bots.map((b) => b.role).sort().join(',')]);
   ok('El vestuario cambia de especialista y el anterior queda como NPC', rl[0] === 'agri' && rl[1] === 'agri' && rl[2] === 'commander,engineer,medic,scientist', JSON.stringify(rl));
   await pg.evaluate(() => Game._debug.openConsole('gh'));
-  ok('Con el traje correcto se abre el panel', await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
+  ok('Con el especialista también se abre el panel', await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
   await closeAll(pg);
+  // ---- Mapa completo (M), tripulación (C) y pausa ----
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  await pg.keyboard.press('m');
+  ok('M abre el mapa completo', await pg.locator('.mapcv').isVisible());
+  const tm0 = await pg.evaluate(() => Game.S.t); await pg.waitForTimeout(600);
+  ok('Con el mapa abierto el tiempo simulado está en pausa', await pg.evaluate((t) => Game.S.t === t, tm0));
+  const box = await pg.locator('.mapcv').boundingBox();
+  const mp = await pg.evaluate(() => { const R = World.RECTS.reactor; return [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2, World.DIM.W, World.DIM.H]; });
+  const msc = Math.min(720 / mp[2], 560 / mp[3]), mpx = 360 + (mp[0] - mp[2] / 2) * msc, mpy = 280 + (mp[1] - mp[3] / 2) * msc;
+  await pg.mouse.click(box.x + mpx * box.width / 720, box.y + mpy * box.height / 560);
+  ok('Seleccionar una sala muestra su ficha', await pg.locator('.mapinfo').getByText(/Reactor y energía/).first().isVisible());
+  await pg.getByRole('button', { name: /Mostrar ruta/ }).click();
+  const rt = await pg.evaluate(() => { const r = World.route('reactor'); return r && r.length > 2 && r.every((p) => World.RECTS && Number.isFinite(p[0])); });
+  ok('La ruta sigue el grafo real de pasillos y puertas', rt);
+  await pg.getByRole('button', { name: /Marcar destino/ }).click();
+  ok('Marcar destino fija el marcador en el mundo', await pg.evaluate(() => !!World.marker && World.marker.label.length > 0));
+  await pg.keyboard.press('m');
+  ok('M vuelve a cerrar el mapa', !(await pg.locator('.mapcv').count()));
+  await pg.keyboard.press('m'); await pg.keyboard.press('Escape');
+  ok('Esc cierra el mapa', !(await pg.locator('.mapcv').count()));
+  await pg.locator('#bMap').click();
+  ok('El botón del HUD abre el mapa', await pg.locator('.mapcv').isVisible());
+  await closeAll(pg);
+  await pg.keyboard.press('c');
+  ok('C abre el selector de tripulación con los cinco personajes', (await pg.locator('.card h3').count()) >= 5);
+  await closeAll(pg);
+  const pos0 = await pg.evaluate(() => [World.player.x, World.player.y, JSON.stringify(Game.S.m[1])]);
+  await pg.locator('#bCrew').click();
+  await pg.locator('.card', { hasText: 'Científico' }).getByRole('button', { name: /Jugar con este personaje/ }).click();
+  const pos1 = await pg.evaluate(() => [World.player.x, World.player.y, JSON.stringify(Game.S.m[1]), Game.S.playerRole]);
+  ok('Cambiar de personaje conserva posición y misiones', Math.abs(pos0[0] - pos1[0]) < 0.01 && Math.abs(pos0[1] - pos1[1]) < 0.01 && pos0[2] === pos1[2] && pos1[3] === 'scientist', JSON.stringify([pos0, pos1]));
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  const mu0 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n'); const mu1 = await pg.locator('#bMute').innerHTML(); await pg.keyboard.press('n');
+  ok('N alterna el silencio y M ya no lo hace', mu0 !== mu1 && (await pg.locator('#bMute').innerHTML()) === mu0);
   // Alertas por NPC
   const rad = await pg.evaluate(() => {
     const G = Game._debug, S = Game.S, out = {};

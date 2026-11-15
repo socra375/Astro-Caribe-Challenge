@@ -478,6 +478,13 @@ const World = (function () {
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
   }
 
+  /** Ruta real (grafo de puertas y pasillos) desde el jugador hasta una sala; null si está bloqueada o no existe. */
+  function route(room) {
+    const to = ROOMNODE[room]; if (!to || locked(room)) return null;
+    const a = nearestNode(player.x, player.y), p = bfs(a, to).map((k) => [N[k][0], N[k][1]]);
+    return [[player.x, player.y]].concat(p);
+  }
+  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, room: roomName(b.x, b.y) })); }
   function roomCenter(k) { const R = RECTS[k]; if (!R) return null; const n = N[ROOMNODE[k]]; return n ? [n[0], n[1]] : [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2]; }
   function consolePos(id) { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; }
   function state() { return { role: player.role, px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
@@ -493,6 +500,6 @@ const World = (function () {
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
 
-  return { setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
+  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, RECTS, TS,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, bfs, N } };
 })();
