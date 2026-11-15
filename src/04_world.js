@@ -51,7 +51,7 @@ const World = (function () {
       }
       if (!best) throw new Error('puerta sin posición: ' + a + '-' + b);
       for (let yy = best.y; yy < best.y + best.h; yy++) for (let xx = best.x; xx < best.x + best.w; xx++) { grid[yy][xx] = DOOR; roomAt[yy][xx] = null; }
-      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false }));
+      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false, secure: (a === 'elc3' && b === 'reactor') || (a === 'reactor' && b === 'elc3') }));
     }
     // Mobiliario y consolas
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
@@ -69,7 +69,7 @@ const World = (function () {
     }
     // Solidez
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (!D.ground && grid[y][x] === OUT); // solo la planta baja tiene exterior
-    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
+    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug', 'catwalk', 'warn'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
     if (D.ground) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
     if (D.ground) {
@@ -262,7 +262,8 @@ const World = (function () {
     for (const d of doors) {
       const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
       let want = false;
-      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0) want = true;
+      const sec = d.secure && !!curS && Station.coreStatus(curS).restricted; d.sec = sec; // núcleo restringido: solo bloquea al jugador (el ingeniero puede entrar a reparar)
+      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0 && !(sec && e === player)) want = true;
       d.lock = d.rooms.some(locked);
       if (d.lock) want = false;
       if (d.kind === 'inner') want = want && airlock.st === 'in';
@@ -359,6 +360,8 @@ const World = (function () {
     return best;
   }
   /** Puerta bloqueada cercana (para explicar qué la abre). */
+  /** ¿Está el jugador junto a la puerta del núcleo cerrada por seguridad? */
+  function secureNear() { for (const d of doors) if (d.sec && Math.abs(player.x - (d.x + d.w / 2)) < 2.4 && Math.abs(player.y - (d.y + d.h / 2)) < 2.4) return true; return false; }
   function lockedNear() { for (const d of doors) if (d.lock && Math.abs(player.x - (d.x + d.w / 2)) < 2.2 && Math.abs(player.y - (d.y + d.h / 2)) < 2.2) return d.rooms.find(locked); return null; }
   /** Toque/clic en el mapa: devuelve la planta bajo el punto si el jugador está cerca. */
   function pick(cssX, cssY, dpr) {
@@ -557,7 +560,42 @@ const World = (function () {
       case 'tank': c.fillStyle = '#1b6d8f'; c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2 - 3, h / 2 - 3, 0, 0, 7); c.fill(); c.strokeStyle = '#7fe6ff'; c.lineWidth = 3; c.stroke(); break;
       case 'recycler': c.fillStyle = '#245a7a'; rr(c, x, y, w, h, 10); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#0e2c3d'; c.beginPath(); c.arc(x + w / 2, y + h / 2, w / 3, 0, 7); c.fill(); break;
       case 'o2gen': c.fillStyle = '#2e5276'; rr(c, x, y, w, h, 8); c.fill(); c.fillStyle = '#bfe9ff'; c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillText('O₂', x + w / 2, y + h / 2 + 8); break;
-      case 'reactor': c.fillStyle = '#2b1a10'; c.beginPath(); c.arc(x + w / 2, y + h / 2, w / 2, 0, 7); c.fill(); c.strokeStyle = '#ff9a3d'; c.lineWidth = 4; c.stroke(); break;
+      case 'reactor': { // núcleo de contención: anillo atornillado, capas concéntricas y vasija central
+        const cx = x + w / 2, cy = y + h / 2, r = w / 2;
+        c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.arc(cx + 6, cy + 8, r + 4, 0, 7); c.fill();
+        c.fillStyle = '#1c120c'; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill(); c.strokeStyle = '#ff9a3d'; c.lineWidth = 7; c.stroke();
+        c.fillStyle = '#8b92a4'; for (let i = 0; i < 28; i++) { const a = i * 6.2832 / 28; c.beginPath(); c.arc(cx + Math.cos(a) * (r - 6), cy + Math.sin(a) * (r - 6), 2.6, 0, 7); c.fill(); }
+        c.strokeStyle = '#5a3a24'; c.lineWidth = 4; c.beginPath(); c.arc(cx, cy, r * 0.72, 0, 7); c.stroke(); c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, r * 0.55, 0, 7); c.stroke();
+        c.fillStyle = '#3a1f10'; c.beginPath(); c.arc(cx, cy, r * 0.38, 0, 7); c.fill(); c.strokeStyle = '#ffcb7a'; c.lineWidth = 3; c.stroke();
+        c.strokeStyle = '#2b1a10'; c.lineWidth = 5; for (let i = 0; i < 4; i++) { const a = i * 1.5708 + 0.785; c.beginPath(); c.moveTo(cx + Math.cos(a) * r * 0.4, cy + Math.sin(a) * r * 0.4); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
+        break;
+      }
+      case 'catwalk': { // pasarela metálica elevada: sombra, rejilla y barandilla
+        c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x + 5, y + 8, w, h);
+        c.fillStyle = '#4a4f60'; c.fillRect(x, y, w, h); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1;
+        for (let gx = x + 8; gx < x + w; gx += 8) { c.beginPath(); c.moveTo(gx, y); c.lineTo(gx, y + h); c.stroke(); } for (let gy = y + 8; gy < y + h; gy += 8) { c.beginPath(); c.moveTo(x, gy); c.lineTo(x + w, gy); c.stroke(); }
+        c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1; c.strokeRect(x + 6, y + 6, w - 12, h - 12);
+        break;
+      }
+      case 'transformer': {
+        c.fillStyle = 'rgba(0,0,0,.4)'; rr(c, x + 4, y + 6, w - 2, h - 2, 6); c.fill();
+        c.fillStyle = '#343947'; rr(c, x + 1, y + 1, w - 2, h - 2, 6); c.fill(); c.strokeStyle = '#8b92a4'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#c9cfdc'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(x + w * (0.22 + i * 0.28), y + h * 0.32, 6, 0, 7); c.fill(); c.strokeStyle = '#6a7186'; c.lineWidth = 1.5; c.stroke(); }
+        c.fillStyle = '#ffc24a'; for (let i = 0; i < 4; i++) c.fillRect(x + 6 + i * ((w - 12) / 4), y + h - 14, (w - 12) / 8, 8);
+        c.fillStyle = '#ffc24a'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('⚡', x + w / 2, y + h * 0.7); break;
+      }
+      case 'coolant': { // torre de refrigeración vista desde arriba
+        const cx = x + w / 2, cy = y + h / 2, r = w / 2 - 2;
+        c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.arc(cx + 4, cy + 6, r, 0, 7); c.fill();
+        c.fillStyle = '#2a3a4a'; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill(); c.strokeStyle = '#8b92a4'; c.lineWidth = 3; c.stroke();
+        const g = c.createRadialGradient(cx, cy, 2, cx, cy, r * 0.8); g.addColorStop(0, '#9fe3ff'); g.addColorStop(1, '#2b6e9a'); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r * 0.7, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
+        break;
+      }
+      case 'warn': { // zona restringida: borde de franjas de advertencia
+        c.strokeStyle = 'rgba(255,194,74,.55)'; c.lineWidth = 6; c.setLineDash([22, 16]); c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]);
+        c.strokeStyle = 'rgba(20,20,26,.6)'; c.lineWidth = 6; c.setLineDash([16, 22]); c.lineDashOffset = -22; c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]); c.lineDashOffset = 0; break;
+      }
       case 'battery': c.fillStyle = '#28331f'; rr(c, x + 2, y + 2, w - 4, h - 4, 6); c.fill(); c.strokeStyle = '#8fe36b'; c.lineWidth = 2; c.stroke(); break;
       case 'suitrack': c.fillStyle = '#232b45'; rr(c, x + 1, y + 2, w - 2, h - 4, 5); c.fill(); c.strokeStyle = '#4f6db8'; c.lineWidth = 1.5; c.stroke(); for (let k = 0; k < 3; k++) { const cx = x + (k + 0.5) * TS; c.fillStyle = '#e9edf7'; rr(c, cx - 9, y + 12, 18, 16, 5); c.fill(); c.fillStyle = '#c2c9d8'; c.beginPath(); c.arc(cx, y + 9, 7, 0, 7); c.fill(); c.fillStyle = '#d9a72b'; c.beginPath(); c.ellipse(cx, y + 9, 5, 4, 0, 0, 7); c.fill(); c.fillStyle = '#6fffa0'; c.fillRect(cx - 3, y + 20, 6, 2); } break;
       case 'rover': c.fillStyle = '#20242d'; c.fillRect(x + 4, y + 4, 22, h - 8); c.fillRect(x + w - 26, y + 4, 22, h - 8); c.fillStyle = '#e8ebf2'; rr(c, x + 14, y + 18, w - 28, h - 36, 12); c.fill(); c.fillStyle = '#38d6ff'; rr(c, x + w - 60, y + 30, 34, h - 60, 8); c.fill(); break;
@@ -635,7 +673,7 @@ const World = (function () {
     const t = lastT, rm = reduced;
     // Puertas (hojas que se deslizan; horizontales y verticales)
     for (const d of doors) {
-      const x = d.x * TS, y = d.y * TS, lockC = d.lock ? '#ff5a5a' : d.kind === 'auto' ? '#4f6db8' : '#ffc24a', half = TS * (1 - d.open);
+      const x = d.x * TS, y = d.y * TS, lockC = d.lock || d.sec ? '#ff5a5a' : d.kind === 'auto' ? '#4f6db8' : '#ffc24a', half = TS * (1 - d.open);
       if (!d.v) {
         ctx.fillStyle = '#2d3a63'; ctx.fillRect(x, y + 4, half, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, half, TS - 8);
         ctx.fillStyle = lockC; ctx.fillRect(x + half - 3, y + 4, 3, TS - 8); ctx.fillRect(x + 2 * TS - half, y + 4, 3, TS - 8);
@@ -696,6 +734,7 @@ const World = (function () {
       const x = f.x * TS, y = f.y * TS, w = f.w * TS, h = f.h * TS;
       if (f.kind === 'vent') { ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * 5 + f.x); ctx.strokeStyle = 'rgba(210,220,240,.55)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.min(w, h) * 0.38, 0); ctx.stroke(); } ctx.restore(); }
       if (f.kind === 'turbine') { const pw = S && S.pw && S.pw.rea != null ? Math.max(0.15, S.pw.rea) : 0.6; ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * (2 + 6 * pw) + f.x); ctx.strokeStyle = 'rgba(255,214,150,.75)'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(w / 2 - 6, 0); ctx.stroke(); } ctx.restore(); }
+      if (f.kind === 'coolant') { const cx = x + w / 2, cy = y + h / 2; for (let k = 0; k < 3; k++) { const ph = rm ? 0.5 : ((t * 0.5 + k / 3) % 1); ctx.strokeStyle = 'rgba(159,227,255,' + (0.5 * (1 - ph)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, w * 0.12 + ph * w * 0.38, 0, 7); ctx.stroke(); } }
       if (f.kind === 'holo') { const g = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w * 0.75); g.addColorStop(0, 'rgba(79,170,255,' + (rm ? 0.22 : 0.16 + 0.1 * Math.sin(t * 2)) + ')'); g.addColorStop(1, 'rgba(79,170,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - w / 2, y - h / 2, w * 2, h * 2); }
       if (f.kind === 'battery' && S) { const lv = clampN(S.d.power || 0, 0, 1); for (let k = 0; k < 3; k++) { ctx.fillStyle = lv > (k + 0.5) / 3 ? '#8fe36b' : 'rgba(255,255,255,.12)'; ctx.fillRect(x + 6, y + 6 + k * 7, w - 12, 5); } }
       if (f.kind === 'reactor' && S) { const lv = (S.pw && S.pw.rea) || 0.5; const rg = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w / 2); rg.addColorStop(0, 'rgba(255,200,120,' + (0.10 + 0.16 * lv + (rm ? 0 : 0.06 * Math.sin(t * 3))) + ')'); rg.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w / 2, 0, 7); ctx.fill(); }
@@ -840,7 +879,7 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();

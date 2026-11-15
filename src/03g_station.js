@@ -27,10 +27,10 @@ const Station = (function () {
     cap: T('El elevador de tripulación no admite el rover.', 'The crew elevator does not take the rover.')
   };
   const mk = (kind) => ({ at: KINDS[kind].at, to: KINDS[kind].at, st: 'idle', t: 0, p: 0, occ: [], broken: false, trips: 0 });
-  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'surface', log: [] }; }
+  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'surface', core: { authUntil: -1, checks: 0 }, log: [] }; }
   /** Partidas anteriores: la estación se crea con los elevadores en reposo. */
   function ensure(S) {
-    if (S.station && S.station.v === 1) { const s = S.station; for (const k in KINDS) if (!s.elev[k]) s.elev[k] = mk(k); return s; }
+    if (S.station && S.station.v === 1) { const s = S.station; for (const k in KINDS) if (!s.elev[k]) s.elev[k] = mk(k); if (!s.core) s.core = { authUntil: -1, checks: 0 }; return s; }
     return (S.station = fresh());
   }
   const E = (S, kind) => ensure(S).elev[kind];
@@ -94,6 +94,20 @@ const Station = (function () {
     const d = Math.hypot(R.x - PLAT.c[0], R.y - PLAT.c[1]), ang = Math.abs(((R.a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
     return d < 1.6 && ang < 0.5 && Math.abs(R.v) < 0.3 && !R.occ;
   }
+  /** Seguridad del núcleo energético: restringido (solo para el jugador) con una avería crítica en el reactor o una ráfaga de radiación, salvo que se haya aplicado el protocolo. */
+  const CORE_WHY = { incident: T('Hay una avería crítica en el reactor.', 'There is a critical fault in the reactor.'), radiation: T('Hay una ráfaga de radiación.', 'There is a radiation burst.'), ppe: T('Hace falta el traje de protección puesto (vestuario de la bahía, piso 2).', 'The protective suit is required (bay locker, floor 2).') };
+  function coreStatus(S) {
+    const reasons = [], st = ensure(S);
+    for (const i of S.inc || []) if (!i.res && S.t >= i.from && i.room === 'reactor' && i.sev === 'crit') { reasons.push('incident'); break; }
+    if (S.mods && S.mods.spe > 0) reasons.push('radiation');
+    const auth = st.core.authUntil > S.t;
+    return { reasons, auth, restricted: reasons.length > 0 && !auth, left: Math.max(0, st.core.authUntil - S.t) };
+  }
+  /** Protocolo de seguridad: con el traje puesto, autoriza la entrada durante 20 h simuladas (unos 50 s). */
+  function authorizeCore(S, suitOn) {
+    if (!suitOn) return { ok: false, why: 'ppe' };
+    const st = ensure(S); st.core.authUntil = S.t + 20; st.core.checks++; return { ok: true };
+  }
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();

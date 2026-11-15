@@ -44,7 +44,7 @@ const Layout = (function () {
     lab: { s: [CH(6, 45, 22, 57, 3)], g: 'sci', floor: 'hex', col: ['#2b2550', '#312a5a'] },
     samples: { s: [RR(24, 45, 32, 57, 2)], g: 'sci', floor: 'clean', col: ['#1d3a3f', '#224247'] },
     // MÓDULO TÉCNICO
-    reactor: { s: [CH(84, 15, 107, 40, 4)], g: 'tec', floor: 'hazard', col: ['#3a2414', '#432a17'] },
+    reactor: { s: [CH(84, -5, 121, 42, 6)], g: 'tec', floor: 'hazard', col: ['#3a2414', '#432a17'] },
     workshop: { s: [RR(84, 45, 95, 57, 2)], g: 'tec', floor: 'plate', col: ['#333338', '#3a3a40'] },
     waste: { s: [RR(97, 45, 107, 57, 2)], g: 'tec', floor: 'grate', col: ['#2a3326', '#2f3a2b'] },
     rad: { s: [RR(34, 52, 78, 66, 3)], g: 'tec', floor: 'bay', col: ['#2a2f3a', '#30353f'] },
@@ -89,7 +89,12 @@ const Layout = (function () {
     // Almacén de muestras
     ['cabinet', 25, 47, 3, 2], ['cabinet', 29, 47, 3, 2], ['table', 26, 53, 4, 2], ['cold', 29, 51, 3, 3],
     // Reactor
-    ['reactor', 92, 23, 8, 8], ['turbine', 88, 17, 4, 4], ['turbine', 98, 17, 4, 4], ['pipe', 92, 19, 1, 4], ['pipe', 99, 19, 1, 4], ['tank', 103, 29, 3, 3], ['vent', 90, 33, 2, 2], ['vent', 100, 33, 2, 2], ['battery', 87, 24, 2, 2], ['battery', 87, 27, 2, 2], ['battery', 87, 30, 2, 2], ['rack', 104, 25, 2, 3],
+    ['warn', 90, 5, 28, 27], ['catwalk', 92, 7, 24, 2], ['catwalk', 92, 28, 24, 2], ['catwalk', 92, 9, 2, 19], ['catwalk', 114, 9, 2, 19],
+    ['pipe', 92, 1, 1, 6], ['pipe', 99, 1, 1, 6], ['pipe', 108, 1, 1, 6], ['pipe', 115, 1, 1, 6],
+    ['reactor', 96, 11, 14, 14], ['coolant', 90, -3, 4, 4], ['coolant', 97, -3, 4, 4], ['coolant', 106, -3, 4, 4], ['coolant', 113, -3, 4, 4],
+    ['turbine', 86, 2, 4, 4], ['turbine', 116, 2, 4, 4], ['turbine', 86, 31, 4, 4], ['turbine', 116, 31, 4, 4],
+    ['transformer', 85, 9, 3, 3], ['transformer', 85, 14, 3, 3], ['transformer', 85, 19, 3, 3], ['transformer', 117, 9, 3, 3], ['transformer', 117, 14, 3, 3], ['transformer', 117, 19, 3, 3],
+    ['holo', 96, 35, 7, 3], ['rack', 86, 38, 2, 3], ['rack', 116, 38, 2, 3], ['battery', 105, 35, 2, 2], ['battery', 108, 35, 2, 2], ['vent', 88, 24, 2, 2], ['vent', 118, 24, 2, 2],
     // Taller
     ['benchs', 85, 47, 6, 2], ['tools', 91, 47, 3, 2], ['lathe', 90, 52, 4, 3], ['crate', 85, 55, 3, 2],
     // Residuos
@@ -106,7 +111,7 @@ const Layout = (function () {
     ['kitchen', 'kitchen', 66, 33, 'manage', '🥗'], ['store', 'food', 71, 45, 'manage', '🧺'],
     ['gh', 'gh', 25, 17, 'manage', '🌱'],
     ['lab', 'lab', 10, 46, 'investigate', '🔬'], ['spec', 'lab', 17, 46, 'investigate', '🌈'], ['log', 'lab', 21, 49, 'investigate', '📚'], ['sampler', 'samples', 27, 50, 'manage', '🧪'],
-    ['reactor', 'reactor', 103, 20, 'manage', '⚛️'], ['solar', 'reactor', 90, 37, 'play', '☀️'], ['balance', 'reactor', 102, 36, 'play', '⚖️'],
+    ['reactor', 'reactor', 99, 39, 'manage', '⚛️'], ['solar', 'reactor', 92, 39, 'play', '☀️'], ['balance', 'reactor', 110, 39, 'play', '⚖️'],
     ['work', 'workshop', 93, 49, 'manage', '🛠'], ['wastec', 'waste', 105, 50, 'manage', '♻️'],
     ['rover', 'rad', 43, 56, 'explore', '🚙'], ['isru', 'rad', 44, 62, 'manage', '🧊'], ['shield', 'rad', 60, 58, 'manage', '🛡️'], ['lock', 'lock', 58, 65, 'interact', '🚪'], ['suit', 'rad', 54, 65, 'equip', '🧑‍🚀']
   ];
@@ -114,10 +119,10 @@ const Layout = (function () {
   const PLANTERS = [[7, 19], [12, 19], [17, 19], [7, 25], [12, 25], [17, 25]];
   // Puestos de trabajo de los NPC por sala (celdas de referencia; World elige la libre más cercana)
   const SPOTS = { bridge: [[56, 21], [52, 20]], hall: [[52, 28], [60, 28]], life: [[38, 31], [38, 44]], med: [[52, 49], [60, 49]], water: [[72, 16], [75, 22]], kitchen: [[58, 35], [52, 40]],
-    food: [[73, 30], [73, 40]], gh: [[10, 23], [20, 23], [14, 35]], lab: [[12, 50], [18, 50]], samples: [[28, 55], [30, 49]], reactor: [[90, 34], [100, 33]], workshop: [[88, 50], [92, 55]], waste: [[101, 50], [100, 56]],
+    food: [[73, 30], [73, 40]], gh: [[10, 23], [20, 23], [14, 35]], lab: [[12, 50], [18, 50]], samples: [[28, 55], [30, 49]], reactor: [[96, 36], [111, 36], [103, 4]], workshop: [[88, 50], [92, 55]], waste: [[101, 50], [100, 56]],
     rad: [[48, 59], [66, 54], [56, 62]] };
   const SAMPLES_OUT = { moon: [[47.5, 75.5], [66.5, 77.5], [41.5, 79], [72.5, 73.5]], mars: [[45.5, 76.5], [69.5, 78.5], [38.5, 74], [74.5, 74.5]] };
-  const REACTOR_C = [96, 27];
+  const REACTOR_C = [103, 18];
 
   /** Terreno exterior: rutas de exploración (huellas del rover), estructuras y geografía propia de cada escenario. Determinista. */
   function scenery(scen, isBase) {
