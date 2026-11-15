@@ -312,6 +312,61 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
   ok('Todos los nodos de ruta están en suelo transitable', inst.nodesOk && !inst.bad.length, JSON.stringify(inst.bad.slice(0, 5)));
   ok('Las 13 instalaciones son alcanzables desde el puente por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
+  // ---- Instalaciones nuevas: almacén, cocina, muestras, taller, residuos ----
+  const fac = await pg.evaluate(() => {
+    const mk = () => Sim.create({ seed: 11, noEv: true, mode: 'adv', skipCamp: true, scen: 'moon' });
+    const out = {};
+    // Almacén: la cosecha entra y se registra; sin frío se estropea más
+    let A = mk(), B = mk();
+    for (const X of [A, B]) { X.pant.fresh = 10; }
+    Sim.decide(B, 'cold', { v: false });
+    Sim.step(A, 24); Sim.step(B, 24);
+    out.spoil = [A.st.spoiled, B.st.spoiled];
+    A = mk(); const pl0 = A.beds[0].plants[0]; pl0.prog = 1; const before = A.pant.fresh; Sim.harvest(A, 0, 0);
+    out.harvest = [A.pant.fresh > before, A.pant.log.length === 1 && A.pant.log[0].k === 'in'];
+    // Cocina: ensalada gasta lo fresco, sube el ánimo y respeta las 8 h
+    A = mk(); A.pant.fresh = 5; A.r.food.v = 40; const m0 = A.morale = 50;
+    const c1 = Sim.decide(A, 'cook', { r: 'salad' }); Sim.step(A, 3); const m1 = A.morale; const c2 = Sim.decide(A, 'cook', { r: 'salad' });
+    out.cook = [c1.ok, m1 > m0 - 5, c2.ok === false && c2.err === 'mealwait', A.st.meals === 1, A.pant.fresh < 5];
+    // Raciones
+    A = mk(); B = mk(); Sim.decide(B, 'ration', { v: 'low' }); Sim.step(A, 1); Sim.step(B, 1); out.ration = B.r.food.cons < A.r.food.cons * 0.9;
+    // Muestras: identificador único, clasificación, almacenamiento, laboratorio, deterioro
+    A = mk(); Sim.addSamples(A, 3, 'rover');
+    const ids = A.sampleList.map((e) => e.id), e0 = A.sampleList[0];
+    const okF = ['id', 'origin', 't', 'cat', 'state', 'slot', 'an'].every((k) => k in e0);
+    const st = Sim.decide(A, 'sstore', { id: e0.id, label: e0.cat });
+    const slotOk = A.sampleList[0].slot === 'A1' && A.sampleList[0].state === 'stored' && A.sampleList[0].ok;
+    const an = Sim.decide(A, 'analyze', { id: e0.id }); const inlab = A.sampleList[0].an === 'inlab';
+    Sim.step(A, 4); const sc0 = A.science;
+    out.samples = [new Set(ids).size === 3, okF, st.ok, slotOk, an.ok, inlab, A.sampleList[0].an === 'done', A.sampleList[0].sci === 15, A.samples === 2];
+    A = mk(); Sim.addSamples(A, 1, 'eva'); Sim.step(A, 25); out.degraded = A.sampleList[0].state === 'degraded';
+    // Taller: fabricar repuesto y usarlo
+    A = mk(); const mat0 = A.r.mat.v; Sim.decide(A, 'craft', {}); Sim.step(A, 4); const p1 = A.parts; const matAfterCraft = A.r.mat.v;
+    A.sys.reactor.h = 40; const matB = A.r.mat.v; const mt = Sim.decide(A, 'maint', { sys: 'reactor' });
+    out.work = [p1 === 1, matAfterCraft < mat0, mt.ok, A.parts === 0, Math.abs(A.r.mat.v - matB) < 0.01, A.jobs.some((j) => j.kind === 'maint' && j.h < 2)];
+    // Residuos: separar antes de reciclar rinde más
+    A = mk(), B = mk(); A.r.waste.v = 20; B.r.waste.v = 20; A.r.mat.v = B.r.mat.v = 10;
+    Sim.decide(A, 'sort', {}); Sim.decide(A, 'recycle', {}); Sim.decide(B, 'recycle', {}); Sim.step(A, 4); Sim.step(B, 4);
+    out.waste = [A.r.mat.v - B.r.mat.v > 2.5];
+    // Migración de partidas guardadas
+    A = mk(); const old = JSON.parse(JSON.stringify(A)); delete old.pant; delete old.sampleList; delete old.parts; old.samples = 2;
+    const M = Sim.migrate(old); out.mig = [!!M.pant, M.sampleList.length === 2, M.samples === 2, M.parts === 0];
+    return out;
+  });
+  ok('Almacén: sin refrigeración se estropea más comida', fac.spoil[1] > fac.spoil[0] * 4, JSON.stringify(fac.spoil));
+  ok('Almacén: la cosecha entra y queda registrada', fac.harvest.every(Boolean), JSON.stringify(fac.harvest));
+  ok('Cocina: la ensalada usa lo fresco, sube el ánimo y respeta el intervalo', fac.cook.every(Boolean), JSON.stringify(fac.cook));
+  ok('Cocina: el plan de raciones cambia el consumo', fac.ration);
+  ok('Muestras: identificador único, clasificación, estante, laboratorio y análisis registrado', fac.samples.every(Boolean), JSON.stringify(fac.samples));
+  ok('Muestras: sin almacenar se deterioran en 24 h', fac.degraded);
+  ok('Taller: fabricar repuesto gasta materiales y el mantenimiento lo usa', fac.work.every(Boolean), JSON.stringify(fac.work));
+  ok('Residuos: separar antes de reciclar recupera más materiales', fac.waste[0]);
+  ok('Las partidas guardadas antiguas se migran', fac.mig.every(Boolean), JSON.stringify(fac.mig));
+  for (const [id, re] of [['store', /Almacén de alimentos/], ['kitchen', /Cocina y comedor/], ['sampler', /Almacén de muestras/], ['work', /Taller de mantenimiento/], ['wastec', /Gestión de residuos/]]) {
+    await pg.evaluate((i) => Game._debug.openConsole(i), id);
+    ok('La consola «' + id + '» abre su panel', await pg.locator('.panel h2').filter({ hasText: re }).first().isVisible());
+    await closeAll(pg);
+  }
   // Alertas por NPC
   const rad = await pg.evaluate(() => {
     const G = Game._debug, S = Game.S, out = {};

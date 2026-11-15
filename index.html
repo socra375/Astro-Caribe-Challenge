@@ -217,7 +217,7 @@ const DATA = (function () {
       quiz: 'Pregunta rápida', correct: '¡Correcto!', wrong: 'Casi. Mira por qué:', tryToy: 'Prueba tú', sdgT: 'Objetivos de Desarrollo Sostenible', limitsT: 'Límites para transferir la solución',
       spaceT: 'Lo que aprendimos en el espacio', rdT: 'Aplicación en República Dominicana', worldT: 'Impacto global', locked: 'Completa la misión para desbloquear esta ficha.',
       helpMove: 'Muévete con WASD o flechas · E para interactuar · P pausa · M mapa', helpTouch: 'Usa el joystick para moverte y el botón E para interactuar',
-      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
+      busy: 'Ya hay una misión en curso. Termínala o abandónala primero.', noseed: 'No quedan semillas de esa especie.', nonutr: 'No queda solución nutritiva: prepárala en el panel del invernadero.', noplant: 'No hay planta en ese hueco.', noprune: 'Ahora no hace falta podar.', locked: 'Completa primero la familiarización.', nomat: 'No hay materiales suficientes.', sorted: 'Los residuos ya están separados: ahora recíclalos.', mealwait: 'Ya se preparó una comida hace poco: espera unas horas.', nofresh: 'No queda fruta ni verdura fresca suficiente.', nopacked: 'No quedan raciones de reserva suficientes.', noslot: 'No hay huecos libres en el almacén de muestras.', nosample: 'No hay muestras para analizar.', nowater: 'No hay agua suficiente.', nowaste: 'Necesitas al menos 6 kg de residuos.', err: 'No se pudo hacer.'
     },
     en: {
       start: 'Start mission', cont: 'Continue', manual: 'Learning manual', earthConn: 'Earth Connection', sources: 'Science sources',
@@ -251,7 +251,7 @@ const DATA = (function () {
       quiz: 'Quick question', correct: 'Correct!', wrong: 'Almost. Here is why:', tryToy: 'Try it', sdgT: 'Sustainable Development Goals', limitsT: 'Limits to transferring the solution',
       spaceT: 'What we learned in space', rdT: 'Application in the Dominican Republic', worldT: 'Global impact', locked: 'Complete the mission to unlock this card.',
       helpMove: 'Move with WASD or arrows · E to interact · P pause · M map', helpTouch: 'Use the joystick to move and the E button to interact',
-      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
+      busy: 'A mission is already active. Finish or abandon it first.', noseed: 'No seeds left for that species.', nonutr: 'No nutrient solution left: prepare it at the greenhouse panel.', noplant: 'No plant in that slot.', noprune: 'No pruning needed right now.', locked: 'Finish the familiarization first.', nomat: 'Not enough materials.', sorted: 'Waste is already sorted: now recycle it.', mealwait: 'A meal was prepared recently: wait a few hours.', nofresh: 'Not enough fresh produce left.', nopacked: 'Not enough reserve rations left.', noslot: 'No free slots in the sample storage.', nosample: 'No samples to analyze.', nowater: 'Not enough water.', nowaste: 'You need at least 6 kg of waste.', err: 'Could not do it.'
     }
   };
 
@@ -1220,10 +1220,11 @@ const Sim = (function () {
       beds: [], crew: [], jobs: [], inc: [], log: [], incSeq: 1,
       cm: { q: [], inbox: [], seq: 1, nextDaily: 20 },
       m: {}, samples: 0, science: 0, pts: 0, morale: 78, rest: 75,
+      pant: { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] }, sampleList: [], sampleSeq: 1, parts: 0, sorted: false,
       z: { water: 0, food: 0, power: 0, press: 0, well: 0 },
       lastEv: 0, pw: {}, lf: {}, d: {}, pendingCards: [], quiz: {},
       st: { waterUsed: 0, waterRec: 0, eGen: 0, eUsed: 0, foodProd: 0, foodCons: 0, incTot: 0, incRes: 0, quizOk: 0, quizTot: 0,
-        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {} }
+        maxDose: 0, brownH: 0, critH: 0, mistakes: {}, good: {}, harvested: 0, samplesTot: 0, crops: {}, spoiled: 0, meals: 0, crafted: 0 }
     };
     if (scen === 'mars') S.lightMin = Math.round(rr(S, 4, 20) * 10) / 10; // real: ~3 a ~22 min según posiciones orbitales
     for (let i = 0; i < 6; i++) S.beds.push({ light: 0.7, plants: [null, null, null] });
@@ -1247,6 +1248,10 @@ const Sim = (function () {
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
     if (!S.camp) S.camp = campDone();
+    if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
+    if (!S.sampleList) { S.sampleList = []; S.sampleSeq = 1; const n = Math.max(0, Math.round(S.samples || 0)); S.samples = 0; if (n) addSamples(S, n, 'legacy'); }
+    if (S.parts == null) S.parts = 0; if (S.sorted == null) S.sorted = false;
+    if (S.st) { S.st.spoiled = S.st.spoiled || 0; S.st.meals = S.st.meals || 0; S.st.crafted = S.st.crafted || 0; }
     if (!S.seeds) S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     if (!S.r.nutr) S.r.nutr = R(30, 0.5, 0.2, 0.07);
     if (!S.playerRole) S.playerRole = 'commander';
@@ -1408,6 +1413,7 @@ const Sim = (function () {
       { id: 'press', p: 1, kw: 0.3 + 0.5 * M.leak },
       { id: 'comms', p: 2, kw: 0.8 * S.cap.comms },
       { id: 'shield', p: 2, kw: 0.2 + 0.2 * sy.shield.lvl },
+      { id: 'cold', p: 3, kw: S.pant.cold && S.pant.fresh > 0.01 ? 0.1 : 0 },
       { id: 'lab', p: 3, kw: S.jobs.some((j) => j.kind === 'analyze' || j.kind === 'experiment') ? 1.5 * S.cap.lab : 0 },
       { id: 'rover', p: 3, kw: sy.rover.batt < 100 ? 1.0 : 0 },
       { id: 'isru', p: 3, kw: sy.isru.on ? P.ISRU_KW : 0 },
@@ -1505,9 +1511,15 @@ const Sim = (function () {
     r.nutr.v -= fert; r.nutr.cons = fert / h;
 
     /* --- Alimentos --- */
-    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons;
+    const fUse = S.N * (P.FOOD_PER_PERSON_DAY / 24) * df.cons * (RATION[S.pant.ration] || 1);
     r.food.cons = fUse; r.food.prod = 0;
     r.food.v -= fUse * h; S.st.foodCons += fUse * h;
+    { // Almacén: se come primero lo fresco; lo fresco se deteriora más sin refrigeración (modelo educativo simplificado)
+      const Pn = S.pant; Pn.fresh = Math.max(0, Pn.fresh - fUse * h);
+      const cf = Pn.cold && !S.emergency ? (lf.cold == null ? 1 : lf.cold) : 0, spoil = Math.min(Pn.fresh, r.food.v) * (0.01 - 0.0092 * cf) * h;
+      if (spoil > 0) { Pn.fresh -= spoil; r.food.v -= spoil; S.st.spoiled += spoil; }
+      for (const e of S.sampleList) if (e.state === 'new' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
+    }
     r.waste.prod = S.N * (P.WASTE_PER_PERSON_DAY / 24); r.waste.v += r.waste.prod * h; // envases y residuos sólidos
 
     /* --- Radiación --- */
@@ -1539,7 +1551,7 @@ const Sim = (function () {
       clamp(pct(r.food) / 0.25, 0, 1), clamp(pct(r.water) / 0.2, 0, 1), lf.therm];
     const hq = q.reduce((a, b) => a + b, 0) / q.length;
     const medic = bonus(S, 'medic') ? 6 : 0;
-    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic;
+    const mT = 30 + 58 * hq - nCrit * 6 - nWarn * 2 + medic + (S.pant.ration === 'high' ? 3 : S.pant.ration === 'low' ? -4 : 0);
     S.morale = clamp(S.morale + (mT - S.morale) * Math.min(1, 0.04 * h), 0, 100);
     S.rest = clamp(S.rest + (28 + 66 * hq - S.rest) * Math.min(1, 0.05 * h), 0, 100);
     r.well.v = 0.6 * S.morale + 0.4 * S.rest;
@@ -1634,15 +1646,38 @@ const Sim = (function () {
     d.day = Math.floor(S.t / 24) + 1; d.hour = S.t % 24;
   }
 
+  /* ---------- Instalaciones: muestras, almacén, cocina, taller y residuos (modelo educativo) ---------- */
+  const SAMPLE_CATS = ['regolith', 'rock', 'ice'];
+  const SAMPLE_SLOTS = 8;
+  /** Registra muestras ficticias de juego (no son muestras reales de NASA). La categoría real depende del identificador, sin usar el generador aleatorio. */
+  function addSamples(S, n, origin) {
+    for (let i = 0; i < n; i++) {
+      const seq = S.sampleSeq++, cat = SAMPLE_CATS[(seq * 5 + (origin ? origin.length : 0)) % 3];
+      S.sampleList.push({ id: 'MS-' + String(seq).padStart(3, '0'), seq, origin: origin || 'rover', t: S.t, cat, label: null, state: 'new', slot: null, an: 'pending', ok: false, sci: 0 });
+    }
+    S.samples += n; S.st.samplesTot += n;
+  }
+  const sampleFresh = (e) => e.state === 'new' || e.state === 'degraded';
+  function pantryLog(S, k, kg, w) { const L = S.pant.log; L.push({ t: Math.round(S.t * 10) / 10, k, kg: Math.round(kg * 100) / 100, w: w || '' }); if (L.length > 40) L.splice(0, L.length - 40); }
+  const RATION = { low: 0.8, normal: 1, high: 1.15 };
+  const freeSlot = (S) => { for (let i = 1; i <= SAMPLE_SLOTS; i++) { const id = 'A' + i; if (!S.sampleList.some((e) => e.slot === id)) return id; } return null; };
+
   /* ---------- Trabajos ---------- */
   function finishJob(S, j) {
     const sy = S.sys;
     if (j.kind === 'shield') { sy.shield.lvl = Math.min(3, sy.shield.lvl + 1); sy.shield.h = Math.max(sy.shield.h, 90); log(S, 'ok', 'job.shield', { lvl: sy.shield.lvl }); }
     if (j.kind === 'shelter') { sy.shield.cap = Math.min(5, sy.shield.cap + 1); log(S, 'ok', 'job.shelter', { cap: sy.shield.cap }); }
-    if (j.kind === 'analyze') { S.science += 12; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {}); }
+    if (j.kind === 'analyze') {
+      const e = S.sampleList.find((x) => x.id === j.sid);
+      const sci = e ? (e.state === 'degraded' ? 7 : 12) + (e.ok ? 3 : 0) : 12;
+      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; }
+      S.science += sci; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {});
+    }
+    if (j.kind === 'cook') { S.morale = Math.min(100, S.morale + j.mor); S.r.well.v = Math.min(100, S.r.well.v + 2); S.st.meals++; log(S, 'ok', 'job.cook', {}); }
+    if (j.kind === 'craft') { S.parts++; S.st.crafted++; log(S, 'ok', 'job.craft', {}); }
     if (j.kind === 'nutr') { S.r.nutr.v += 4; log(S, 'ok', 'job.nutr', {}); }
     if (j.kind === 'experiment') { S.science += 8; S.morale += 4; log(S, 'ok', 'job.experiment', {}); }
-    if (j.kind === 'recycle') { S.r.mat.v += 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
+    if (j.kind === 'recycle') { S.r.mat.v += j.sorted ? 8 : 5; S.st.good.recycle = (S.st.good.recycle || 0) + 1; log(S, 'ok', 'job.recycle', {}); }
     if (j.kind === 'maint') { sy[j.sys].h = Math.min(100, sy[j.sys].h + 35); log(S, 'ok', 'job.maint', { sys: j.sys }); }
   }
 
@@ -1669,18 +1704,48 @@ const Sim = (function () {
     },
     maint: (S, p) => {
       if (S.jobs.some((j) => j.kind === 'maint')) return 'busy';
+      if (S.parts > 0) { S.parts--; S.jobs.push({ kind: 'maint', h: 1.8, kw: 0.6, sys: p.sys || 'reactor', part: true }); return; } // con repuesto: más rápido y sin gastar materiales
       if (S.r.mat.v < 4) return 'nomat';
       S.r.mat.v -= 4; S.jobs.push({ kind: 'maint', h: 3, kw: 0.6, sys: p.sys || 'reactor' });
+    },
+    craft: (S) => {
+      if (S.jobs.some((j) => j.kind === 'craft')) return 'busy';
+      if (S.r.mat.v < 6) return 'nomat';
+      S.r.mat.v -= 6; S.jobs.push({ kind: 'craft', h: S.playerRole === 'engineer' ? 2 : 3, kw: 0.8 });
+    },
+    sort: (S) => {
+      if (S.sorted) return 'sorted';
+      if (S.r.waste.v < 6) return 'nowaste';
+      S.sorted = true; step(S, 1);
+    },
+    cold: (S, p) => { S.pant.cold = !!p.v; },
+    ration: (S, p) => { if (!RATION[p.v]) return 'err'; S.pant.ration = p.v; },
+    cook: (S, p) => {
+      if (S.jobs.some((j) => j.kind === 'cook')) return 'busy';
+      if (S.t - S.pant.mealT < 8) return 'mealwait';
+      const salad = p.r !== 'ration', kg = salad ? 1.5 : 1;
+      if (salad ? S.pant.fresh < kg : S.r.food.v - S.pant.fresh < kg) return salad ? 'nofresh' : 'nopacked';
+      if (salad) S.pant.fresh -= kg; S.r.food.v -= kg; S.pant.mealT = S.t; pantryLog(S, 'out', kg, salad ? 'salad' : 'ration');
+      S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 });
+    },
+    sstore: (S, p) => {
+      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
+      if (!SAMPLE_CATS.includes(p.label)) return 'err';
+      const sl = freeSlot(S); if (!sl) return 'noslot';
+      e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded';
     },
     recycle: (S) => {
       if (S.jobs.some((j) => j.kind === 'recycle')) return 'busy';
       if (S.r.waste.v < 6) return 'nowaste';
-      S.r.waste.v -= 6; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8 });
+      S.r.waste.v -= 6; const so = S.sorted; S.sorted = false; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8, sorted: so });
     },
-    analyze: (S) => {
+    analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0 });
+      const pend = S.sampleList.filter((x) => x.an === 'pending');
+      const e = (p && p.id ? pend.find((x) => x.id === p.id) : null) || pend.find((x) => x.state === 'stored') || pend[0];
+      if (!e) return 'nosample';
+      e.an = 'inlab'; S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0, sid: e.id });
     },
     experiment: (S) => {
       if (S.jobs.some((j) => j.kind === 'experiment')) return 'busy';
@@ -1722,7 +1787,7 @@ const Sim = (function () {
     },
     eva: (S) => {
       if (S.r.o2.v < 0.5) return 'err';
-      S.r.o2.v -= 0.2; S.samples++; S.st.samplesTot++; S.r.mat.v += 1; S.pts += 5;
+      S.r.o2.v -= 0.2; addSamples(S, 1, 'eva'); S.r.mat.v += 1; S.pts += 5;
     },
     sleep: (S) => { S.rest = clamp(S.rest + 30, 0, 100); S.morale = clamp(S.morale + 4, 0, 100); step(S, 4); },
     rec: (S) => { S.morale = clamp(S.morale + 9, 0, 100); step(S, 2); },
@@ -1764,6 +1829,7 @@ const Sim = (function () {
     const b = S.beds[bed], pl = b && b.plants[slot];
     if (!pl || pl.prog < 1) return null;
     const c = CROPS[pl.sp], y = c.y * (pl.hp / 100) * (pl.prune > 1 ? 0.8 : 1);
+    S.pant.fresh += y; pantryLog(S, 'in', y, pl.sp);
     S.r.food.v += y; S.st.foodProd += y; S.st.harvested += y; S.st.crops[pl.sp] = (S.st.crops[pl.sp] || 0) + 1;
     S.seeds[pl.sp] = (S.seeds[pl.sp] || 0) + c.seeds; S.morale = clamp(S.morale + c.mor, 0, 100); S.r.waste.v += 0.15;
     const m6 = S.m[6]; if (m6.st === 'active') { m6.data.kg = (m6.data.kg || 0) + y; (m6.data.types = m6.data.types || {})[pl.sp] = 1; }
@@ -1805,7 +1871,7 @@ const Sim = (function () {
         break;
       case 'rover': {
         const n = Math.max(0, Math.round(fin(res.samples, 0)));
-        S.samples += n; S.st.samplesTot += n; S.r.mat.v += fin(res.regolith, 0);
+        addSamples(S, n, 'rover'); S.r.mat.v += fin(res.regolith, 0);
         sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++;
         const m7 = S.m[7];
         if (m7.st === 'active' && ok && n >= m7.data.target) finishMission(S, 7, res.score > 0.75 ? 3 : 2);
@@ -1851,7 +1917,7 @@ const Sim = (function () {
     const id = CAMP[C.i] && CAMP[C.i].id;
     if (id === 'c2') { const inc = S.inc.find((i) => !i.res && i.type === 'water_fail') || addInc(S, 'water_fail', { sev: 'warn' }); C.inc = inc.id; }
     if (id === 'c3') S.beds[0].plants.forEach((pl) => { if (pl) pl.prog = Math.max(pl.prog, 0.86); });
-    if (id === 'c4') { S.samples += 2; S.st.samplesTot += 2; }
+    if (id === 'c4') addSamples(S, 2, 'camp');
     if (id) log(S, 'info', 'camp.start', { id });
   }
   function campKeyDone(S, key) {
@@ -2009,7 +2075,7 @@ const Sim = (function () {
     };
   }
 
-  return { DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -2853,6 +2919,7 @@ const World = (function () {
     for (const bx of [63, 66, 73, 76]) F(bx, 35, 2, 2, 'bin'); F(70, 40, 5, 3, 'recycler'); F(63, 41, 2, 2, 'crate');
     // Taller de mantenimiento
     F(83, 36, 6, 2, 'benchs'); F(91, 35, 4, 2, 'tools'); F(84, 41, 3, 2, 'crate'); F(90, 40, 4, 3, 'lathe');
+    C('kitchen', 'kitchen', 76, 3, 'manage', '🥗'); C('store', 'food', 76, 18, 'manage', '🧺'); C('sampler', 'samples', 88, 22, 'manage', '🧪'); C('wastec', 'waste', 76, 38, 'manage', '♻️'); C('work', 'workshop', 96, 38, 'manage', '🛠');
     // Muestras exteriores
     samples = [{ x: 23.5, y: 51.5 }, { x: 35.5, y: 52.5 }, { x: 27.5, y: 53.5 }, { x: 33.5, y: 50.5 }].map((s) => Object.assign(s, { taken: false }));
     // Solidez
@@ -4078,6 +4145,7 @@ const Game = (function () {
   }
   /* =================== CONSOLAS =================== */
   const CNAME = {
+    store: { es: 'Almacén de alimentos', en: 'Food storage' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, sampler: { es: 'Almacén de muestras', en: 'Sample storage' }, work: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, wastec: { es: 'Gestión de residuos', en: 'Waste management' },
     cmd: { es: 'Consola de mando', en: 'Command console' }, comms: { es: 'Comunicaciones', en: 'Communications' }, earth: { es: 'Conexión con la Tierra', en: 'Earth Connection' },
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
@@ -4098,7 +4166,7 @@ const Game = (function () {
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
-      shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
+      shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
   }
   function incHere(rooms, body) {
@@ -4122,6 +4190,12 @@ const Game = (function () {
 
   /* ---------- Panel de consecuencias ---------- */
   const DMETA = {
+    cold: { u: { es: '0,1 kW mientras haya comida fresca', en: '0.1 kW while there is fresh food' }, r: { es: 'Apagado, lo fresco se estropea unas 10 veces más rápido.', en: 'Switched off, fresh food spoils about 10 times faster.' }, b: { es: 'Con frío, la comida fresca dura mucho más.', en: 'With cold, fresh food lasts much longer.' } },
+    ration: { u: { es: 'Cambia cuánta comida come la tripulación', en: 'Changes how much food the crew eats' }, r: { es: 'Reducidas: baja el ánimo. Abundantes: se gasta más comida.', en: 'Small: morale drops. Large: more food is used.' }, b: { es: 'Ajusta comida y ánimo según la situación.', en: 'Balances food and morale for the situation.' } },
+    cook: { u: { es: 'Comida (1 a 1,5 kg) y 0,6 kW durante 2 h', en: 'Food (1 to 1.5 kg) and 0.6 kW for 2 h' }, r: { es: 'Gasta comida de las reservas.', en: 'Uses food from the supplies.' }, b: { es: 'Sube el ánimo y el bienestar.', en: 'Raises morale and wellbeing.' } },
+    sstore: { u: { es: 'Un hueco del almacén de muestras', en: 'One slot in the sample storage' }, r: { es: 'Si clasificas mal, la muestra rinde menos ciencia.', en: 'A wrong classification yields less science.' }, b: { es: 'La muestra queda conservada y localizable.', en: 'The sample stays preserved and traceable.' } },
+    craft: { u: { es: '6 kg de materiales y 0,8 kW durante 3 h', en: '6 kg of materials and 0.8 kW for 3 h' }, r: { es: 'Gasta materiales.', en: 'Uses materials.' }, b: { es: '+1 repuesto: el mantenimiento será más rápido y barato.', en: '+1 spare part: maintenance will be faster and cheaper.' } },
+    sort: { u: { es: '1 hora de trabajo', en: '1 hour of work' }, r: { es: 'Necesitas al menos 6 kg de residuos.', en: 'You need at least 6 kg of waste.' }, b: { es: 'El próximo reciclaje recupera 8 kg en vez de 5.', en: 'The next recycling recovers 8 kg instead of 5.' } },
     lights: { u: { es: 'Electricidad para las luces LED', en: 'Electricity for LED lights' }, r: { es: 'Menos batería para otros sistemas, sobre todo de noche o con polvo.', en: 'Less battery for other systems, especially at night or with dust.' }, b: { es: 'Las plantas crecen más rápido.', en: 'Plants grow faster.' } },
     irrig: { u: { es: 'Agua del tanque', en: 'Tank water' }, r: { es: 'Si el agua baja mucho, el generador de O₂ también se queda sin agua.', en: 'If water drops a lot, the O₂ generator also runs out.' }, b: { es: 'Cultivos sanos y crecimiento.', en: 'Healthy crops and growth.' } },
     reactor: { u: { es: 'Vida útil del reactor (desgaste)', en: 'Reactor lifetime (wear)' }, r: { es: 'Más potencia = más desgaste y mantenimiento.', en: 'More power = more wear and maintenance.' }, b: { es: 'Más kW disponibles.', en: 'More kW available.' } },
@@ -5064,6 +5138,142 @@ const Game = (function () {
   }
 
   function openCrew() { if (!S || !running || modalOpen()) return; wardrobePanel(); }
+
+  /* =====================================================================
+     INSTALACIONES NUEVAS: almacén de alimentos, cocina, almacén de muestras,
+     taller y gestión de residuos. Todas las acciones pasan por Sim.decide
+     (panel de consecuencias) y usan el estado real de la simulación.
+     Modelo educativo simplificado: no sustituye datos de agencias espaciales.
+     ===================================================================== */
+  const barEl = (v, max, cls) => h('div', { class: 'meter', style: { cursor: 'default', minWidth: '120px' } }, h('div', { class: 'bar' }, h('i', { style: { width: Math.max(0, Math.min(100, (v / max) * 100)) + '%', background: cls === 'warn' ? 'var(--warning)' : cls === 'crit' ? 'var(--danger)' : '' } })));
+  const lvlOf = (v, max, warn, crit) => (v / max <= crit ? 'crit' : v / max <= warn ? 'warn' : 'ok');
+  const dayHour = (t) => { const d = Math.floor(t / 24) + 1, hh = Math.floor(t % 24); return (LANG === 'es' ? 'día ' : 'day ') + d + ' · ' + String(hh).padStart(2, '0') + ':00'; };
+  const FOODN = { romaine: { es: 'lechuga romana', en: 'romaine lettuce' }, mizuna: { es: 'mizuna', en: 'mizuna' }, radish: { es: 'rábano', en: 'radish' }, chili: { es: 'chile', en: 'chili' }, zinnia: { es: 'flor comestible', en: 'edible flower' } };
+  const CATN = { regolith: { es: 'Regolito (polvo y suelo)', en: 'Regolith (dust and soil)' }, rock: { es: 'Roca', en: 'Rock' }, ice: { es: 'Hielo', en: 'Ice' } };
+  const STN = { new: { es: 'Recibida', en: 'Received' }, stored: { es: 'Conservada', en: 'Preserved' }, degraded: { es: 'Deteriorada', en: 'Degraded' } };
+  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
+
+  function foodModel() {
+    const df = Sim.DIFFS[S.diff], per = Sim.P.FOOD_PER_PERSON_DAY * df.cons * (Sim.RATION[S.pant.ration] || 1);
+    const total = S.r.food.v, fresh = Math.min(S.pant.fresh, total), packed = Math.max(0, total - fresh), perDay = per * S.N;
+    return { total, fresh, packed, perDay, per, days: perDay > 0 ? total / perDay : 99 };
+  }
+
+  /* ---------- Almacén de alimentos ---------- */
+  function storePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    livePanel(() => {
+      const m = foodModel(), P = S.pant, lvl = lvlOf(m.total, S.r.food.max, 0.3, 0.12);
+      const crops = Object.keys(S.st.crops || {});
+      return panel('🧺 ' + consoleName('store'), h('div', null, incHere(['gh']),
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, (es ? 'Reservas' : 'Supplies')),
+            barEl(m.total, S.r.food.max, lvl === 'ok' ? '' : lvl),
+            adv ? h('table', null, h('tbody', null, statRow(es ? 'Total' : 'Total', fmt(m.total, 1) + ' kg', lvl), statRow(es ? 'Fresco' : 'Fresh', fmt(m.fresh, 1) + ' kg'), statRow(es ? 'Raciones de reserva' : 'Reserve rations', fmt(m.packed, 1) + ' kg'),
+              statRow(es ? 'Consumo de la tripulación' : 'Crew consumption', fmt(m.perDay, 2) + ' kg/' + (es ? 'día' : 'day')), statRow(es ? 'Autonomía' : 'Supply left', fmt(m.days, 1) + (es ? ' días' : ' days')))) :
+              h('div', null, h('p', null, (es ? 'Comida para unos ' : 'Food for about ') + Math.floor(m.days) + (es ? ' días.' : ' days.')), h('p', { class: 'small' }, (es ? 'Fresca: ' : 'Fresh: ') + fmt(m.fresh, 1) + ' kg · ' + (es ? 'de reserva: ' : 'reserve: ') + fmt(m.packed, 1) + ' kg'))),
+          h('div', { class: 'card' }, h('h3', null, '❄ ' + (es ? 'Frío y conservación' : 'Cold storage')),
+            h('p', { class: 'small' }, es ? 'Lo fresco se estropea más rápido sin frío. El frigorífico gasta un poco de energía (0,1 kW).' : 'Fresh food spoils faster without cold. The fridge uses a little energy (0.1 kW).'),
+            tag(P.cold ? '✔ ' + (es ? 'Frigorífico encendido' : 'Fridge on') : '⚠ ' + (es ? 'Frigorífico apagado' : 'Fridge off'), P.cold ? 'ok' : 'warn'),
+            h('p', { class: 'small muted' }, (es ? 'Comida estropeada hasta ahora: ' : 'Spoiled so far: ') + fmt(S.st.spoiled, 2) + ' kg'),
+            btn(P.cold ? '⏹ ' + (es ? 'Apagar frío' : 'Turn cold off') : '▶ ' + (es ? 'Encender frío' : 'Turn cold on'), () => confirmDecision('cold', { v: !P.cold }, es ? 'Frigorífico' : 'Fridge'), 'sm'))),
+        h('h3', null, (es ? 'Tipos de alimento' : 'Food types')),
+        h('p', { class: 'small' }, (es ? 'Cosechado en la base: ' : 'Grown in the base: ') + (crops.length ? crops.map((k) => tr(FOODN[k] || { es: k, en: k }) + ' ×' + S.st.crops[k]).join(' · ') : (es ? 'todavía nada (cultiva en el invernadero)' : 'nothing yet (grow in the greenhouse)')) + (es ? '. Y raciones de reserva liofilizadas.' : '. Plus freeze-dried reserve rations.')),
+        h('h3', null, (es ? 'Entradas y salidas' : 'Stock in and out')),
+        P.log.length ? h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, es ? 'Cuándo' : 'When'), h('th', null, es ? 'Movimiento' : 'Movement'), h('th', null, es ? 'Cantidad' : 'Amount'))),
+          h('tbody', null, P.log.slice(-8).reverse().map((e) => h('tr', null, h('td', null, dayHour(e.t)), h('td', null, (e.k === 'in' ? '▲ ' + (es ? 'Entra cosecha: ' : 'Harvest in: ') : '▼ ' + (es ? 'Sale para cocina: ' : 'Out to kitchen: ')) + (FOODN[e.w] ? tr(FOODN[e.w]) : e.w === 'salad' ? (es ? 'ensalada' : 'salad') : e.w === 'ration' ? (es ? 'ración' : 'ration') : e.w)), h('td', null, fmt(e.kg, 2) + ' kg')))))) :
+          h('p', { class: 'small muted' }, es ? 'Aún no hay movimientos. Las cosechas entran aquí y la cocina saca alimentos.' : 'No movements yet. Harvests come in here and the kitchen takes food out.'),
+        h('p', { class: 'small muted' }, es ? 'Modelo educativo simplificado del deterioro de alimentos.' : 'Simplified educational model of food spoilage.')));
+    });
+  }
+
+  /* ---------- Cocina y comedor ---------- */
+  function kitchenPanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    livePanel(() => {
+      const m = foodModel(), P = S.pant, wait = Math.max(0, 8 - (S.t - P.mealT)), hh = S.t % 24;
+      const next = [8, 13, 20].map((x) => (x > hh ? x - hh : x + 24 - hh)).reduce((a, b) => Math.min(a, b));
+      const RN = { low: { es: 'Raciones reducidas', en: 'Small rations' }, normal: { es: 'Raciones normales', en: 'Normal rations' }, high: { es: 'Raciones abundantes', en: 'Large rations' } };
+      const RD = { low: { es: 'Gasta un 20 % menos de comida, pero baja el ánimo.', en: 'Uses 20% less food, but lowers morale.' }, normal: { es: 'Equilibrio entre comida y ánimo.', en: 'Balance between food and morale.' }, high: { es: 'Sube el ánimo, pero gasta un 15 % más de comida.', en: 'Raises morale, but uses 15% more food.' } };
+      return panel('🥗 ' + consoleName('kitchen'), h('div', null,
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card' }, h('h3', null, es ? 'Raciones disponibles' : 'Rations available'),
+            adv ? h('table', null, h('tbody', null, statRow(es ? 'Comida total' : 'Total food', fmt(m.total, 1) + ' kg'), statRow(es ? 'Por persona y día' : 'Per person per day', fmt(m.per, 2) + ' kg'), statRow(es ? 'Autonomía' : 'Supply left', fmt(m.days, 1) + (es ? ' días' : ' days')))) :
+              h('p', null, (es ? 'Hay comida para unos ' : 'There is food for about ') + Math.floor(m.days) + (es ? ' días.' : ' days.')),
+            h('p', { class: 'small muted' }, es ? 'Referencia orientativa: una persona necesita unas 2 500 kcal al día (varía; no es consejo médico).' : 'Rough reference: a person needs about 2,500 kcal a day (it varies; not medical advice).'),
+            h('p', { class: 'small' }, (es ? 'Próxima comida del horario: en ' : 'Next scheduled meal: in ') + fmt(next, 0) + ' h (08:00 · 13:00 · 20:00)')),
+          h('div', { class: 'card' }, h('h3', null, es ? 'Plan de raciones' : 'Ration plan'),
+            ['low', 'normal', 'high'].map((k) => h('div', { class: 'row', style: { margin: '4px 0', alignItems: 'center' } },
+              P.ration === k ? tag('✔ ' + tr(RN[k]), 'ok') : btn(tr(RN[k]), () => confirmDecision('ration', { v: k }, tr(RN[k])), 'sm'), h('span', { class: 'small muted' }, tr(RD[k])))))),
+        h('h3', null, es ? 'Preparar una comida' : 'Prepare a meal'),
+        h('p', { class: 'small' }, wait > 0 ? '⏳ ' + (es ? 'Se puede preparar otra comida especial en ' : 'Another special meal can be prepared in ') + fmt(wait, 1) + ' h.' : (es ? 'Una comida especial cada 8 horas sube el ánimo de la tripulación.' : 'One special meal every 8 hours lifts the crew morale.')),
+        h('div', { class: 'row' },
+          btn('🥗 ' + (es ? 'Ensalada fresca (1,5 kg de lo fresco)' : 'Fresh salad (1.5 kg of fresh produce)'), () => confirmDecision('cook', { r: 'salad' }, es ? 'Ensalada fresca' : 'Fresh salad'), 'primary'),
+          btn('🍲 ' + (es ? 'Ración caliente de reserva (1 kg)' : 'Hot reserve ration (1 kg)'), () => confirmDecision('cook', { r: 'ration' }, es ? 'Ración caliente' : 'Hot ration'))),
+        h('p', { class: 'small muted' }, (es ? 'Comidas preparadas hasta ahora: ' : 'Meals prepared so far: ') + S.st.meals + '. ' + (es ? 'Enseña a planificar la comida y gestionar reservas.' : 'It teaches food planning and managing supplies.'))));
+    });
+  }
+
+  /* ---------- Almacén de muestras ---------- */
+  function samplePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    livePanel(() => {
+      const L = S.sampleList, open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
+      const used = L.filter((e) => e.slot && e.an !== 'done').length, left = Sim.SAMPLE_SLOTS - used;
+      const row = (e) => {
+        const fresh = e.state === 'new' || e.state === 'degraded';
+        return h('div', { class: 'card', style: e.state === 'degraded' ? { borderColor: 'var(--warning)' } : {} },
+          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
+            e.an === 'inlab' ? tag('🔬 ' + (es ? 'En el laboratorio' : 'In the lab'), 'ok') : null),
+          h('p', { class: 'small' }, (es ? 'Origen: ' : 'Origin: ') + tr(ORIGN[e.origin] || ORIGN.rover) + ' · ' + (es ? 'recogida: ' : 'collected: ') + dayHour(e.t) + ' · ' + (es ? 'categoría: ' : 'category: ') + (e.label ? tr(CATN[e.label]) : (es ? 'sin clasificar' : 'not classified')) + ' · ' + (es ? 'ubicación: ' : 'location: ') + (e.slot ? (es ? 'estante ' : 'shelf ') + e.slot : '—')),
+          fresh && e.an === 'pending' ? h('div', { class: 'row' }, h('span', { class: 'small' }, es ? 'Clasifica y guarda:' : 'Classify and store:'),
+            Sim.SAMPLE_CATS.map((c) => btn(tr(CATN[c]), () => confirmDecision('sstore', { id: e.id, label: c }, e.id + ' · ' + tr(CATN[c])), 'sm'))) : null,
+          e.an === 'pending' && e.state !== 'new' ? h('div', { class: 'row' }, btn('🔬 ' + (es ? 'Enviar al laboratorio' : 'Send to the lab'), () => confirmDecision('analyze', { id: e.id }, e.id), 'primary sm')) : null,
+          e.an === 'pending' && e.state === 'new' ? h('p', { class: 'small muted' }, es ? 'Sin guardar se deteriora en 24 h.' : 'Unstored, it degrades within 24 h.') : null);
+      };
+      return panel('🧪 ' + consoleName('sampler'), h('div', null,
+        h('p', { class: 'small' }, (es ? 'Huecos libres: ' : 'Free slots: ') + left + '/' + Sim.SAMPLE_SLOTS + ' · ' + (es ? 'por analizar: ' : 'to analyze: ') + S.samples + ' · ' + (es ? 'análisis completados: ' : 'analyses done: ') + done.length),
+        open.length ? open.map(row) : h('p', { class: 'muted' }, es ? 'No hay muestras. Recógelas con el rover o saliendo al exterior.' : 'No samples yet. Collect them with the rover or by going outside.'),
+        done.length ? h('div', null, h('h3', null, es ? 'Análisis registrados' : 'Recorded analyses'),
+          h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'ID'), h('th', null, es ? 'Categoría' : 'Category'), h('th', null, es ? 'Conservación' : 'Condition'), h('th', null, es ? 'Ciencia' : 'Science'))),
+            h('tbody', null, done.slice(-6).reverse().map((e) => h('tr', null, h('td', null, e.id), h('td', null, e.label ? tr(CATN[e.label]) : '—'), h('td', null, tr(STN[e.state])), h('td', null, '+' + e.sci))))))) : null,
+        adv ? h('p', { class: 'small muted' }, es ? 'Clasificar bien una muestra da +3 de ciencia; una muestra deteriorada rinde menos (7 en vez de 12).' : 'A correct classification gives +3 science; a degraded sample yields less (7 instead of 12).') : null,
+        h('p', { class: 'small muted' }, es ? 'Son muestras ficticias de juego: no son muestras reales de NASA.' : 'These are fictional game samples: they are not real NASA samples.')));
+    });
+  }
+
+  /* ---------- Taller de mantenimiento ---------- */
+  function workPanel() {
+    const es = LANG === 'es', adv = MODE === 'adv';
+    const SYSK = ['reactor', 'solar', 'o2', 'rec', 'thermal', 'press', 'comms', 'shield'];
+    livePanel(() => panel('🛠 ' + consoleName('work'), h('div', null, incHere(['reactor', 'water', 'life', 'rad', 'bridge']),
+      h('div', { class: 'grid2' },
+        h('div', { class: 'card' }, h('h3', null, es ? 'Inventario técnico' : 'Technical stock'),
+          h('table', null, h('tbody', null, statRow(es ? 'Piezas de repuesto' : 'Spare parts', S.parts), statRow(es ? 'Materiales' : 'Materials', fmt(S.r.mat.v, 1) + ' kg', lvlOf(S.r.mat.v, S.r.mat.max, 0.12, 0.05)), statRow(es ? 'Piezas fabricadas' : 'Parts made', S.st.crafted))),
+          S.jobs.filter((j) => j.kind === 'craft' || j.kind === 'maint').map((j) => h('p', { class: 'small' }, '⏳ ' + (j.kind === 'craft' ? (es ? 'Fabricando repuesto: ' : 'Making a part: ') : (es ? 'Mantenimiento: ' : 'Maintenance: ')) + fmt(j.h, 1) + ' h')),
+          btn('⚙ ' + (es ? 'Fabricar un repuesto (6 kg de materiales)' : 'Make a spare part (6 kg of materials)'), () => confirmDecision('craft', {}, es ? 'Fabricar repuesto' : 'Make spare part'), 'primary'),
+          h('p', { class: 'small muted' }, es ? 'Con un repuesto, el mantenimiento dura menos y no gasta materiales. La ingeniera Ana fabrica más rápido.' : 'With a spare part, maintenance is shorter and uses no materials. Engineer Ana makes parts faster.')),
+        h('div', { class: 'card' }, h('h3', null, es ? 'Mantenimiento de equipos' : 'Equipment maintenance'),
+          SYSK.filter((k) => S.sys[k]).map((k) => h('div', { class: 'row', style: { alignItems: 'center', margin: '3px 0' } },
+            h('span', { style: { minWidth: '140px' } }, tr(DATA.SYS_T[k]) + (adv ? ' ' + Math.round(S.sys[k].h) + ' %' : '')), barEl(S.sys[k].h, 100, S.sys[k].h < 30 ? 'crit' : S.sys[k].h < 70 ? 'warn' : ''),
+            btn('🔧', () => confirmDecision('maint', { sys: k }, tr(DATA.SYS_T[k])), 'sm', { 'aria-label': (es ? 'Mantener ' : 'Maintain ') + tr(DATA.SYS_T[k]) }))))))));
+  }
+
+  /* ---------- Gestión de residuos ---------- */
+  function wastePanel() {
+    const es = LANG === 'es', adv = MODE === 'adv', w = S.r.waste, lvl = w.v / w.max >= 0.9 ? 'crit' : w.v / w.max >= 0.75 ? 'warn' : 'ok';
+    livePanel(() => panel('♻️ ' + consoleName('wastec'), h('div', null,
+      h('div', { class: 'grid2' },
+        h('div', { class: 'card' }, h('h3', null, es ? 'Residuos almacenados' : 'Stored waste'), barEl(w.v, w.max, lvl === 'ok' ? '' : lvl),
+          adv ? h('table', null, h('tbody', null, statRow(es ? 'Nivel' : 'Level', fmt(w.v, 1) + ' / ' + w.max + ' kg', lvl), statRow(es ? 'Producción' : 'Production', fmt(w.prod * 24, 2) + ' kg/' + (es ? 'día' : 'day')), statRow(es ? 'Materiales recuperados' : 'Recovered materials', fmt(S.r.mat.v, 1) + ' kg'))) :
+            h('p', null, lvl === 'ok' ? (es ? 'Hay sitio de sobra.' : 'Plenty of room.') : (es ? '¡Se está llenando! Recicla pronto.' : 'It is filling up! Recycle soon.'))),
+        h('div', { class: 'card' }, h('h3', null, es ? 'Separar y reciclar' : 'Sort and recycle'),
+          h('p', { class: 'small' }, es ? 'Separar antes de reciclar recupera más material: 8 kg en vez de 5.' : 'Sorting before recycling recovers more material: 8 kg instead of 5.'),
+          S.sorted ? tag('✔ ' + (es ? 'Lote separado, listo para reciclar' : 'Batch sorted, ready to recycle'), 'ok') : btn('🗂 ' + (es ? 'Separar residuos (1 h)' : 'Sort waste (1 h)'), () => confirmDecision('sort', {}, es ? 'Separar' : 'Sort'), 'sm'),
+          h('div', { class: 'row', style: { marginTop: '6px' } }, btn('♻️ ' + (es ? 'Reciclar 6 kg en materiales' : 'Recycle 6 kg into materials'), () => confirmDecision('recycle', {}, es ? 'Reciclaje' : 'Recycling'), 'primary')),
+          S.jobs.filter((j) => j.kind === 'recycle').map((j) => h('p', { class: 'small' }, '⏳ ' + (es ? 'Reciclando: ' : 'Recycling: ') + fmt(j.h, 1) + ' h')))),
+      h('p', { class: 'small muted' }, es ? 'Economía circular: lo que sobra se convierte en materiales para reparar y construir. El reciclado gasta energía.' : 'Circular economy: leftovers become materials for repairs and building. Recycling uses energy.'))));
+  }
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind];

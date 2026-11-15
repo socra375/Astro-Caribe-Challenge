@@ -1,5 +1,6 @@
   /* =================== CONSOLAS =================== */
   const CNAME = {
+    store: { es: 'Almacén de alimentos', en: 'Food storage' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, sampler: { es: 'Almacén de muestras', en: 'Sample storage' }, work: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, wastec: { es: 'Gestión de residuos', en: 'Waste management' },
     cmd: { es: 'Consola de mando', en: 'Command console' }, comms: { es: 'Comunicaciones', en: 'Communications' }, earth: { es: 'Conexión con la Tierra', en: 'Earth Connection' },
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
@@ -20,7 +21,7 @@
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
     const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
-      shield: shieldPanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
+      shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
   }
   function incHere(rooms, body) {
@@ -44,6 +45,12 @@
 
   /* ---------- Panel de consecuencias ---------- */
   const DMETA = {
+    cold: { u: { es: '0,1 kW mientras haya comida fresca', en: '0.1 kW while there is fresh food' }, r: { es: 'Apagado, lo fresco se estropea unas 10 veces más rápido.', en: 'Switched off, fresh food spoils about 10 times faster.' }, b: { es: 'Con frío, la comida fresca dura mucho más.', en: 'With cold, fresh food lasts much longer.' } },
+    ration: { u: { es: 'Cambia cuánta comida come la tripulación', en: 'Changes how much food the crew eats' }, r: { es: 'Reducidas: baja el ánimo. Abundantes: se gasta más comida.', en: 'Small: morale drops. Large: more food is used.' }, b: { es: 'Ajusta comida y ánimo según la situación.', en: 'Balances food and morale for the situation.' } },
+    cook: { u: { es: 'Comida (1 a 1,5 kg) y 0,6 kW durante 2 h', en: 'Food (1 to 1.5 kg) and 0.6 kW for 2 h' }, r: { es: 'Gasta comida de las reservas.', en: 'Uses food from the supplies.' }, b: { es: 'Sube el ánimo y el bienestar.', en: 'Raises morale and wellbeing.' } },
+    sstore: { u: { es: 'Un hueco del almacén de muestras', en: 'One slot in the sample storage' }, r: { es: 'Si clasificas mal, la muestra rinde menos ciencia.', en: 'A wrong classification yields less science.' }, b: { es: 'La muestra queda conservada y localizable.', en: 'The sample stays preserved and traceable.' } },
+    craft: { u: { es: '6 kg de materiales y 0,8 kW durante 3 h', en: '6 kg of materials and 0.8 kW for 3 h' }, r: { es: 'Gasta materiales.', en: 'Uses materials.' }, b: { es: '+1 repuesto: el mantenimiento será más rápido y barato.', en: '+1 spare part: maintenance will be faster and cheaper.' } },
+    sort: { u: { es: '1 hora de trabajo', en: '1 hour of work' }, r: { es: 'Necesitas al menos 6 kg de residuos.', en: 'You need at least 6 kg of waste.' }, b: { es: 'El próximo reciclaje recupera 8 kg en vez de 5.', en: 'The next recycling recovers 8 kg instead of 5.' } },
     lights: { u: { es: 'Electricidad para las luces LED', en: 'Electricity for LED lights' }, r: { es: 'Menos batería para otros sistemas, sobre todo de noche o con polvo.', en: 'Less battery for other systems, especially at night or with dust.' }, b: { es: 'Las plantas crecen más rápido.', en: 'Plants grow faster.' } },
     irrig: { u: { es: 'Agua del tanque', en: 'Tank water' }, r: { es: 'Si el agua baja mucho, el generador de O₂ también se queda sin agua.', en: 'If water drops a lot, the O₂ generator also runs out.' }, b: { es: 'Cultivos sanos y crecimiento.', en: 'Healthy crops and growth.' } },
     reactor: { u: { es: 'Vida útil del reactor (desgaste)', en: 'Reactor lifetime (wear)' }, r: { es: 'Más potencia = más desgaste y mantenimiento.', en: 'More power = more wear and maintenance.' }, b: { es: 'Más kW disponibles.', en: 'More kW available.' } },

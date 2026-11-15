@@ -86,6 +86,7 @@ const World = (function () {
     for (const bx of [63, 66, 73, 76]) F(bx, 35, 2, 2, 'bin'); F(70, 40, 5, 3, 'recycler'); F(63, 41, 2, 2, 'crate');
     // Taller de mantenimiento
     F(83, 36, 6, 2, 'benchs'); F(91, 35, 4, 2, 'tools'); F(84, 41, 3, 2, 'crate'); F(90, 40, 4, 3, 'lathe');
+    C('kitchen', 'kitchen', 76, 3, 'manage', '🥗'); C('store', 'food', 76, 18, 'manage', '🧺'); C('sampler', 'samples', 88, 22, 'manage', '🧪'); C('wastec', 'waste', 76, 38, 'manage', '♻️'); C('work', 'workshop', 96, 38, 'manage', '🛠');
     // Muestras exteriores
     samples = [{ x: 23.5, y: 51.5 }, { x: 35.5, y: 52.5 }, { x: 27.5, y: 53.5 }, { x: 33.5, y: 50.5 }].map((s) => Object.assign(s, { taken: false }));
     // Solidez
