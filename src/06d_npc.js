@@ -80,6 +80,7 @@
   function logToRadio(e) {
     const k = e.k, p = e.p || {}, es = LANG === 'es';
     if (k.startsWith('ex.')) return exLogToRadio(e);
+    if (k.startsWith('el.')) return elLogToRadio(e);
     if (k.startsWith('ev.') || k === 'esc') {
       const ty = k === 'esc' ? p.type : k.slice(3), T = DATA.EVT[ty]; if (!T) return false;
       const inc = S.inc.find((i) => i.id === p.id) || {};

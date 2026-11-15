@@ -421,7 +421,7 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
     try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
@@ -461,10 +461,17 @@ const Sfx = (function () {
     scan: () => { tone(520, 0.14, 'sine', 0, 0.16); tone(880, 0.16, 'sine', 0.12, 0.18); tone(1320, 0.22, 'sine', 0.26, 0.18); },
     geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
     photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
-    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045)
+    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045),
+    // EarthLink Radio: conexión, transmisión, recepción, interferencia y fin de transmisión (volumen propio)
+    rcon: () => { [440, 660, 880, 1320].forEach((f, i) => tone(f, 0.09, 'sine', i * 0.08, 0.16)); tone(2400, 0.05, 'square', 0.36, 0.05); },
+    rtx: () => { tone(1500, 0.05, 'square', 0, 0.06); tone(900, 0.07, 'triangle', 0.05, 0.1); },
+    rrx: () => { tone(1040, 0.1, 'sine', 0, 0.18); tone(1560, 0.14, 'sine', 0.1, 0.18); },
+    rnoise: () => { for (let i = 0; i < 9; i++) tone(1200 + ((i * 7919) % 2300), 0.025, 'square', i * 0.03, 0.04); },
+    rend: () => { tone(1250, 0.07, 'sine', 0, 0.12); tone(830, 0.09, 'sine', 0.08, 0.12); }
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
-    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+  const RADIO_SND = { rcon: 1, rtx: 1, rrx: 1, rnoise: 1, rend: 1 };
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : RADIO_SND[k] ? radioVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
     setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();

@@ -839,6 +839,7 @@ const Sim = (function () {
       S.cm.inbox.push({ id: S.cm.seq++, kind: 'daily', t: S.t, sent: S.t - ow, snap: snapshot(S), read: false, n: Math.floor(S.t / 24) });
     }
     if (S.cm.inbox.length > 40) S.cm.inbox.splice(0, S.cm.inbox.length - 40);
+    if (typeof EL !== 'undefined') EL.step(S, M);
   }
 
   /* ---------- Misiones ---------- */

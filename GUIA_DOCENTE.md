@@ -121,6 +121,11 @@ El estudiante explica qué es un protocolo de emergencia, por qué la autonomía
 | Luna frente a Marte | ¿Por qué cambian los peligros (radiación, polvo, viento, hielo) y las rutas? | Comparar entornos: la Luna sin atmósfera y Marte con atmósfera fina y tormentas |
 | Repetidores de radio | ¿Cómo se amplía la cobertura y qué pasa sin señal? | Comunicaciones: distancia, antenas y redundancia |
 
+| EarthLink Radio | ¿Por qué la Tierra responde tarde y por qué el retardo de Marte cambia? | Velocidad de la luz y distancia: Luna ≈ 1,3 s, Marte entre 3 y 22 min según la órbita; el juego lo comprime para poder jugar |
+| Canales de radio | ¿Qué canal usarías para una avería, una muestra o una emergencia y por qué? | Comunicación clara y dirigida: cada canal tiene su especialista |
+| Informe de estado | ¿Qué datos hay que incluir para que Control pueda ayudar? | Datos reales y completos: energía, oxígeno, agua, alimentos, radiación, cultivos, tripulación y averías |
+| Fallo de antena o tormenta solar | ¿Qué hacer si no hay contacto con la Tierra? | Autonomía y redundancia: protocolos propios y reparar la antena |
+
 - **Voz y subtítulos:** el juego narra las llamadas y las instrucciones con la voz que ofrezca el dispositivo. Si hay una sola voz, todos los personajes la comparten con tono distinto; es normal. Todo se puede leer en los subtítulos y se puede repetir el último mensaje con la tecla V.
 - **Accesibilidad:** el panel de audio permite bajar la velocidad de narración, ajustar volúmenes por separado y desactivar la voz, la música o los sonidos.
 

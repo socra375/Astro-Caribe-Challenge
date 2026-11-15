@@ -709,8 +709,8 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pv.goto(FILE); await pv.waitForTimeout(300);
   await pv.evaluate(() => Game._debug.newRun('moon', 'x', { skipCamp: true, mode: 'adv' })); await pv.waitForTimeout(300);
   const ids = await pv.evaluate(() => Object.keys(Voice.profiles));
-  const want = []; for (const l of ['es', 'en']) for (const r of ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator']) want.push('npc_' + r + '_' + l);
-  ok('Existen los 12 perfiles internos npc_*_es y npc_*_en', want.every((w) => ids.includes(w)) && ids.length === 12, ids.join(','));
+  const want = []; for (const l of ['es', 'en']) for (const r of ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator', 'earth_control']) want.push('npc_' + r + '_' + l);
+  ok('Existen los 14 perfiles internos npc_*_es y npc_*_en (incluidos npc_earth_control_*)', want.every((w) => ids.includes(w)) && ids.length === 14, ids.join(','));
   ok('Cada perfil guarda los campos pedidos', await pv.evaluate(() => Object.values(Voice.profiles).every((p) => ['profileId', 'characterRole', 'language', 'preferredVoiceURI', 'preferredVoiceName', 'fallbackLanguage', 'rate', 'pitch', 'volume'].every((k) => k in p))));
   // Sin interacción previa no se reproduce nada (pero sí hay subtítulo)
   await pv.evaluate(() => Voice.say('control', 'es', 'Mensaje antes de interactuar', { level: 'info' }));
@@ -778,7 +778,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pv.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }, { voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: false }]; Voice.refresh(); Object.values(Voice.profiles).forEach((p) => { p.preferredVoiceURI = null; p.preferredVoiceName = null; }); });
   await pv.keyboard.press('Escape'); await pv.evaluate(() => Game._debug.audioPanel()); await pv.waitForTimeout(200);
   ok('El panel de audio avisa de que solo hay una voz española (no son voces distintas)', await pv.getByText(/Solo hay una voz disponible/).isVisible());
-  ok('El panel de audio ofrece volúmenes, interruptores, idioma y una voz por personaje', (await pv.locator('input[type=range]').count()) >= 5 && (await pv.locator('input[type=checkbox]').count()) >= 4 && (await pv.locator('select').count()) === 6);
+  ok('El panel de audio ofrece volúmenes, interruptores, idioma y una voz por personaje', (await pv.locator('input[type=range]').count()) >= 5 && (await pv.locator('input[type=checkbox]').count()) >= 4 && (await pv.locator('select').count()) === 7);
   await pv.locator('select').first().selectOption('uA');
   ok('Elegir una voz la guarda en el perfil', await pv.evaluate(() => Voice.profiles.npc_commander_es.preferredVoiceURI === 'uA' && Voice.cfg.saved.npc_commander_es.name === 'Voz A'));
   // La música no arranca sola: solo al activarla y tras interactuar

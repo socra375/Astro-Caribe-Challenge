@@ -57,6 +57,56 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
 select{background:var(--surface-2);border:2px solid var(--border-input);border-radius:var(--radius);padding:8px;min-height:44px}
 
 /* ===== HUD ===== */
+/* ===== EARTHLINK RADIO ===== */
+.er{position:absolute;right:8px;top:112px;bottom:8px;width:min(420px,calc(100vw - 16px));z-index:30;display:flex;flex-direction:column;pointer-events:auto}
+.er.hidden{display:none}
+.er-dev{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden;background:linear-gradient(160deg,#1a2342,#0c1228 60%,#131a36);border:2px solid #3b4a86;border-radius:22px;padding:14px 12px 10px;box-shadow:0 10px 40px rgba(0,0,0,.6),inset 0 0 0 2px rgba(127,211,255,.08)}
+.er.er-in .er-dev{animation:erOpen .45s cubic-bezier(.2,.9,.3,1)}
+@keyframes erOpen{0%{transform:translate(40px,-30px) scale(.55);opacity:0;filter:brightness(2)}60%{opacity:1}100%{transform:none;filter:none}}
+.er-ant{position:absolute;right:26px;top:-22px;width:10px;height:30px;border-radius:5px 5px 0 0;background:linear-gradient(#cfd5e3,#6a7390);border:2px solid #3b4a86;border-bottom:none}
+.er-head{display:flex;align-items:center;gap:8px;padding-right:2px}
+.er-led{width:12px;height:12px;border-radius:50%;background:#6fffa0;flex:0 0 auto}
+.er-brand{letter-spacing:.14em;font-size:14px}
+.er-freq{flex:1;min-width:0;font:600 11px ui-monospace,Menlo,Consolas,monospace;color:#9fe8ff;background:#050a1c;border:1px solid #2b3a70;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.er-bars{display:inline-flex;gap:2px;align-items:flex-end;height:18px} .er-bars i{width:4px;background:#3a4570;display:block;border-radius:1px} .er-bars i.on{background:var(--success)}
+.er-top{display:flex;gap:8px;align-items:stretch}
+.er-dev>*{flex:none}.er-dev>.er-mid{flex:1 1 auto;min-height:90px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.er-earth{width:170px;height:120px;border-radius:12px;border:1px solid #2b3a70;flex:0 0 auto;image-rendering:auto}
+.er-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:11px}
+.er-center{font-weight:700;font-size:12px}
+.er-state{font-weight:700;border:1px solid;border-radius:8px;padding:1px 6px;align-self:flex-start;font-size:11px}
+.er-row{color:var(--text-muted);line-height:1.25}
+.er-chs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.er-ch{display:flex;align-items:center;gap:5px;justify-content:center;position:relative;min-height:36px;padding:3px 4px;border-radius:10px;border:1px solid #2b3a70;background:#10183a;color:var(--text);font:600 12px system-ui;cursor:pointer}
+.er-ch.on{background:#1d3470;border-color:#7fd3ff;box-shadow:0 0 0 1px #7fd3ff inset}
+.er-ic{display:inline-flex;width:16px;height:16px} .er-badge{position:absolute;right:-3px;top:-5px;background:#ff6b6b;color:#fff;border-radius:9px;min-width:17px;height:17px;font:700 11px/17px system-ui;text-align:center;font-style:normal}
+.er-sub{display:flex;align-items:center;gap:8px;background:#050a1c;border:1px solid #2b3a70;border-radius:10px;padding:6px 8px;min-height:50px}
+.er-who{font-size:12px;min-width:62px} .er-txled{width:9px;height:9px;border-radius:50%;background:#3a4570;flex:0 0 auto} .er-txled.on{background:#ff6b6b;box-shadow:0 0 8px #ff6b6b}
+.er-subtxt{flex:1;font-size:13px;line-height:1.35;min-height:18px}
+.er-props{display:flex;flex-direction:column;gap:4px} .er-prop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;font-size:12px;border:1px dashed #ffc24a;border-radius:10px;padding:5px 8px;background:rgba(255,194,74,.07)}
+.er-opts{display:flex;flex-direction:column;gap:5px}
+.er .er-opt{display:flex;justify-content:flex-start;text-align:left;flex-direction:column;align-items:flex-start;gap:1px;min-height:40px;font-size:13px;padding:6px 10px}
+.er-opt.off{opacity:.55}
+.er-hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;border-top:1px solid #2b3a70;padding-top:6px}
+.er-hist{display:flex;flex-direction:column;gap:5px}
+.er-msg{border-radius:10px;padding:5px 8px;font-size:12px;border:1px solid #2b3a70;background:#0e1633}
+.er-msg.out{border-color:#3e6fb8;background:#12224a} .er-msg.in{border-color:#2f8f62;background:#0f2a24} .er-msg.sys{border-style:dashed;color:var(--text-muted)}
+.er-mh{display:flex;justify-content:space-between;align-items:center;gap:6px} .er-mt{line-height:1.35;margin-top:2px}
+.er-foot{display:flex;flex-direction:column;gap:6px;border-top:1px solid #2b3a70;padding-top:6px}
+.er-scale{display:flex;align-items:center;gap:6px;flex-wrap:wrap} .er-scbtns{display:inline-flex;gap:4px}
+.er-vol{display:flex;align-items:center;gap:8px} .er-vol input{flex:1;min-height:28px}
+#bRadio{position:relative} #bRadio.on{outline:2px solid #7fd3ff} #bRadio .er-hb{position:absolute;right:-5px;top:-6px;min-width:17px;height:17px;border-radius:9px;color:#fff;font:700 11px/17px system-ui;text-align:center;font-style:normal}
+#bRadio.pulse{animation:pulse 1s infinite}
+#app.er-on #eva,#app.er-on #mini,#app.er-on #zoomc{display:none}
+@media (max-width:600px){
+  .er{left:6px;right:6px;top:auto;bottom:6px;width:auto;height:min(78vh,640px)}
+  .er-dev{border-radius:18px;padding:12px 10px 8px}
+  .er-earth{width:128px;height:90px}
+  .er-info{font-size:10px}.er-opt{min-height:36px}
+  #app.er-on #touch,#app.er-on #xtools,#app.er-on #prompt,#app.er-on #xcard{display:none}
+}
+@media (prefers-reduced-motion:reduce){.er.er-in .er-dev{animation:none}}
+.rm .er.er-in .er-dev{animation:none}
 #hud{position:absolute;left:0;right:0;top:0;padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left));display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;pointer-events:none}
 #hud .meters{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
 .meter{background:rgba(10,16,36,.88);border:1px solid var(--border);border-radius:12px;padding:5px 8px;min-width:104px;cursor:pointer}
@@ -194,6 +244,7 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
       <button class="chip btn" id="bSpeed" title="Velocidad" aria-label="Velocidad">x1</button>
       <button class="chip btn" id="bAlerts" title="Alertas" aria-label="Alertas"></button>
       <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa"></button>
+      <button class="chip btn" id="bRadio" title="Radio EarthLink (R)" aria-label="Radio EarthLink"></button>
       <button class="chip btn" id="bCom" title="Comunicaciones" aria-label="Comunicaciones"></button>
       <button class="chip btn" id="bMap" title="Mapa (M)" aria-label="Mapa"></button>
       <button class="chip btn" id="bCrew" title="Tripulación (C)" aria-label="Tripulación"></button>
@@ -637,7 +688,7 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
     try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
@@ -677,10 +728,17 @@ const Sfx = (function () {
     scan: () => { tone(520, 0.14, 'sine', 0, 0.16); tone(880, 0.16, 'sine', 0.12, 0.18); tone(1320, 0.22, 'sine', 0.26, 0.18); },
     geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
     photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
-    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045)
+    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045),
+    // EarthLink Radio: conexión, transmisión, recepción, interferencia y fin de transmisión (volumen propio)
+    rcon: () => { [440, 660, 880, 1320].forEach((f, i) => tone(f, 0.09, 'sine', i * 0.08, 0.16)); tone(2400, 0.05, 'square', 0.36, 0.05); },
+    rtx: () => { tone(1500, 0.05, 'square', 0, 0.06); tone(900, 0.07, 'triangle', 0.05, 0.1); },
+    rrx: () => { tone(1040, 0.1, 'sine', 0, 0.18); tone(1560, 0.14, 'sine', 0.1, 0.18); },
+    rnoise: () => { for (let i = 0; i < 9; i++) tone(1200 + ((i * 7919) % 2300), 0.025, 'square', i * 0.03, 0.04); },
+    rend: () => { tone(1250, 0.07, 'sine', 0, 0.12); tone(830, 0.09, 'sine', 0.08, 0.12); }
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
-    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+  const RADIO_SND = { rcon: 1, rtx: 1, rrx: 1, rnoise: 1, rend: 1 };
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : RADIO_SND[k] ? radioVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
     setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();
@@ -1023,10 +1081,10 @@ const Icons = (function () {
    Si no hay síntesis de voz, el juego sigue funcionando con subtítulos.
    ===================================================================== */
 const Voice = (function () {
-  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator'];
+  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator', 'earth_control'];
   const LANGS = ['es', 'en'];
-  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0] };
-  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator' };
+  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0], earth_control: [0.9, 0.9] };
+  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator', earth: 'earth_control' };
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance !== 'undefined';
   const profiles = {};
   for (const role of ROLES) for (const lang of LANGS) {
@@ -1034,7 +1092,7 @@ const Voice = (function () {
     profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
   }
   // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
-  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
   for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
   function persist() { Store.set('audio', cfg); }
 
@@ -1070,12 +1128,17 @@ const Voice = (function () {
     if (cur || !pend.length) return;
     const it = pend.shift(), p = profiles[it.profileId], r = resolve(it.profileId);
     if (!it.silent) emitSub(p, it.text, it.level);
-    if (!supported || !cfg.tts || !armed || !r.voice) { pend = []; return; } // solo texto (subtítulos)
+    if (!supported || !cfg.tts || !armed || !r.voice) { // solo texto (subtítulos)
+      if (it.onstart) { cur = it; try { it.onstart(); } catch (e) { /* ignore */ } setTimeout(() => { if (cur === it) { cur = null; try { it.onend && it.onend(); } catch (e) { /* ignore */ } startNext(); } }, Math.max(1200, it.text.split(/\s+/).length * 330 / Math.max(0.6, cfg.rate))); return; }
+      pend = []; return;
+    }
     try {
       const u = new window.SpeechSynthesisUtterance(it.text);
       u.voice = r.voice.v; u.lang = r.voice.lang || p.language; u.rate = Math.max(0.5, Math.min(2, p.rate * cfg.rate)); u.pitch = p.pitch;
-      u.volume = Math.max(0, Math.min(1, p.volume * cfg.vVoice * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
-      cur = it; u.onend = u.onerror = () => { if (cur === it) { cur = null; startNext(); } };
+      u.volume = Math.max(0, Math.min(1, p.volume * (it.chan === 'radio' ? cfg.vRadio : cfg.vVoice) * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
+      cur = it; u.onstart = () => { try { it.onstart && it.onstart(); } catch (e) { /* ignore */ } }; u.onboundary = (ev) => { try { it.onboundary && it.onboundary(ev.charIndex || 0); } catch (e) { /* ignore */ } };
+      u.onend = u.onerror = () => { if (cur === it) { cur = null; try { it.onend && it.onend(); } catch (e) { /* ignore */ } startNext(); } };
+      if (it.onstart && !it.started) { it.started = true; }
       window.speechSynthesis.speak(u);
     } catch (e) { cur = null; }
   }
@@ -1084,7 +1147,7 @@ const Voice = (function () {
     o = o || {}; text = clean(text); if (!text || !profiles[profileId]) return false;
     const level = o.level || 'info';
     last = { profileId, text, level };
-    const it = { profileId, text, level, silent: !!o.silent };
+    const it = { profileId, text, level, silent: !!o.silent, chan: o.chan, onstart: o.onstart, onend: o.onend, onboundary: o.onboundary };
     if (level === 'crit') { stop(true); pend = [it]; } else { pend = pend.filter((x) => x.level !== 'info' || level !== 'info'); pend.push(it); if (pend.length > 3) pend.shift(); }
     startNext(); return true;
   }
@@ -2116,6 +2179,7 @@ const Sim = (function () {
       S.cm.inbox.push({ id: S.cm.seq++, kind: 'daily', t: S.t, sent: S.t - ow, snap: snapshot(S), read: false, n: Math.floor(S.t / 24) });
     }
     if (S.cm.inbox.length > 40) S.cm.inbox.splice(0, S.cm.inbox.length - 40);
+    if (typeof EL !== 'undefined') EL.step(S, M);
   }
 
   /* ---------- Misiones ---------- */
@@ -2549,6 +2613,7 @@ const Ex = (function () {
   function tick(S, dt, c) {
     const e = ensure(S), su = e.suit, out = [];
     if (e.scanCd > 0) e.scanCd = Math.max(0, e.scanCd - dt);
+    if (c.outside) e.pos = [c.x, c.y];
     if (e.cond) { e.cond.age += dt; if (e.cond.age >= e.cond.dur && !e.cond.done) { e.cond.done = true; out.push('cond.end'); } }
     if (!su.on || !c.outside) { return out.concat(missionStep(S, dt, c)); }
     const ev = env(S, c.x, c.y), r = role(S), integ = su.integ;
@@ -2773,6 +2838,324 @@ const Ex = (function () {
   function left(S) { const e = ensure(S); e.out = true; e.f.out = true; e.trip.t = 0; }
 
   return { CAP, EXLIM, TOOLS, EXM, RES, def, ensure, env, signal, nearShelter, checklist, equip, recharge, repairSuit, unequip, tick, recall, collect, storage, deposit, withdraw, sortStorage, unload, inField, onAnalyzed, scan, measure, photo, investigate, activateRepeater, useCache, sendOk, objectives, goal, complete, report, arrived, left, condOn, kgOf, rec, isBase, missionStep };
+})();
+/* =====================================================================
+   EL — EARTHLINK RADIO: motor de comunicaciones con la Tierra (sin DOM).
+   Canales, mensajes con retraso, estado del enlace calculado con la
+   simulación, respuestas que dependen del estado real, consecuencias en
+   el juego, informes con datos reales y propuestas de los especialistas.
+   Todo el estado vive en S.el y se guarda con la partida. Los textos se
+   generan en español e inglés a la vez (no dependen del idioma activo).
+   ===================================================================== */
+const EL = (function () {
+  const T = (es, en) => ({ es, en });
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const SCALES = [0.25, 0.5, 1, 2]; // escala del retraso comprimido del juego
+  const CH = [
+    { id: 'control', who: 'commander', icon: '🌎', n: T('Centro de Control', 'Control Center'), d: T('Informes, pronóstico, rutas, suministros y órdenes.', 'Reports, forecast, routes, supplies and orders.') },
+    { id: 'eng', who: 'engineer', icon: '🔧', n: T('Ingeniería', 'Engineering'), d: T('Averías, energía y repuestos con la ingeniera Ana.', 'Faults, power and parts with engineer Ana.') },
+    { id: 'med', who: 'medic', icon: '🩺', n: T('Medicina', 'Medicine'), d: T('Salud, soporte vital y radiación con la médica Mei.', 'Health, life support and radiation with medic Mei.') },
+    { id: 'sci', who: 'scientist', icon: '🔬', n: T('Ciencia', 'Science'), d: T('Muestras e información científica con Leo.', 'Samples and science information with Leo.') },
+    { id: 'agri', who: 'agri', icon: '🌱', n: T('Agricultura', 'Agriculture'), d: T('Cultivos del invernadero con Bruno.', 'Greenhouse crops with Bruno.') },
+    { id: 'emerg', who: 'commander', icon: '⛔', n: T('Emergencias', 'Emergencies'), d: T('Avisos urgentes y petición de asistencia.', 'Urgent calls and requests for assistance.') }
+  ];
+  const DESK = { control: T('Control de Misión', 'Mission Control'), eng: T('Control · Ingeniería', 'Control · Engineering'), med: T('Control · Medicina', 'Control · Medicine'), sci: T('Control · Ciencia', 'Control · Science'), agri: T('Control · Agricultura', 'Control · Agriculture'), emerg: T('Control · Emergencias', 'Control · Emergencies') };
+  const RESN = { o2: T('oxígeno', 'oxygen'), water: T('agua', 'water'), food: T('alimentos', 'food'), power: T('energía', 'power'), mat: T('materiales', 'materials') };
+  const RESU = { o2: 'kg', water: 'L', food: 'kg', power: 'kWh', mat: 'kg' };
+
+  function def() {
+    return { v: 1, ch: 'control', scale: 1, seq: 1, out: [], hist: [], unread: {}, prop: [], rep: { n: 0, last: null, day: -1 }, orders: [], facts: {}, sup: [], lastSup: -999, lastReply: 0, prevLink: 'stable', stormDmg: false, tx: 0, rx: 0, recvT: -99, fc: [], cool: {}, evac: false, dly: 0 };
+  }
+  function ensure(S) {
+    if (S.el && S.el.v === 1) return S.el;
+    const D = def(); if (!S.el) S.el = D;
+    for (const k in D) if (S.el[k] == null) S.el[k] = D[k];
+    S.el.v = 1; return S.el;
+  }
+  const nf = (v, d, es) => { const s = (+v).toFixed(d); return es ? s.replace('.', ',') : s; };
+  const both = (f) => ({ es: f(true), en: f(false) });
+  const pct = (S, k) => { const r = S.r[k]; return r && r.max ? clamp(r.v / r.max, 0, 1) : 0; };
+  const lowest = (S) => ['o2', 'water', 'food', 'power'].sort((a, b) => pct(S, a) - pct(S, b))[0];
+  const activeInc = (S) => S.inc.filter((i) => !i.res && S.t >= i.from);
+  const evt = (ty) => (typeof DATA !== 'undefined' && DATA.EVT[ty] ? DATA.EVT[ty] : null);
+  const incName = (i) => (evt(i.type) ? evt(i.type).t : T(i.type, i.type));
+  const roleName = (r) => (r === 'engineer' ? T('Ana', 'Ana') : r === 'medic' ? T('Mei', 'Mei') : r === 'scientist' ? T('Leo', 'Leo') : r === 'agri' ? T('Bruno', 'Bruno') : T('el comandante', 'the commander'));
+
+  /* ---------- Enlace ---------- */
+  /** Calidad de la señal (0–1) y estado: stable · weak · interf · none. Depende de la antena, la energía, las tormentas, el polvo y, en la expedición, de la posición. */
+  function link(S) {
+    const M = S.mods || {}, why = []; let q = 1;
+    const comms = S.sys.comms ? S.sys.comms.h / 100 : 1, dust = S.scen === 'mars' && S.inc.some((i) => !i.res && i.type === 'dust_storm' && S.t >= i.from);
+    if (M.commsDown) return { st: 'none', q: 0, why: ['antenna'] };
+    q *= 0.15 + 0.85 * comms * comms; if (comms < 0.7) why.push('damage');
+    const pw = S.d && S.d.power != null ? S.d.power : 1; if (pw < 0.12) { q *= 0.4; why.push('power'); }
+    let interf = false;
+    if (M.spe > 0) { q *= 0.55; interf = true; why.push('storm'); }
+    if (dust) { q *= 0.7; interf = true; why.push('dust'); }
+    if (S.ex && S.ex.suit && S.ex.suit.on && S.ex.out && S.ex.pos && typeof Ex !== 'undefined') {
+      const sg = Ex.signal(S, S.ex.pos[0], S.ex.pos[1]); q = Math.min(q, 0.1 + 0.9 * sg); if (sg < 0.5) why.push('distance');
+      if (Ex.env(S, S.ex.pos[0], S.ex.pos[1]).burst > 0.5) interf = true;
+    }
+    q = clamp(q, 0, 1);
+    const st = q < 0.08 ? 'none' : interf && q < 0.8 ? 'interf' : q < 0.5 ? 'weak' : 'stable';
+    return { st, q, why };
+  }
+  /** Retraso real de la señal (solo para mostrarlo) y retraso comprimido del juego. */
+  function delays(S, simhPerS) {
+    const e = ensure(S), realSec = S.scen === 'moon' ? 1.3 : S.lightMin * 60, gameH = Sim.oneWay(S) * e.scale, k = simhPerS || 0.4;
+    return { realSec, gameH, gameRealSec: gameH / k, dist: S.scen === 'moon' ? 384400 : Math.round(S.lightMin * 60 * 299792) };
+  }
+  function status(S) {
+    const e = ensure(S), L = link(S), pend = e.out.length, recent = S.t - e.recvT < 3 && totalUnread(S) > 0;
+    let main = L.st; if (L.st === 'stable' || L.st === 'weak') { if (recent) main = 'received'; else if (pend) main = L.st === 'weak' ? 'weak' : 'pending'; }
+    return { main, link: L, pend, unread: totalUnread(S) };
+  }
+  const totalUnread = (S) => { const u = ensure(S).unread; let n = 0; for (const k in u) n += u[k]; return n; };
+
+  /* ---------- Informe de misión (datos reales) ---------- */
+  function buildReport(S) {
+    const adv = !!S.adv, plants = Sim.plantsList(S), pests = plants.filter((x) => x.p.pest).length, avgHp = plants.length ? plants.reduce((a, x) => a + x.p.hp, 0) / plants.length : 0, avgM = plants.length ? plants.reduce((a, x) => a + x.p.moist, 0) / plants.length : 0;
+    const act = activeInc(S), done = S.sampleList.filter((x) => x.an === 'done').length, basePend = S.sampleList.filter((x) => x.an === 'pending' && (!x.loc || x.loc === 'base')).length, field = S.sampleList.filter((x) => x.loc === 'hand' || x.loc === 'rover').length;
+    const net = (S.pw && S.pw.gen != null) ? (S.pw.gen || 0) - (S.pw.demand || 0) : 0, maxD = S.st.maxDose;
+    const data = { power: pct(S, 'power'), o2: pct(S, 'o2'), water: pct(S, 'water'), food: pct(S, 'food'), shield: S.r.rad.v, dose: maxD / S.limit, plants: plants.length, pests, avgHp, avgM, well: S.r.well.v, morale: S.morale, rest: S.rest, done, basePend, field, sci: S.science, inc: act.map((i) => i.type), net, t: S.t };
+    const line = (k, es) => { const p = Math.round(pct(S, k) * 100); return adv ? (es ? RESN[k].es : RESN[k].en).replace(/^./, (c) => c.toUpperCase()) + ': ' + nf(S.r[k].v, k === 'power' ? 0 : 1, es) + ' ' + RESU[k] + ' (' + p + ' %)' : (es ? RESN[k].es : RESN[k].en).replace(/^./, (c) => c.toUpperCase()) + ' ' + p + ' %'; };
+    const lines = both((es) => [line('power', es) + (adv ? ' · ' + (es ? 'balance ' : 'balance ') + nf(net, 1, es) + ' kW' : ''), line('o2', es), line('water', es), line('food', es),
+      (es ? 'Protección contra la radiación: ' : 'Radiation protection: ') + Math.round(S.r.rad.v) + ' %' + (adv ? ' · ' + (es ? 'dosis máxima ' : 'peak dose ') + nf(maxD, 1, es) + ' / ' + S.limit + ' mSv' : ''),
+      (es ? 'Cultivos: ' : 'Crops: ') + plants.length + (es ? ' plantas' : ' plants') + (adv ? ', ' + (es ? 'salud media ' : 'mean health ') + Math.round(avgHp) + ' %, ' + (es ? 'humedad media ' : 'mean moisture ') + Math.round(avgM) + ' %' : '') + (pests ? ', ' + pests + (es ? ' con plaga' : ' with pests') : ''),
+      (es ? 'Tripulación: ' : 'Crew: ') + (es ? 'bienestar ' : 'wellbeing ') + Math.round(S.r.well.v) + ' %, ' + (es ? 'ánimo ' : 'morale ') + Math.round(S.morale) + ' %' + (adv ? ', ' + (es ? 'descanso ' : 'rest ') + Math.round(S.rest) + ' %' : ''),
+      (es ? 'Investigaciones: ' : 'Research: ') + done + (es ? ' análisis hechos, ' : ' analyses done, ') + basePend + (es ? ' por analizar' : ' to analyze') + (field ? ', ' + field + (es ? ' aún fuera' : ' still outside') : '') + (adv ? ', ' + S.science + (es ? ' pts de ciencia' : ' science pts') : ''),
+      (es ? 'Averías activas: ' : 'Active faults: ') + (act.length ? act.map((i) => (es ? incName(i).es : incName(i).en)).join(', ') : (es ? 'ninguna' : 'none'))]);
+    return { lines, data };
+  }
+  /** Observaciones de la Tierra sobre un informe (reglas sobre los datos enviados). */
+  function evalReport(S, d) {
+    const notes = [];
+    for (const k of ['o2', 'water', 'food', 'power']) if (d[k] < 0.4) notes.push(T('Vigilen ' + RESN[k].es + ': ' + Math.round(d[k] * 100) + ' %.', 'Watch ' + RESN[k].en + ': ' + Math.round(d[k] * 100) + '%.'));
+    if (d.net < 0 && d.power < 0.6) notes.push(T('El balance de energía es negativo: reduzcan consumos.', 'The power balance is negative: reduce loads.'));
+    if (d.dose >= 0.6) notes.push(T('La dosis acumulada es alta: limiten las salidas y usen el refugio.', 'Accumulated dose is high: limit outings and use the shelter.'));
+    if (d.pests > 0) notes.push(T('Hay plagas en el invernadero: inspeccionen las plantas.', 'There are pests in the greenhouse: inspect the plants.'));
+    if (d.inc.length) notes.push(T('Prioricen las averías activas.', 'Prioritize the active faults.'));
+    if (d.basePend > 0) notes.push(T('Tienen muestras sin analizar: pasen al laboratorio.', 'You have unanalyzed samples: go to the lab.'));
+    return notes.length ? notes : [T('Todo dentro de lo previsto.', 'Everything is within expectations.')];
+  }
+
+  /* ---------- Catálogo de mensajes ---------- */
+  const incFix = (S, id) => (id ? S.inc.find((i) => i.id === id && !i.res) : null) || activeInc(S).filter((i) => i.fix).sort((a, b) => (b.sev === 'crit') - (a.sev === 'crit'))[0] || null;
+  const firstFree = (S) => S.sampleList.find((x) => x.an === 'done' && !x.sent);
+  const crewDose = (S) => Math.max.apply(null, S.crew.map((c) => c.dose)) / S.limit;
+  const cd = (S, k, h) => (ensure(S).cool[k] || -999) + h <= S.t;
+  const INT = {
+    status: { ch: 'control', n: T('Enviar informe de estado', 'Send status report'), j: T('Contar cómo estamos', 'Tell how we are'), avail: () => null },
+    forecast: { ch: 'control', n: T('Pedir pronóstico del clima espacial', 'Request space-weather forecast'), j: T('¿Viene una tormenta?', 'Is a storm coming?'), avail: () => null },
+    route: { ch: 'control', n: T('Pedir una ruta segura para el rover', 'Request a safe route for the rover'), j: T('Pedir una ruta segura', 'Ask for a safe route'), avail: () => null },
+    supplies: { ch: 'control', n: T('Solicitar suministros', 'Request supplies'), j: T('Pedir más provisiones', 'Ask for more supplies'),
+      avail: (S) => { if (!cd(S, 'sup', 36)) return T('Ya hay un envío reciente: espera.', 'A shipment was just requested: wait.'); return pct(S, lowest(S)) > 0.55 ? T('Las reservas están bien: Tierra no enviaría nada.', 'Reserves are fine: Earth would not send anything.') : null; } },
+    confirm: { ch: 'control', n: T('Confirmar la última orden', 'Confirm the latest order'), j: T('Decir «entendido»', 'Say "understood"'), avail: (S) => (ensure(S).orders.length ? null : T('No hay órdenes pendientes.', 'There are no pending orders.')) },
+    eng_help: { ch: 'eng', n: T('Pedir procedimiento de reparación', 'Request repair procedure'), j: T('Pedir ayuda con la avería', 'Ask for help with the fault'), avail: (S) => (incFix(S) ? null : T('No hay ninguna avería que reparar.', 'There is no fault to repair.')) },
+    eng_power: { ch: 'eng', n: T('Consultar el estado de energía', 'Ask about the power state'), j: T('Preguntar por la energía', 'Ask about power'), avail: () => null },
+    eng_parts: { ch: 'eng', n: T('Solicitar repuestos', 'Request spare parts'), j: T('Pedir piezas de repuesto', 'Ask for spare parts'), avail: (S) => (!cd(S, 'part', 30) ? T('Ya hay un envío de repuestos en camino.', 'A parts shipment is already on its way.') : S.parts > 1 ? T('Aún tienen repuestos.', 'You still have spare parts.') : null) },
+    med_check: { ch: 'med', n: T('Revisar soporte vital y salud', 'Review life support and health'), j: T('Revisar el aire y la salud', 'Check air and health'), avail: (S) => (!cd(S, 'med', 10) ? T('Medicina ya revisó esto hace poco.', 'Medicine just reviewed this.') : null) },
+    sci_sample: { ch: 'sci', n: T('Enviar datos de una muestra', 'Send sample data'), j: T('Enviar una muestra a la Tierra', 'Send a sample to Earth'), avail: (S) => (firstFree(S) ? null : T('No hay análisis nuevos que enviar.', 'There are no new analyses to send.')) },
+    sci_info: { ch: 'sci', n: T('Consultar información científica', 'Ask for science information'), j: T('Preguntar algo de ciencia', 'Ask a science question'), avail: () => null },
+    agri_check: { ch: 'agri', n: T('Informar de los sensores del invernadero', 'Report greenhouse sensors'), j: T('Contar cómo están las plantas', 'Tell how plants are'), avail: (S) => (Sim.plantsList(S).length ? null : T('No hay plantas sembradas.', 'No plants are growing.')) },
+    emerg_report: { ch: 'emerg', n: T('Informar de una emergencia', 'Report an emergency'), j: T('Avisar de un peligro', 'Warn about a danger'), avail: (S) => (emergency(S) ? null : T('No hay ninguna emergencia detectada.', 'No emergency detected.')) },
+    emerg_eva: { ch: 'emerg', n: T('Pedir recogida en el exterior', 'Request pickup outside'), j: T('Pedir que me recojan', 'Ask to be picked up'), avail: (S) => (S.ex && S.ex.suit && S.ex.suit.on && S.ex.out ? null : T('Solo cuando hay alguien fuera con el traje.', 'Only when someone is outside in a suit.')) }
+  };
+  const emergency = (S) => activeInc(S).find((i) => i.sev === 'crit' || i.sev === 'warn') || (S.mods && S.mods.spe > 0 ? { type: 'solar_storm', id: -1, sev: 'crit' } : null) || (['o2', 'water', 'food', 'power'].some((k) => pct(S, k) < 0.2) ? { type: '_res', id: -2, sev: 'crit' } : null);
+  const WHO = { eng_help: 'engineer', eng_power: 'engineer', eng_parts: 'engineer', med_check: 'medic', sci_sample: 'scientist', sci_info: 'scientist', agri_check: 'agri' };
+  const speaker = (id) => WHO[id] || 'commander';
+  /** Opciones disponibles de un canal (con el motivo si no se pueden usar). */
+  function options(S, ch) {
+    return Object.keys(INT).filter((k) => INT[k].ch === ch).map((k) => { const why = INT[k].avail(S); return { id: k, n: INT[k].n, j: INT[k].j, ok: !why, why }; });
+  }
+  /** Texto que dice quien transmite (con datos reales de la simulación). */
+  function outText(S, id, p) {
+    const adv = !!S.adv, E = S.ex;
+    switch (id) {
+      case 'status': { const r = buildReport(S); return both((es) => (es ? 'Control Tierra, enviamos el informe de estado. ' : 'Earth Control, sending the status report. ') + r.lines[es ? 'es' : 'en'].slice(0, adv ? 8 : 4).join('. ') + '.'); }
+      case 'forecast': return T('Control Tierra, solicitamos el pronóstico del clima espacial para las próximas horas.', 'Earth Control, requesting the space-weather forecast for the coming hours.');
+      case 'route': return T('Control Tierra, solicitamos una ruta segura para el rover con los peligros marcados.', 'Earth Control, requesting a safe rover route with hazards marked.');
+      case 'supplies': { const k = lowest(S), pc = Math.round(pct(S, k) * 100); return both((es) => (es ? 'Control Tierra, solicitamos suministros. Nuestra reserva más baja es ' + RESN[k].es + ' al ' + pc + ' %.' : 'Earth Control, requesting supplies. Our lowest reserve is ' + RESN[k].en + ' at ' + pc + '%.')); }
+      case 'confirm': return T('Control Tierra, recibido y confirmado. Ejecutamos la orden.', 'Earth Control, received and confirmed. Carrying out the order.');
+      case 'eng_help': { const i = incFix(S, p && p.inc); const n = i ? incName(i) : T('una avería', 'a fault'); return both((es) => (es ? 'Control Tierra, tenemos una anomalía: ' + n.es + '. Solicito información sobre el procedimiento de reparación.' : 'Earth Control, we have an anomaly: ' + n.en + '. Requesting information on the repair procedure.')); }
+      case 'eng_power': return both((es) => (es ? 'Control Tierra, la energía está al ' + Math.round(pct(S, 'power') * 100) + ' %' + (adv ? ' y el balance es ' + nf((S.pw.gen || 0) - (S.pw.demand || 0), 1, true) + ' kW' : '') + '. Solicito recomendaciones.' : 'Earth Control, power is at ' + Math.round(pct(S, 'power') * 100) + '%' + (adv ? ' and the balance is ' + nf((S.pw.gen || 0) - (S.pw.demand || 0), 1, false) + ' kW' : '') + '. Requesting recommendations.'));
+      case 'eng_parts': return T('Control Tierra, nos quedan pocos repuestos. Solicitamos el envío de piezas.', 'Earth Control, we are low on spare parts. Requesting a parts shipment.');
+      case 'med_check': return both((es) => (es ? 'Control Tierra, necesitamos revisar las condiciones del soporte vital. Oxígeno al ' + Math.round(pct(S, 'o2') * 100) + ' %, dosis máxima de la tripulación ' + Math.round(crewDose(S) * 100) + ' % del límite' + (E && E.suit && E.suit.on ? ', y hay una salida en curso con ' + nf(E.suit.rad, 1, true) + ' mSv de juego' : '') + '.' : 'Earth Control, we need to review life-support conditions. Oxygen at ' + Math.round(pct(S, 'o2') * 100) + '%, peak crew dose ' + Math.round(crewDose(S) * 100) + '% of the limit' + (E && E.suit && E.suit.on ? ', and an outing is underway at ' + nf(E.suit.rad, 1, false) + ' game mSv' : '') + '.'));
+      case 'sci_sample': { const r = firstFree(S); return both((es) => (es ? 'Control Tierra, hemos obtenido una nueva muestra: ' + r.id + (r.name ? ', ' + r.name.es : '') + '. Enviaremos los datos para su análisis.' : 'Earth Control, we have a new sample: ' + r.id + (r.name ? ', ' + r.name.en : '') + '. We will send the data for analysis.')); }
+      case 'sci_info': return T('Control Tierra, solicitamos información científica sobre lo que estamos estudiando.', 'Earth Control, requesting scientific information about what we are studying.');
+      case 'agri_check': { const pl = Sim.plantsList(S), avgM = pl.reduce((a, x) => a + x.p.moist, 0) / Math.max(1, pl.length), pests = pl.filter((x) => x.p.pest).length; return both((es) => (es ? 'Control Tierra, los sensores del invernadero muestran humedad media del ' + Math.round(avgM) + ' %' + (pests ? ' y una alteración: sospechamos plagas en ' + pests + ' plantas' : ' sin alteraciones graves') + '.' : 'Earth Control, greenhouse sensors show mean moisture of ' + Math.round(avgM) + '%' + (pests ? ' and an alteration: we suspect pests in ' + pests + ' plants' : ' with no serious alterations') + '.')); }
+      case 'emerg_report': { const i = emergency(S); const n = i && i.type !== '_res' ? (i.type === 'solar_storm' ? T('tormenta solar', 'solar storm') : incName(i)) : T('reservas críticas', 'critical reserves'); return both((es) => (es ? 'Control Tierra, informamos de una emergencia: ' + n.es + '. Solicitamos instrucciones.' : 'Earth Control, we report an emergency: ' + n.en + '. Requesting instructions.')); }
+      case 'emerg_eva': return T('Control Tierra, solicito asistencia: necesito que me recojan en el exterior.', 'Earth Control, requesting assistance: I need to be picked up outside.');
+    }
+    return T('Control Tierra, cambio.', 'Earth Control, over.');
+  }
+
+  /* ---------- Envío, tránsito y respuesta ---------- */
+  function addHist(S, o) { const e = ensure(S); o.id = e.seq++; o.t = S.t; e.hist.push(o); if (e.hist.length > 80) e.hist.splice(0, e.hist.length - 80); return o; }
+  function send(S, id, p) {
+    const e = ensure(S), it = INT[id]; if (!it) return { ok: false, err: 'intent' };
+    const why = it.avail(S); if (why) return { ok: false, err: 'avail', why };
+    p = Object.assign({}, p || {});
+    if (id === 'sci_sample' && !p.sid) p.sid = firstFree(S).id;
+    if (id === 'eng_help' && !p.inc) p.inc = incFix(S).id;
+    if (id === 'emerg_report') { const em = emergency(S); p.ty = em ? em.type : null; }
+    const txt = outText(S, id, p), who = speaker(id), L = link(S);
+    const m = { id: e.seq++, ch: it.ch, intent: id, who, txt, sentT: S.t, p: p || {}, st: L.st === 'none' ? 'queued' : 'transit', arriveT: 0, replyT: 0 };
+    if (id === 'status') { const r = buildReport(S); m.rep = r.data; m.repLines = r.lines; }
+    m.snap = { t: S.t, low: lowest(S), lowPct: pct(S, lowest(S)) };
+    if (id === 'supplies') e.cool.sup = S.t; if (id === 'eng_parts') e.cool.part = S.t; if (id === 'med_check') e.cool.med = S.t;
+    if (m.st === 'transit') m.arriveT = S.t + legDelay(S, L);
+    e.out.push(m); e.tx++;
+    addHist(S, { dir: 'out', ch: it.ch, who, text: txt, ref: m.id, st: m.st });
+    Sim.log(S, 'info', 'el.sent', { id: m.id, ch: it.ch, intent: id });
+    return { ok: true, msg: m };
+  }
+  const legDelay = (S, L) => Sim.oneWay(S) * ensure(S).scale * (L.st === 'interf' ? 1.8 : L.st === 'weak' ? 1.4 : 1);
+  function setStatus(S, m, st) { const h = ensure(S).hist.find((x) => x.ref === m.id && x.dir === 'out'); if (h) h.st = st; }
+
+  /* Respuestas de la Tierra (a partir de los datos que le llegaron) */
+  function reply(S, m) {
+    const adv = !!S.adv, I = m.intent;
+    switch (I) {
+      case 'status': { const notes = evalReport(S, m.rep); return { txt: both((es) => (es ? 'Informe recibido. ' : 'Report received. ') + notes.map((n) => n[es ? 'es' : 'en']).join(' ')), ok: true }; }
+      case 'forecast': {
+        const f = S.inc.filter((i) => !i.res && S.t < i.from && S.t >= m.sentT - 1e-9 ? true : (!i.res && S.t < i.from)).filter((i) => (i.from - S.t) < 72).map((i) => ({ id: i.id, type: i.type, inH: i.from - S.t }));
+        const env = f.filter((x) => evt(x.type) && ['solar_storm', 'power_drop', 'dust_storm', 'comms_blackout'].includes(x.type));
+        return { txt: both((es) => env.length ? (es ? 'Prevemos: ' : 'Forecast: ') + env.map((x) => (es ? evt(x.type).t.es : evt(x.type).t.en) + (es ? ' en unas ' : ' in about ') + Math.max(1, Math.round(x.inH)) + ' h').join('; ') + (es ? '. Preparen refugio y energía.' : '. Prepare shelter and power.') : (es ? 'No vemos eventos importantes en las próximas 72 horas.' : 'We see no major events in the next 72 hours.')), fc: env, ok: true };
+      }
+      case 'route': { const E = S.ex, p = typeof Field !== 'undefined' && Field.G ? Field.G.pois.find((q) => !(E && E.visited[q.id])) : null; return { txt: both((es) => es ? 'Enviamos una ruta segura con los peligros marcados' + (p ? ': ' + p.n.es + ' queda señalado en su radar' : '') + '.' : 'We are sending a safe route with hazards marked' + (p ? ': ' + p.n.en + ' is flagged on your radar' : '') + '.'), poi: p && p.id, ok: true }; }
+      case 'supplies': {
+        const k = m.snap.low, pc = m.snap.lowPct; if (pc > 0.55) return { txt: T('Sus reservas están por encima del 55 %: no enviaremos carga todavía.', 'Your reserves are above 55%: we will not send cargo yet.'), ok: false };
+        const amt = Math.round(S.r[k].max * 0.25 * (S.scen === 'mars' ? 0.8 : 1)), eta = (S.scen === 'moon' ? 14 : 30);
+        return { txt: both((es) => (es ? 'Aprobado: enviamos ' + amt + ' ' + RESU[k] + ' de ' + RESN[k].es + '. Llegarán en unas ' + eta + ' horas de juego.' : 'Approved: sending ' + amt + ' ' + RESU[k] + ' of ' + RESN[k].en + '. It arrives in about ' + eta + ' game hours.')), k, amt, eta, ok: true };
+      }
+      case 'confirm': return { txt: T('Confirmación recibida. Gracias, equipo.', 'Confirmation received. Thank you, team.'), ok: true };
+      case 'eng_help': {
+        const i = incFix(S, m.p && m.p.inc); if (!i) return { txt: T('No vemos esa avería ya: parece resuelta.', 'We no longer see that fault: it seems resolved.'), ok: false };
+        const ev = evt(i.type), D = typeof NPCDATA !== 'undefined' && NPCDATA.DIAG[i.type], ok = Sim.DIAG_OK[i.type];
+        const cause = D && ok != null ? D.opts[ok] : null;
+        return { txt: both((es) => (es ? 'Procedimiento: ' : 'Procedure: ') + (cause ? (es ? 'la causa más probable es «' + cause.es + '». ' : 'the most likely cause is "' + cause.en + '". ') : '') + (ev ? (es ? ev.act.es : ev.act.en) : '')), inc: i.id, ok: true };
+      }
+      case 'eng_power': { const pc = Math.round(pct(S, 'power') * 100), net = (S.pw.gen || 0) - (S.pw.demand || 0); return { txt: both((es) => (es ? 'Con la energía al ' + pc + ' %: ' : 'With power at ' + pc + '%: ') + (pc < 35 || net < 0 ? (es ? 'activen el modo ahorro, apaguen luces del invernadero que no hagan falta y bajen la reserva de calefacción.' : 'enable saving mode, switch off unneeded greenhouse lights and lower heating demand.') : (es ? 'van bien. Mantengan el reactor y orienten los paneles.' : 'you are fine. Keep the reactor steady and aim the panels.'))), ok: true }; }
+      case 'eng_parts': return { txt: T('Aprobado: enviamos un repuesto. Llegará en unas 20 horas de juego.', 'Approved: sending a spare part. It arrives in about 20 game hours.'), part: 1, ok: true };
+      case 'med_check': {
+        const dose = crewDose(S), o2 = pct(S, 'o2'), adviceShel = dose >= 0.6;
+        return { txt: both((es) => (es ? 'Medicina: ' : 'Medicine: ') + (o2 < 0.4 ? (es ? 'el oxígeno es bajo; revisen el reciclaje de aire y el agua. ' : 'oxygen is low; check air recycling and water. ') : (es ? 'el soporte vital es estable. ' : 'life support is stable. ')) + (adviceShel ? (es ? 'La dosis de radiación es alta: limiten las salidas y usen el refugio. ' : 'Radiation dose is high: limit outings and use the shelter. ') : (es ? 'La dosis es aceptable. ' : 'The dose is acceptable. ')) + (adv ? (es ? '(dosis máxima ' + Math.round(dose * 100) + ' % del límite)' : '(peak dose ' + Math.round(dose * 100) + '% of limit)') : '')), ok: true, shel: adviceShel };
+      }
+      case 'sci_sample': {
+        const r = S.sampleList.find((x) => x.id === (m.p && m.p.sid)) || null; const k = r ? r.kind || r.cat : 'regolith', R = typeof Ex !== 'undefined' && Ex.RES[k] ? Ex.RES[k][S.scen] : null;
+        return { txt: both((es) => (es ? 'Ciencia: datos recibidos' + (r ? ' de ' + r.id : '') + '. ' : 'Science: data received' + (r ? ' for ' + r.id : '') + '. ') + (R ? (es ? R.es : R.en) : '') + (r && r.int >= 3 ? (es ? ' Es un hallazgo de interés alto: gracias.' : ' This is a high-interest find: thank you.') : '')), sid: r && r.id, ok: true };
+      }
+      case 'sci_info': return { txt: sciFact(S, m), ok: true, fact: m.p && m.p.fact };
+      case 'agri_check': {
+        const pl = Sim.plantsList(S), pests = pl.filter((x) => x.p.pest).length, avgM = pl.reduce((a, x) => a + x.p.moist, 0) / Math.max(1, pl.length);
+        return { txt: both((es) => (es ? 'Agricultura: ' : 'Agriculture: ') + (pests ? (es ? 'es probable que haya plagas; inspeccionen las plantas marcadas y limpien. ' : 'pests are likely; inspect the flagged plants and clean up. ') : '') + (avgM < 40 ? (es ? 'La humedad es baja: rieguen. ' : 'Moisture is low: water them. ') : avgM > 80 ? (es ? 'Hay exceso de agua: reduzcan el riego. ' : 'There is excess water: reduce irrigation. ') : (es ? 'La humedad es adecuada. ' : 'Moisture is adequate. '))), ok: true, pests };
+      }
+      case 'emerg_report': {
+        const ty = m.p && m.p.ty;
+        const proto = { solar_storm: T('Activen el protocolo de tormenta y refúgiense en la zona de rayas amarillas.', 'Turn on the storm protocol and take shelter in the yellow-striped zone.'), water_fail: T('Cierren el circuito afectado y reparen el cableado.', 'Isolate the affected loop and repair the wiring.'), pressure_leak: T('Sellen la fuga y vigilen la presión; si baja mucho, evacúen.', 'Seal the leak and watch pressure; evacuate if it drops too far.'), power_drop: T('Ahorren energía y esperen a que pase el evento.', 'Save power and wait for the event to pass.'), dust_storm: T('Ahorren energía y limpien los paneles al terminar.', 'Save power and clean the panels afterwards.'), comms_blackout: T('Repitan la reparación de la antena; actúen con protocolos autónomos.', 'Repair the antenna; follow autonomous protocols.'), _res: T('Reduzcan consumos y pidan suministros.', 'Cut consumption and request supplies.') }[ty] || T('Sigan los protocolos y vigilen.', 'Follow protocols and monitor.');
+        return { txt: both((es) => (es ? 'Emergencias: recibido. ' : 'Emergencies: received. ') + (es ? proto.es : proto.en)), ty, ok: true };
+      }
+      case 'emerg_eva': return { txt: T('Recibido: enviamos el equipo de recogida. Mantengan la posición y ahorren aire.', 'Received: sending the pickup team. Hold position and conserve air.'), ok: true };
+    }
+    return { txt: T('Recibido.', 'Received.'), ok: true };
+  }
+  const FACTS = {
+    moon: [T('En la Luna casi no hay atmósfera: por eso se ven tantos cráteres y la temperatura cambia más de 250 grados entre el día y la noche.', 'The Moon has almost no atmosphere: that is why there are so many craters and temperature swings over 250 degrees between day and night.'), T('En cráteres en sombra permanente cerca del polo sur puede haber hielo de agua: es un recurso para beber, respirar y fabricar combustible.', 'Permanently shadowed craters near the south pole may hold water ice: a resource for drinking, breathing and making fuel.'), T('El regolito lunar es polvo afilado y electrostático; se pega a los trajes y daña las juntas.', 'Lunar regolith is sharp, electrostatic dust; it clings to suits and wears seals.')],
+    mars: [T('Marte tiene una atmósfera muy fina, de dióxido de carbono: no se puede respirar y apenas frena la radiación.', 'Mars has a very thin carbon-dioxide atmosphere: it cannot be breathed and barely slows radiation.'), T('Las tormentas de polvo marcianas pueden cubrir el planeta durante semanas y reducen la luz de los paneles solares.', 'Martian dust storms can cover the planet for weeks and cut sunlight to solar panels.'), T('Las arcillas y los sedimentos en capas indican que hubo agua líquida en el pasado de Marte.', 'Clays and layered sediments show Mars once had liquid water.')]
+  };
+  function sciFact(S, m) {
+    const e = ensure(S), last = S.sampleList.filter((x) => x.site).slice(-1)[0], R = last && typeof Ex !== 'undefined' && Ex.RES[last.kind] ? Ex.RES[last.kind][S.scen] : null;
+    const idx = Math.min(FACTS[S.scen].length - 1, Object.keys(e.facts).length % FACTS[S.scen].length);
+    if (m.p) m.p.fact = (m.p.fact == null ? idx : m.p.fact);
+    const f = FACTS[S.scen][m.p && m.p.fact != null ? m.p.fact : idx];
+    return both((es) => (es ? 'Ciencia: ' : 'Science: ') + (R && last ? (es ? 'sobre su última muestra de campo (' + last.id + '): ' + R.es + ' ' : 'about your latest field sample (' + last.id + '): ' + R.en + ' ') : '') + (es ? f.es : f.en));
+  }
+  /** Consecuencias reales de que llegue la respuesta. */
+  function effect(S, m, r) {
+    const e = ensure(S), I = m.intent, adv = S.adv;
+    if (!r.ok) return;
+    if (I === 'status') { e.rep.n++; e.rep.last = m.rep; const day = Math.floor(S.t / 24); if (e.rep.day !== day) { e.rep.day = day; S.pts += 8; } Sim.campFlag(S, 'earth_report'); if (S.ex && S.ex.f) S.ex.f.reported2 = (S.ex.f.reported2 || 0) + 1; }
+    if (I === 'forecast') { e.fc = r.fc || []; for (const x of e.fc) { const inc = S.inc.find((q) => q.id === x.id); if (inc) inc.fcRevealed = true; } }
+    if (I === 'route') { S.sys.rover.hint = true; if (S.m[7].st === 'active') S.m[7].data.comm = true; if (r.poi && S.ex) S.ex.disc[r.poi] = true; }
+    if (I === 'supplies') e.sup.push({ k: r.k, amt: r.amt, at: S.t + r.eta });
+    if (I === 'eng_parts') e.sup.push({ k: 'part', amt: 1, at: S.t + 20 });
+    if (I === 'confirm') { const o = e.orders.shift(); if (o && o.k === 'shelter') S.proto = true; S.morale = clamp(S.morale + 2, 0, 100); S.pts += 3; }
+    if (I === 'eng_help') { const i = S.inc.find((q) => q.id === r.inc); if (i && !i.res) { i.diag = 1; i.guided = true; i.prog = clamp(i.prog + 15, 0, 100); } }
+    if (I === 'med_check') { S.morale = clamp(S.morale + 2, 0, 100); if (r.shel) e.orders.push({ k: 'shelter', t: S.t }); }
+    if (I === 'sci_sample') { const x = S.sampleList.find((q) => q.id === r.sid); if (x && !x.sent) { x.sent = true; S.science += 2 + (x.int || 0); S.pts += 4; } }
+    if (I === 'sci_info') { const k = S.scen + (r.fact == null ? 0 : r.fact); if (!e.facts[k]) { e.facts[k] = 1; S.science += 1; } }
+    if (I === 'agri_check') { for (const x of Sim.plantsList(S)) if (x.p.pest) x.p.pestKnown = true; }
+    if (I === 'emerg_report') {
+      const map = { solar_storm: 3, water_fail: 1, power_drop: 2, dust_storm: 2 }; const mid = map[r.ty];
+      if (mid) { const sm = Sim.startMission(S, mid); if (sm && sm.ok) Sim.log(S, 'ok', 'el.mission', { id: mid }); }
+      if (r.ty === 'solar_storm') e.orders.push({ k: 'shelter', t: S.t });
+      for (const i of activeInc(S)) i.reported = true;
+    }
+    if (I === 'emerg_eva') e.evac = true;
+  }
+  const typeOf = (ch) => ch;
+
+  /* ---------- Paso de simulación ---------- */
+  function step(S, M) {
+    const e = ensure(S), L = link(S);
+    // el estado del enlace cambia: recuperación y pérdida
+    if (L.st !== e.prevLink) {
+      const bad = (x) => x === 'none' || x === 'weak' || x === 'interf';
+      if (bad(e.prevLink) && !bad(L.st)) { addHist(S, { dir: 'sys', ch: 'control', who: 'system', text: T('Señal recuperada: enlace estable con la Tierra.', 'Signal recovered: stable link with Earth.') }); Sim.log(S, 'ok', 'el.restored', {}); }
+      else if (!bad(e.prevLink) && bad(L.st)) { addHist(S, { dir: 'sys', ch: 'control', who: 'system', text: L.st === 'none' ? T('Enlace perdido: los mensajes quedan en cola.', 'Link lost: messages are queued.') : T('La señal empeora.', 'The signal is degrading.') }); Sim.log(S, 'warn', 'el.lost', { st: L.st, why: L.why[0] || '' }); }
+      e.prevLink = L.st;
+    }
+    // daño en equipos exteriores tras una tormenta solar (se repara con mantenimiento)
+    if (M && M.spe > 0) e.stormDmg = true;
+    else if (e.stormDmg && !(M && M.spe > 0)) { e.stormDmg = false; if (S.sys.comms && S.sys.comms.h > 50) { S.sys.comms.h = Math.max(30, S.sys.comms.h - 45); addHist(S, { dir: 'sys', ch: 'control', who: 'system', text: T('La tormenta dañó equipos exteriores de la antena. Repárenla en el taller (mantenimiento de comunicaciones).', 'The storm damaged exterior antenna equipment. Repair it at the workshop (communications maintenance).') }); Sim.log(S, 'warn', 'el.damage', {}); } }
+    // mensajes en vuelo
+    for (const m of e.out.slice().sort((a, b) => a.replyT - b.replyT || a.id - b.id)) {
+      if (m.st === 'queued') { if (L.st !== 'none') { m.st = 'transit'; m.arriveT = S.t + legDelay(S, L); setStatus(S, m, 'transit'); } continue; }
+      if (m.st === 'transit') { if (L.st === 'none') { m.arriveT = Math.max(m.arriveT, S.t + 0.25); continue; } if (S.t >= m.arriveT) { m.st = 'earth'; setStatus(S, m, 'earth'); m.res = reply(S, m); m.replyT = Math.max(S.t + 0.3 + legDelay(S, L), e.lastReply + 0.02); } continue; }
+      if (m.st === 'earth') {
+        if (L.st === 'none') { m.replyT = Math.max(m.replyT, S.t + 0.25); continue; }
+        if (S.t >= m.replyT) {
+          e.lastReply = S.t; m.st = 'done'; setStatus(S, m, 'delivered');
+          if (m.res) { effect(S, m, m.res); addHist(S, { dir: 'in', ch: m.ch, who: 'earth', desk: DESK[m.ch], text: m.res.txt, ref: m.id, ok: m.res.ok }); e.unread[m.ch] = (e.unread[m.ch] || 0) + 1; e.rx++; e.recvT = S.t; Sim.log(S, m.res.ok ? 'ok' : 'info', 'el.recv', { id: m.id, ch: m.ch, intent: m.intent }); }
+        }
+      }
+    }
+    e.out = e.out.filter((m) => m.st !== 'done');
+    // entregas de suministros aprobados
+    for (const s of e.sup.slice()) if (S.t >= s.at) {
+      e.sup.splice(e.sup.indexOf(s), 1);
+      if (s.k === 'part') S.parts += s.amt; else S.r[s.k].v = Math.min(S.r[s.k].max, S.r[s.k].v + s.amt);
+      addHist(S, { dir: 'sys', ch: 'control', who: 'system', text: s.k === 'part' ? T('Llegó el repuesto aprobado.', 'The approved spare part arrived.') : T('Llegó el cargamento: +' + s.amt + ' ' + RESU[s.k] + ' de ' + RESN[s.k].es + '.', 'Cargo arrived: +' + s.amt + ' ' + RESU[s.k] + ' of ' + RESN[s.k].en + '.') });
+      Sim.log(S, 'ok', 'el.supply', { k: s.k, amt: s.amt });
+    }
+    // avisos espontáneos de la Tierra (solo con enlace) y propuestas de los especialistas
+    if (L.st !== 'none') for (const i of S.inc) {
+      if (i.res || i.elWarn || S.t >= i.from || i.from - S.t > 30 || !(i.type === 'solar_storm' || i.type === 'dust_storm' || i.type === 'power_drop')) continue;
+      i.elWarn = true; const inH = Math.max(1, Math.round(i.from - S.t)), t = evt(i.type) ? evt(i.type).t : T(i.type, i.type);
+      const text = both((es) => (es ? 'Alerta de Tierra: ' + t.es + ' en unas ' + inH + ' h. ' : 'Earth alert: ' + t.en + ' in about ' + inH + ' h. ') + (i.type === 'solar_storm' ? (es ? 'Confirmen y activen el protocolo de refugio.' : 'Confirm and activate the shelter protocol.') : (es ? 'Ahorren energía.' : 'Save power.')));
+      addHist(S, { dir: 'in', ch: 'emerg', who: 'earth', desk: DESK.emerg, text, ok: true, spont: true }); e.unread.emerg = (e.unread.emerg || 0) + 1; e.rx++; e.recvT = S.t;
+      if (i.type === 'solar_storm') e.orders.push({ k: 'shelter', t: S.t });
+      Sim.log(S, 'warn', 'el.alert', { type: i.type, inH });
+    }
+    const PROP = { water_fail: 'eng_help', power_drop: 'eng_help', dust_storm: 'eng_help', wear: 'eng_help', sensor_drift: 'eng_help', thermal_fail: 'eng_help', comms_blackout: 'eng_help', pressure_leak: 'med_check', crop_fail: 'agri_check', solar_storm: 'emerg_report' };
+    for (const i of activeInc(S)) if (!i.elProp && PROP[i.type] && e.prop.length < 4 && (i.fix || i.type === 'solar_storm')) { i.elProp = true; const who = typeof NPCDATA !== 'undefined' && NPCDATA.INC_NPC[i.type] || 'engineer'; e.prop.push({ id: e.seq++, intent: PROP[i.type], who: PROP[i.type] === 'emerg_report' ? 'commander' : who === 'commander' ? 'engineer' : who, inc: i.id, t: S.t, why: incName(i) }); Sim.log(S, 'info', 'el.prop', { intent: PROP[i.type] }); }
+    for (const x of S.sampleList) if (x.an === 'done' && !x.sent && !x.elProp && e.prop.length < 4) { x.elProp = true; e.prop.push({ id: e.seq++, intent: 'sci_sample', who: 'scientist', sid: x.id, t: S.t, why: T('muestra ' + x.id, 'sample ' + x.id) }); break; }
+    e.prop = e.prop.filter((p) => S.t - p.t < 36);
+  }
+  /** El comandante autoriza una propuesta de un especialista (se transmite con la voz de ese especialista). */
+  function accept(S, pid) {
+    const e = ensure(S), i = e.prop.findIndex((p) => p.id === pid); if (i < 0) return { ok: false };
+    const p = e.prop[i]; e.prop.splice(i, 1);
+    return send(S, p.intent, { inc: p.inc, sid: p.sid });
+  }
+  function dismiss(S, pid) { const e = ensure(S); e.prop = e.prop.filter((p) => p.id !== pid); }
+  function markRead(S, ch) { ensure(S).unread[ch] = 0; }
+  function setScale(S, k) { const e = ensure(S); e.scale = SCALES.includes(k) ? k : 1; }
+  /** Petición de recogida pendiente (la consume la interfaz de expedición). */
+  function takeEvac(S) { const e = ensure(S); const v = e.evac; e.evac = false; return v; }
+
+  return { CH, DESK, INT, SCALES, def, ensure, link, delays, status, buildReport, options, outText, send, step, accept, dismiss, markRead, setScale, takeEvac, speaker, totalUnread, legDelay, emergency, lowest, RESN, RESU };
 })();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
@@ -5283,7 +5666,7 @@ const Game = (function () {
   const SIMH_PER_S = 0.4; // G: 1 s real = 0,4 h simuladas a velocidad x1 (1 día ≈ 60 s)
   let S = null, running = false, paused = false, speed = 1, stack = [], lastN = 0, dpr = 1, hudT = 0, saveT = 0, isTouch = false, mgRun = null;
   let donkiLive = null, onlineTried = false;
-  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', mode: 'junior', tutDone: false }, Store.get('settings', {}));
+  const settings = Object.assign({ lang: 'es', vol: 0.6, muted: false, rm: false, hints: true, scale: 1, scen: 'moon', diff: 'explorer', mode: 'junior', tutDone: false, radioKey: 'r' }, Store.get('settings', {}));
   const stats = Object.assign({ runs: 0, wins: 0, missions: 0, repairs: 0, harvest: 0, quizOk: 0 }, Store.get('stats', {}));
   const ach = Store.get('ach', {});
 
@@ -5315,7 +5698,7 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#zFit'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#zFit'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bRadio'), '📻'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     applyAudio();
     World.invalidate();
     Store.set('settings', settings);
@@ -5373,6 +5756,7 @@ const Game = (function () {
     if (k === 'cm.sent') return [es ? 'Mensaje enviado' : 'Message sent', (es ? 'Tardará ' : 'Takes ') + fmt(p.ow) + (es ? ' h en llegar a la Tierra (simulado).' : ' h to reach Earth (simulated).')];
     if (k === 'cm.recv') return [es ? 'Respuesta de la Tierra' : 'Reply from Earth', (es ? 'Ida y vuelta: ' : 'Round trip: ') + fmt(p.rt) + ' h'];
     if (k.startsWith('ex.')) return exLogText(e);
+    if (k.startsWith('el.')) return elLogText(e);
     if (k === 'm.start') return [(es ? 'Misión iniciada: ' : 'Mission started: ') + tr(DATA.MIS[p.id].t), ''];
     if (k === 'm.done') return [(es ? 'Misión completada: ' : 'Mission completed: ') + tr(DATA.MIS[p.id].t), '★'.repeat(p.stars)];
     if (k === 'm.fail') return [(es ? 'Misión no superada: ' : 'Mission not passed: ') + tr(DATA.MIS[p.id].t), tr(DATA.FAILWHY[p.why])];
@@ -5542,6 +5926,7 @@ const Game = (function () {
     Sfx.init();
     const tgt = e.target && e.target.tagName;
     if (mgRun && mgRun.g && !mgRun.g.done) { mgRun.g.keys[e.key] = true; const d = MG.defs[mgRun.kind]; if (d.key) d.key(mgRun.g, e.key, true); if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault(); if (e.key !== 'Escape') return; }
+    if (running && !ELK.cap && tgt !== 'INPUT' && tgt !== 'SELECT' && e.key.length === 1 && e.key.toLowerCase() === String(settings.radioKey || 'r').toLowerCase() && !e.ctrlKey && !e.metaKey && !e.altKey && !(mgRun && mgRun.g) && !modalOpen()) { elToggle(); e.preventDefault(); return; }
     if ((e.key === 'm' || e.key === 'M') && running && tgt !== 'INPUT' && tgt !== 'SELECT' && !(mgRun && mgRun.g)) { toggleMap(); e.preventDefault(); return; }
     if (e.key === 'Escape') { if (modalOpen() && running) { pop(); e.preventDefault(); } else if (running) pauseMenu(); return; }
     if (modalOpen()) return;
@@ -5588,7 +5973,7 @@ const Game = (function () {
       if (live) {
         World.update(dt, S, inputVec());
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt);
+        exFrame(dt); elFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
@@ -5668,7 +6053,7 @@ const Game = (function () {
     clearLayer(); running = true; paused = false;
     $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
-    buildHud(); updateHud(); exAttach(); saveRun();
+    buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
   function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
@@ -6032,6 +6417,7 @@ const Game = (function () {
       return panel('📡 ' + consoleName('comms'), h('div', null,
         down ? h('p', { class: 'tag crit' }, '⛔ ' + (LANG === 'es' ? 'Sin enlace: los mensajes esperan en la antena hasta que se repare.' : 'No link: messages wait at the antenna until it is repaired.')) : null,
         incHere(['bridge']),
+        h('div', { class: 'row' }, btn('📻 ' + XT('Abrir la radio EarthLink', 'Open the EarthLink radio'), () => { pop(); elToggle(true); }, 'primary')),
         h('table', null, h('tbody', null, statRow(_('delayReal'), realTxt), statRow(_('delayOne'), fmt(ow) + ' h ' + (LANG === 'es' ? '(escala del juego: 1 min-luz ≈ 1 h)' : '(game scale: 1 light-min ≈ 1 h)')), statRow(LANG === 'es' ? 'Ida y vuelta mínima' : 'Minimum round trip', fmt(ow * 2 + 0.5) + ' h'))),
         more(null, h('p', null, LANG === 'es' ? 'La Tierra responde con los datos que le llegaron, no con los de ahora. Si algo urge, actúa con tus protocolos.' : 'Earth replies using the data it received, not the current data. If something is urgent, follow your protocols.'), !isAdv() ? h('p', { class: 'small' }, LANG === 'es' ? 'En este modo el retraso es más corto que el real para que el juego sea ágil.' : 'In this mode the delay is shorter than the real one to keep the game lively.') : null),
         h('div', { class: 'row' }, btn('📤 ' + _('reqStatus'), () => { Sim.send(S, 'status'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqForecast'), () => { Sim.send(S, 'forecast'); processLogs(); s._refresh(); }), btn('📤 ' + _('reqRoute'), () => { Sim.send(S, 'route'); processLogs(); s._refresh(); })),
@@ -6265,6 +6651,7 @@ const Game = (function () {
   function logToRadio(e) {
     const k = e.k, p = e.p || {}, es = LANG === 'es';
     if (k.startsWith('ex.')) return exLogToRadio(e);
+    if (k.startsWith('el.')) return elLogToRadio(e);
     if (k.startsWith('ev.') || k === 'esc') {
       const ty = k === 'esc' ? p.type : k.slice(3), T = DATA.EVT[ty]; if (!T) return false;
       const inc = S.inc.find((i) => i.id === p.id) || {};
@@ -6512,7 +6899,7 @@ const Game = (function () {
     if (!S || !isAdv()) return '';
     const es = LANG === 'es', pw = S.pw, d = S.d, f1 = (v) => fmt(v, 1);
     const L = {
-      solar_storm: () => (es ? 'Flujo modelado ' : 'Modeled flux ') + f1((inc && inc.data.rate) || 0) + ' mSv/h ' + (es ? 'sin blindaje' : 'unshielded') + ' · ' + (es ? 'eficacia del blindaje ' : 'shield effectiveness ') + Math.round(d.rad * 100) + ' % · ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(d.dose, 2) + '/' + S.limit + ' mSv',
+      solar_storm: () => (es ? 'Flujo modelado ' : 'Modeled flux ') + f1((inc && inc.data && inc.data.rate) || 0) + ' mSv/h ' + (es ? 'sin blindaje' : 'unshielded') + ' · ' + (es ? 'eficacia del blindaje ' : 'shield effectiveness ') + Math.round(d.rad * 100) + ' % · ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(d.dose, 2) + '/' + S.limit + ' mSv',
       power_drop: () => (es ? 'Generación ' : 'Generation ') + f1(pw.gen) + ' kW (' + (es ? 'solar ' : 'solar ') + f1(pw.sol) + ', ' + (es ? 'reactor ' : 'reactor ') + f1(pw.rea) + ') · ' + (es ? 'demanda ' : 'demand ') + f1(pw.demand) + ' kW · ' + (es ? 'batería ' : 'battery ') + fmt(S.r.power.v, 0) + ' kWh' + (pw.demand > pw.gen ? ' · ' + (es ? 'autonomía ≈ ' : 'endurance ≈ ') + fmt(S.r.power.v / (pw.demand - pw.gen), 0) + ' h' : ''),
       water_fail: () => (es ? 'Reciclaje efectivo ' : 'Effective recycling ') + Math.round(d.rec * 100) + ' % · ' + (es ? 'alimentación del reciclador ' : 'recycler supply ') + Math.round(((S.lf && S.lf.rec) == null ? 1 : S.lf.rec) * 100) + ' % · ' + (es ? 'agua ' : 'water ') + fmt(S.r.water.v, 0) + ' L (' + f1(S.r.water.prod - S.r.water.cons) + ' L/h)',
       pressure_leak: () => (es ? 'Presión ' : 'Pressure ') + f1(S.sys.press.P) + ' kPa · ' + (es ? 'caída ' : 'drop ') + '0,6 kPa/h · ' + (es ? 'compresor alimentado ' : 'compressor supplied ') + Math.round(((S.lf && S.lf.press) == null ? 1 : S.lf.press) * 100) + ' %',
@@ -6553,7 +6940,7 @@ const Game = (function () {
     const T = DATA.EVT[type]; if (!T) return;
     const es = LANG === 'es', inc = S && S.inc.find((i) => i.type === type && !i.res);
     const sysK = inc ? inc.sys : null;
-    const donki = type === 'solar_storm' && inc && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
+    const donki = type === 'solar_storm' && inc && inc.data && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
     const live = type === 'solar_storm' && donkiLive && donkiLive.items.length ? h('p', { class: 'small' }, _('liveData') + ': ' + donkiLive.items.slice(0, 3).map((x) => x.cls + ' ' + x.date).join(' · ') + ' (' + donkiLive.fetched + ')') : null;
     const why = (n, t, kids) => h('div', { class: 'why' }, h('h3', null, (n ? n + '. ' : '') + t), kids);
     const kind = h('p', { class: 'small muted' }, es ? 'Tipo de dato: el hecho científico citado es real; los números del juego son un modelo simplificado.' : 'Data type: the cited science fact is real; the game numbers are a simplified model.');
@@ -6932,10 +7319,10 @@ const Game = (function () {
      ===================================================================== */
   function applyAudio() {
     const c = Voice.cfg;
-    Sfx.setSfx(c.sfx); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
   }
   let subEl = null, subT = 0;
-  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' } };
+  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' }, earth_control: { es: 'Control Tierra', en: 'Earth Control' } };
   function ensureSubs() {
     if (subEl) return subEl;
     subEl = h('div', { id: 'subs', class: 'hidden', role: 'status', 'aria-live': 'polite' });
@@ -6959,7 +7346,7 @@ const Game = (function () {
     if (!c) return;
     const es = LANG === 'es';
     const txt = [c.title, c.desc, c.loc, c.act, (c.sev === 'crit' || isAdv()) && c.cons ? (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons : ''].filter(Boolean).join('. ');
-    Voice.speak(Voice.profileFor(c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
+    Voice.speak(Voice.profileFor(c.voice || c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
   }
   function repeatVoice() { if (radio.cur) { Voice.stop(); narrateCall(radio.cur); } else if (!Voice.repeat()) toast(LANG === 'es' ? 'No hay ningún mensaje que repetir' : 'No message to repeat', '', 'info'); }
 
@@ -6992,6 +7379,7 @@ const Game = (function () {
         sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
         sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
         sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Radio EarthLink' : 'EarthLink radio', () => c.vRadio, (v) => { c.vRadio = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Velocidad de narración' : 'Narration speed', () => c.rate, (v) => { c.rate = v; Voice.persist(); }, 0.6, 1.5, 0.05, (v) => '×' + (+v).toFixed(2)),
         h('h3', null, es ? 'Activar o desactivar' : 'Switches'),
@@ -7313,6 +7701,211 @@ const Game = (function () {
   }
   function exAttach() { wasOut = false; lastCard = ''; if (evaEl) { evaEl.classList.add('hidden'); toolsEl.classList.add('hidden'); } }
   const exDebug = { suitPanel, storagePanel, containerPanel, exMissionsPanel, useTool, exInteract, exFrame, exHud, exHint, exCard, exAlert, exLogToRadio, readoutPanel, shelterPanel, unloadAction, selectTool, exReportCard, get cardHidden() { return cardEl && cardEl.classList.contains('hidden'); } };
+  /* =====================================================================
+     EARTHLINK RADIO — interfaz del radio portátil del comandante: Tierra,
+     canales, opciones de respuesta, historial, subtítulos sincronizados
+     con la voz, estado del enlace y avisos. El motor es EL (03d); aquí
+     solo se dibuja, se suena y se conecta con el resto del juego.
+     ===================================================================== */
+  const ELK = { open: false, sub: null, raf: 0, hudT: 0, pulse: 0, cap: false, last: '' };
+  let erEl = null, erCv = null, erPx = null, erRefs = {}, erLang = '';
+  const ELSTN = { stable: ['Conexión estable', 'Stable link'], weak: ['Señal débil', 'Weak signal'], interf: ['Interferencia', 'Interference'], none: ['Sin conexión', 'No connection'], pending: ['Transmisión pendiente', 'Transmission pending'], received: ['Mensaje recibido', 'Message received'] };
+  const ELCOL = { stable: '#6fffa0', weak: '#ffc24a', interf: '#ff9a4f', none: '#ff5a5a', pending: '#7fd3ff', received: '#6fffa0' };
+  const ELWHY = { antenna: ['fallo de antena', 'antenna failure'], damage: ['equipos exteriores dañados', 'damaged exterior equipment'], power: ['poca energía', 'low power'], storm: ['tormenta solar', 'solar storm'], dust: ['tormenta de polvo', 'dust storm'], distance: ['estás lejos de la base', 'you are far from the base'] };
+  const ELRESERVED = 'efglmnopvzcwasdqEFGLMNOPVZCWASDQ+-=_1234567890 '; // teclas que el juego ya usa
+  const elClk = (t) => 'D' + (Math.floor(t / 24) + 1) + ' ' + String(Math.floor(t % 24)).padStart(2, '0') + ':' + String(Math.floor((t * 60) % 60)).padStart(2, '0');
+  const elName = (who) => (who === 'earth' ? XT('Tierra', 'Earth') : who === 'system' ? XT('Sistema', 'System') : tr(ROLEN[who === 'agri' ? 'agronomist' : who] || ROLEN.narrator));
+
+  function elBuild() {
+    const es = LANG === 'es';
+    erCv = h('canvas', { width: 340, height: 240, class: 'er-earth', 'aria-label': XT('Tierra y enlace de radio', 'Earth and radio link'), role: 'img' });
+    erPx = erCv.getContext('2d');
+    erRefs = {};
+    const R = (k, e) => (erRefs[k] = e);
+    erEl = h('div', { id: 'er', class: 'er hidden', role: 'dialog', 'aria-label': 'EarthLink Radio' },
+      h('div', { class: 'er-dev' },
+        h('div', { class: 'er-ant' }),
+        h('div', { class: 'er-head' },
+          R('led', h('span', { class: 'er-led' })), h('b', { class: 'er-brand' }, 'EARTHLINK'), R('freq', h('span', { class: 'er-freq' })), R('bars', h('span', { class: 'er-bars', 'aria-label': XT('Señal', 'Signal') }, [0, 1, 2, 3, 4].map((i) => h('i', { style: { height: 5 + i * 3 + 'px' } })))),
+          btn('✕', () => elToggle(false), 'sm ghost er-close', { 'aria-label': XT('Cerrar radio', 'Close radio'), title: XT('Cerrar', 'Close') })),
+        h('div', { class: 'er-top' }, erCv,
+          h('div', { class: 'er-info' }, R('centro', h('div', { class: 'er-center' })), R('state', h('div', { class: 'er-state' })), R('dist', h('div', { class: 'er-row' })), R('real', h('div', { class: 'er-row' })), R('game', h('div', { class: 'er-row' })), R('chan', h('div', { class: 'er-row' })), R('pend', h('div', { class: 'er-row' })))),
+        R('chs', h('div', { class: 'er-chs', role: 'tablist', 'aria-label': XT('Canales', 'Channels') })),
+        h('div', { class: 'er-sub' }, R('subWho', h('b', { class: 'er-who' })), R('subTx', h('span', { class: 'er-txled' })), R('subTxt', h('div', { class: 'er-subtxt', 'aria-live': 'polite' })), btn(XT('Repetir', 'Repeat'), () => elReplayLast(), 'sm', { title: XT('Repetir el último mensaje', 'Repeat the last message') })),
+        h('div', { class: 'er-mid' },
+          R('props', h('div', { class: 'er-props' })),
+          R('desc', h('div', { class: 'er-desc small muted' })),
+          R('opts', h('div', { class: 'er-opts' })),
+          h('div', { class: 'er-hh' }, h('b', null, XT('Historial', 'History')), R('histN', h('span', { class: 'small muted' }))),
+          R('hist', h('div', { class: 'er-hist', 'aria-live': 'off' }))),
+        h('div', { class: 'er-foot' },
+          h('div', { class: 'er-scale', role: 'group', 'aria-label': XT('Escala del retraso del juego', 'Game delay scale') }, h('span', { class: 'small muted' }, XT('Retraso del juego', 'Game delay')), R('scale', h('span', { class: 'er-scbtns' }))),
+          h('label', { class: 'er-vol' }, h('span', { class: 'small muted' }, XT('Volumen de radio', 'Radio volume')), R('vol', h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: Voice.cfg.vRadio, 'aria-label': XT('Volumen de la radio', 'Radio volume'), oninput: (e) => { Voice.cfg.vRadio = +e.target.value; Sfx.setRadioVol(Voice.cfg.vRadio); Voice.persist(); } }))),
+          h('div', { class: 'row' }, R('key', btn('', () => elCaptureKey(), 'sm')), btn(XT('Registro clásico', 'Classic log'), () => { elToggle(false); openConsole({ id: 'comms' }); }, 'sm')))));
+    $('#app').append(erEl);
+  }
+  const keyLabel = () => String(settings.radioKey || 'r').toUpperCase();
+  function elCaptureKey() {
+    ELK.cap = true; erRefs.key.textContent = XT('Pulsa una tecla…', 'Press a key…');
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); window.removeEventListener('keydown', on, true); ELK.cap = false;
+      const k = e.key;
+      if (k === 'Escape') { elRender(); return; }
+      if (k.length !== 1 || ELRESERVED.includes(k)) { toast(XT('Esa tecla ya se usa en el juego', 'That key is already used by the game'), XT('Elige otra letra libre (por ejemplo R, T, B, H o K).', 'Pick another free letter (for example R, T, B, H or K).'), 'warn'); elRender(); return; }
+      settings.radioKey = k.toLowerCase(); applySettings(); toast(XT('Tecla de la radio: ', 'Radio key: ') + k.toUpperCase(), '', 'ok'); elRender(); };
+    window.addEventListener('keydown', on, true);
+  }
+  function elToggle(on) {
+    if (!running || !S) return;
+    on = on == null ? !ELK.open : !!on;
+    if (erEl && erLang !== LANG) { erEl.remove(); erEl = null; ELK.open = false; }
+    if (!erEl) { elBuild(); erLang = LANG; }
+    if (on === ELK.open) return;
+    ELK.open = on; erEl.classList.toggle('hidden', !on); $('#app').classList.toggle('er-on', on);
+    if (on) { erEl.classList.remove('er-in'); void erEl.offsetWidth; erEl.classList.add('er-in'); Sfx.play('rcon'); EL.ensure(S); elRender(); elLoop(); const u = S.el.unread[S.el.ch]; if (u) setTimeout(() => elPlayLatest(), 700); }
+    else { Sfx.play('rend'); Voice.stop(); ELK.sub = null; cancelAnimationFrame(ELK.raf); }
+    elHudBadge();
+  }
+  function elLoop() { cancelAnimationFrame(ELK.raf); const f = (now) => { if (!ELK.open) return; elDraw(now / 1000); ELK.raf = requestAnimationFrame(f); }; ELK.raf = requestAnimationFrame(f); }
+
+  /* ---------- Tierra y enlace ---------- */
+  function elDraw(t) {
+    const c = erPx, w = 340, hh = 240, st = EL.status(S), L = st.link, rm = document.documentElement.classList.contains('rm'), col = ELCOL[st.main];
+    c.clearRect(0, 0, w, hh); c.fillStyle = '#050a1c'; c.fillRect(0, 0, w, hh);
+    for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(255,255,255,' + (0.2 + ((i * 37) % 7) / 14) + ')'; c.fillRect((i * 97) % w, (i * 53) % hh, 1.5, 1.5); }
+    const ex = 84, ey = 120, er = 66, bx = 296, by = 168;
+    // ondas de comunicación (dibujan el estado real: color, ruido y paquetes en tránsito)
+    c.save(); c.lineWidth = 3; c.strokeStyle = col;
+    for (let k = 0; k < 4; k++) { const r = er + 8 + (((rm ? k * 26 : t * 38 + k * 26)) % 104), a = (1 - (r - er) / 112) * (st.main === 'none' ? 0.18 : st.main === 'weak' ? 0.4 : 0.75); c.globalAlpha = Math.max(0, a); if (st.main === 'none') c.setLineDash([5, 9]); else c.setLineDash([]); c.beginPath(); c.arc(ex, ey, r, -0.55, 0.55); c.stroke(); }
+    c.setLineDash([]); c.globalAlpha = 1; c.restore();
+    if (st.main === 'interf' || (L.st === 'interf')) { c.strokeStyle = 'rgba(255,170,90,.7)'; c.lineWidth = 1.5; for (let i = 0; i < 14; i++) { const x = 150 + ((i * 53 + (rm ? 0 : t * 220)) % 130), y = 90 + ((i * 29) % 70); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 2, y + 6 + ((i * 7) % 12)); c.stroke(); } }
+    // línea de enlace y paquetes
+    c.strokeStyle = 'rgba(127,211,255,.25)'; c.lineWidth = 1; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(ex + er * 0.8, ey + 8); c.lineTo(bx, by); c.stroke(); c.setLineDash([]);
+    const lerp = (a, b, u) => a + (b - a) * u, px = (u) => [lerp(ex + er * 0.8, bx, u), lerp(ey + 8, by, u)];
+    for (const m of S.el.out) {
+      let u = null, dir = 1;
+      if (m.st === 'transit') u = clampN((S.t - m.sentT) / Math.max(0.01, m.arriveT - m.sentT), 0, 1);
+      else if (m.st === 'earth') { u = 1 - clampN((S.t - (m.replyT - EL.legDelay(S, L))) / Math.max(0.01, EL.legDelay(S, L)), 0, 1); dir = -1; }
+      if (u == null) { continue; }
+      const p = px(m.st === 'transit' ? u : u); c.fillStyle = m.st === 'earth' ? '#6fffa0' : '#7fd3ff'; c.beginPath(); c.arc(p[0], p[1], 4.5, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke();
+    }
+    // la Tierra
+    c.save(); c.beginPath(); c.arc(ex, ey, er, 0, 7); c.clip();
+    let g = c.createRadialGradient(ex - 22, ey - 22, 8, ex, ey, er); g.addColorStop(0, '#3a8cff'); g.addColorStop(0.7, '#1c5fb8'); g.addColorStop(1, '#0b2a66'); c.fillStyle = g; c.fillRect(ex - er, ey - er, er * 2, er * 2);
+    const sh = rm ? 0 : (t * 5) % 160; c.fillStyle = '#3ddc84';
+    for (const o of [[-26, -18, 26, 16, 0.5], [18, -4, 20, 24, -0.4], [-8, 30, 22, 12, 0.2], [-44, 18, 12, 14, 0], [34, 34, 14, 8, 0.5], [2, -40, 14, 8, 0.1]]) for (const off of [0, -160, 160]) { c.beginPath(); c.ellipse(ex + o[0] + off + sh * (off === 0 ? 1 : 1) - 0, ey + o[1], o[2], o[3], o[4], 0, 7); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.55)'; for (const o of [[-20, -30, 28, 5], [24, 14, 24, 4], [-30, 24, 22, 4]]) { c.beginPath(); c.ellipse(ex + o[0] + (rm ? 0 : Math.sin(t * 0.3 + o[0]) * 4), ey + o[1], o[2], o[3], 0.2, 0, 7); c.fill(); }
+    g = c.createRadialGradient(ex + 30, ey - 6, er * 0.5, ex + 30, ey - 6, er * 1.4); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,10,.62)'); c.fillStyle = g; c.fillRect(ex - er, ey - er, er * 2, er * 2); c.restore();
+    c.strokeStyle = 'rgba(127,211,255,.6)'; c.lineWidth = 2; c.beginPath(); c.arc(ex, ey, er + 1, 0, 7); c.stroke();
+    // la base (cúpula con antena que parpadea según el estado)
+    c.fillStyle = '#9aa3bd'; c.beginPath(); c.arc(bx, by + 8, 18, Math.PI, 0); c.fill(); c.fillStyle = '#4f6db8'; c.fillRect(bx - 18, by + 7, 36, 5);
+    c.strokeStyle = '#e6ebf5'; c.lineWidth = 2; c.beginPath(); c.moveTo(bx + 4, by - 8); c.lineTo(bx + 4, by - 26); c.stroke(); c.fillStyle = (rm || Math.sin(t * 6) > 0) ? col : '#2b3550'; c.beginPath(); c.arc(bx + 4, by - 28, 3.5, 0, 7); c.fill();
+    c.fillStyle = '#e8f6ff'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText(XT('Base', 'Base'), bx, by + 36); c.fillText(XT('Tierra', 'Earth'), ex, ey + er + 22);
+    if (st.main === 'none') { c.strokeStyle = '#ff5a5a'; c.lineWidth = 5; c.beginPath(); c.moveTo(bx - 70, by - 50); c.lineTo(bx - 40, by - 20); c.moveTo(bx - 40, by - 50); c.lineTo(bx - 70, by - 20); c.stroke(); }
+  }
+
+  /* ---------- Contenido ---------- */
+  function elRender() {
+    if (!erEl || !S) return;
+    const E = EL.ensure(S), st = EL.status(S), L = st.link, d = EL.delays(S, 0.4 * Math.max(0.001, speed || 1)), es = LANG === 'es', adv = MODE === 'adv';
+    const rf = erRefs, ch = EL.CH.find((c) => c.id === E.ch) || EL.CH[0];
+    rf.led.style.background = ELCOL[st.main]; rf.led.style.boxShadow = '0 0 8px ' + ELCOL[st.main];
+    rf.freq.textContent = (S.scen === 'moon' ? 'UHF 401,5' : 'UHF 437,1') + ' MHz · ' + xt(ch.n);
+    [...rf.bars.children].forEach((b, i) => b.classList.toggle('on', L.q > i * 0.2 + 0.06));
+    rf.centro.textContent = xt(EL.DESK[ch.id]);
+    rf.state.textContent = XT(ELSTN[st.main][0], ELSTN[st.main][1]) + (L.why.length && (st.main === 'weak' || st.main === 'interf' || st.main === 'none') ? ' · ' + XT(ELWHY[L.why[0]][0], ELWHY[L.why[0]][1]) : ''); rf.state.style.color = ELCOL[st.main]; rf.state.style.borderColor = ELCOL[st.main];
+    rf.dist.textContent = XT('Distancia: ', 'Distance: ') + (S.scen === 'moon' ? '384 400 km' : fmt(d.dist / 1e6, 0) + XT(' millones de km (hoy)', ' million km (today)'));
+    rf.real.textContent = XT('Retardo real (ida): ', 'Real delay (one way): ') + (S.scen === 'moon' ? '≈ ' + fmt(d.realSec, 1) + ' s' : '≈ ' + fmt(S.lightMin, 1) + ' min');
+    rf.game.textContent = XT('Retardo comprimido del juego: ', 'Compressed game delay: ') + fmt(d.gameH, 1) + ' h' + (speed > 0 ? ' (≈ ' + fmt(d.gameRealSec, d.gameRealSec < 10 ? 1 : 0) + ' s)' : '');
+    rf.chan.textContent = XT('Canal activo: ', 'Active channel: ') + xt(ch.n) + (adv ? ' · ' + XT('transmite ', 'transmits ') + elName(EL.speaker(EL.options(S, ch.id)[0] ? EL.options(S, ch.id)[0].id : 'status')) : '');
+    rf.pend.textContent = XT('Pendientes: ', 'Pending: ') + E.out.length + XT(' enviados · ', ' sent · ') + EL.totalUnread(S) + XT(' sin leer', ' unread') + (E.orders.length ? ' · ' + E.orders.length + XT(' orden', ' order') : '');
+    // canales
+    rf.chs.replaceChildren(...EL.CH.map((c) => h('button', { class: 'er-ch' + (c.id === E.ch ? ' on' : ''), role: 'tab', 'aria-selected': c.id === E.ch ? 'true' : 'false', title: xt(c.d), onclick: () => { Sfx.play('click'); E.ch = c.id; EL.markRead(S, c.id); elRender(); } }, h('span', { class: 'er-ic' }, c.icon), h('span', null, xt(c.n)), E.unread[c.id] ? h('i', { class: 'er-badge' }, E.unread[c.id]) : null)));
+    rf.desc.textContent = xt(ch.d) + ' ' + XT('Participan: ', 'Participants: ') + elName(ch.who) + ' + ' + XT('Tierra', 'Earth') + '.';
+    // propuestas de los especialistas
+    rf.props.replaceChildren(...E.prop.map((p) => h('div', { class: 'er-prop' }, h('span', null, elName(p.who) + XT(' propone consultar a Tierra: ', ' suggests asking Earth: ') + xt(EL.INT[p.intent].n) + (p.why ? ' (' + xt(p.why) + ')' : '')), h('span', { class: 'row' }, btn(XT('Autorizar', 'Authorize'), () => { const r = EL.accept(S, p.id); if (r.ok) elAfterSend(r.msg); elRender(); }, 'sm primary'), btn(XT('Descartar', 'Dismiss'), () => { EL.dismiss(S, p.id); elRender(); }, 'sm')))));
+    // opciones de respuesta
+    const opts = EL.options(S, E.ch);
+    rf.opts.replaceChildren(...opts.map((o) => h('button', { class: 'btn er-opt' + (o.ok ? '' : ' off'), disabled: o.ok ? null : true, title: o.ok ? '' : xt(o.why), onclick: () => elSend(o.id) }, h('b', null, MODE === 'junior' ? xt(o.j) : xt(o.n)), o.ok ? null : h('span', { class: 'small muted' }, xt(o.why)))));
+    // historial del canal
+    const H = E.hist.filter((x) => x.ch === E.ch || (x.who === 'system' && E.ch === 'control')).slice(-30);
+    rf.histN.textContent = H.length + '/' + E.hist.length;
+    rf.hist.replaceChildren(...H.slice().reverse().map((x) => h('div', { class: 'er-msg ' + x.dir }, h('div', { class: 'er-mh' }, h('b', null, (x.dir === 'out' ? 'TX · ' : x.dir === 'in' ? 'RX · ' : '') + (x.who === 'earth' ? xt(x.desk || EL.DESK[x.ch]) : elName(x.who))), h('span', { class: 'small muted' }, elClk(x.t) + (x.dir === 'out' ? ' · ' + ({ queued: XT('en cola', 'queued'), transit: XT('en tránsito', 'in transit'), earth: XT('Tierra responde', 'Earth is replying'), delivered: XT('respondido', 'answered') }[x.st] || '') : '')),
+      x.dir !== 'sys' ? btn('▶', () => elSpeakEntry(x), 'sm ghost', { 'aria-label': XT('Escuchar', 'Listen'), title: XT('Escuchar', 'Listen') }) : null), h('div', { class: 'er-mt' }, xt(x.text)))));
+    rf.scale.replaceChildren(...EL.SCALES.map((k) => h('button', { class: 'btn sm' + (E.scale === k ? ' primary' : ''), 'aria-pressed': E.scale === k ? 'true' : 'false', onclick: () => { EL.setScale(S, k); elRender(); } }, '×' + String(k).replace('.', ','))));
+    rf.key.textContent = XT('Tecla: ', 'Key: ') + keyLabel() + ' · ' + XT('cambiar', 'change');
+    const sb = ELK.sub; rf.subWho.textContent = sb ? elName(sb.who) : XT('En espera', 'Standby'); rf.subTx.className = 'er-txled' + (sb && !sb.done ? ' on' : ''); rf.subTxt.textContent = sb ? sb.text.slice(0, sb.shown) : XT('Elige una opción para transmitir.', 'Pick an option to transmit.');
+  }
+  /** Subtítulo sincronizado con el audio: sigue los límites de palabra del TTS; sin TTS avanza por tiempo. */
+  function elSpeak(who, text, done) {
+    const prof = Voice.profileFor(who === 'earth' ? 'earth' : who, LANG);
+    const sb = { who, text, shown: 0, done: false, t: 0 };
+    const word = (i) => { const m = /\s/.exec(text.slice(i)); return m ? i + m.index + 1 : text.length; };
+    let tm = 0;
+    const o = { level: 'info', silent: true, chan: 'radio',
+      onstart: () => { ELK.sub = sb; sb.shown = 0; sb.done = false; Sfx.play(who === 'earth' ? 'rrx' : 'rtx'); const wps = Math.max(0.8, (Voice.profiles[prof].rate * Voice.cfg.rate) * 2.6); clearInterval(tm); tm = setInterval(() => { if (sb.done) return clearInterval(tm); sb.shown = Math.min(text.length, word(sb.shown)); elSubPaint(); if (sb.shown >= text.length) clearInterval(tm); }, 1000 / wps); elSubPaint(); },
+      onboundary: (ci) => { sb.shown = Math.max(sb.shown, Math.min(text.length, word(ci))); elSubPaint(); },
+      onend: () => { sb.done = true; sb.shown = text.length; clearInterval(tm); elSubPaint(); Sfx.play('rend'); if (done) done(); } };
+    if (!Voice.speak(prof, text, o)) { sb.shown = text.length; sb.done = true; ELK.sub = sb; elSubPaint(); if (done) done(); }
+  }
+  function elSubPaint() { if (!ELK.open || !erRefs.subTxt) return; const sb = ELK.sub; if (!sb) return; erRefs.subWho.textContent = elName(sb.who); erRefs.subTxt.textContent = sb.text.slice(0, sb.shown); erRefs.subTx.className = 'er-txled' + (sb.done ? '' : ' on'); }
+  const elSpeakEntry = (x) => { Voice.stop(); elSpeak(x.dir === 'in' ? 'earth' : x.who, xt(x.text)); };
+  function elReplayLast() { const E = S.el, H = E.hist.filter((x) => x.ch === E.ch && x.dir !== 'sys'); if (H.length) elSpeakEntry(H[H.length - 1]); }
+  function elPlayLatest() { const E = S.el, H = E.hist.filter((x) => x.ch === E.ch && x.dir === 'in'); if (H.length && E.unread[E.ch]) { EL.markRead(S, E.ch); elSpeak('earth', xt(H[H.length - 1].text)); elRender(); elHudBadge(); } }
+  function elSend(id, p) {
+    const r = EL.send(S, id, p); if (!r.ok) { Sfx.play('bad'); toast(XT('No se puede transmitir', 'Cannot transmit'), r.why ? xt(r.why) : '', 'warn'); return r; }
+    elAfterSend(r.msg); elRender(); return r;
+  }
+  function elAfterSend(m) {
+    Voice.stop(); EL.ensure(S); if (!ELK.open) Sfx.play('rtx');
+    elSpeak(m.who, xt(m.txt), () => { elRender(); });
+    if (m.st === 'queued') toast(XT('Sin enlace: transmisión pendiente', 'No link: transmission pending'), XT('El mensaje saldrá cuando se recupere la señal.', 'The message will go out when the signal returns.'), 'warn');
+    elHudBadge();
+  }
+
+  /* ---------- HUD, registros y bucle ---------- */
+  function elHudBadge() {
+    const b = $('#bRadio'); if (!b || !S) return;
+    const st = EL.status(S), n = EL.totalUnread(S), pend = S.el.out.length;
+    b.classList.toggle('on', ELK.open); b.style.borderColor = ELCOL[st.main];
+    let bd = b.querySelector('.er-hb'); if (!bd) { bd = h('i', { class: 'er-hb' }); b.append(bd); }
+    bd.textContent = n ? n : pend ? '·' : ''; bd.style.display = n || pend ? '' : 'none'; bd.style.background = n ? '#ff6b6b' : '#7fd3ff';
+    b.classList.toggle('pulse', n > 0 && !ELK.open);
+    b.title = 'EarthLink · ' + XT(ELSTN[st.main][0], ELSTN[st.main][1]) + ' (' + keyLabel() + ')';
+  }
+  function elFrame(dt) {
+    if (!S) return; ELK.hudT += dt;
+    if (ELK.hudT > 0.4) {
+      ELK.hudT = 0; EL.ensure(S); elHudBadge();
+      if (ELK.open) { if (ELK.last !== JSON.stringify([S.el.out.length, S.el.hist.length, S.el.unread, EL.status(S).main, S.el.prop.length])) elRender(); ELK.last = JSON.stringify([S.el.out.length, S.el.hist.length, S.el.unread, EL.status(S).main, S.el.prop.length]); }
+    }
+    if (EL.takeEvac(S)) { const E = S.ex; if (E && E.suit.on) { Ex.recall(S, 'request'); World.teleportHome(); toast(XT('Recogida completada', 'Pickup complete'), XT('La base te recogió y remolcó el rover.', 'The base picked you up and towed the rover.'), 'ok'); } }
+  }
+  /** Registros del motor → avisos de radio, sonidos y toasts. */
+  function elLogToRadio(e) {
+    const k = e.k, p = e.p || {}, es = LANG === 'es';
+    if (k === 'el.recv') {
+      const E = S.el, last = E.hist.filter((x) => x.ref === p.id && x.dir === 'in').pop(); if (!last) return true;
+      Sfx.play(ELK.open ? 'rrx' : 'rrx');
+      if (ELK.open) { elRender(); if (E.ch === p.ch) { Voice.stop(); EL.markRead(S, p.ch); elSpeak('earth', xt(last.text), () => elRender()); } }
+      else toast(XT('Mensaje de la Tierra', 'Message from Earth'), xt(EL.CH.find((c) => c.id === p.ch).n) + ' · ' + xt(last.text).slice(0, 90), 'info', () => { elToggle(true); S.el.ch = p.ch; elRender(); });
+      elHudBadge(); return true;
+    }
+    if (k === 'el.alert') { const last = S.el.hist.filter((x) => x.spont).pop(); call({ key: 'el.alert' + e.n, sev: 'warn', who: 'control', voice: 'earth', title: XT('Alerta de la Tierra', 'Alert from Earth'), desc: last ? xt(last.text) : '', console: 'comms' }); elHudBadge(); return true; }
+    if (k === 'el.lost') { Sfx.play('rnoise'); toast(p.st === 'none' ? XT('Enlace perdido', 'Link lost') : XT('La señal empeora', 'Signal degrading'), ELWHY[p.why] ? XT(ELWHY[p.why][0], ELWHY[p.why][1]) : '', 'warn'); return true; }
+    if (k === 'el.restored') { Sfx.play('rcon'); toast(XT('Señal recuperada', 'Signal recovered'), XT('Los mensajes en cola vuelven a salir.', 'Queued messages go out again.'), 'ok'); return true; }
+    if (k === 'el.damage') { Sfx.play('rnoise'); toast(XT('Daño en equipos exteriores', 'Exterior equipment damaged'), XT('Repara las comunicaciones en el taller.', 'Repair communications at the workshop.'), 'warn'); return true; }
+    if (k === 'el.supply') { Sfx.play('ok'); toast(XT('Llegó un envío de la Tierra', 'A shipment arrived from Earth'), p.k === 'part' ? XT('Un repuesto', 'A spare part') : '+' + p.amt + ' ' + EL.RESU[p.k] + ' ' + xt(EL.RESN[p.k]), 'ok'); return true; }
+    if (k === 'el.mission') { toast(XT('Nueva misión activada por Tierra', 'New mission activated by Earth'), '', 'info'); return true; }
+    if (k === 'el.prop') { if (!ELK.open) toast(XT('Un especialista propone llamar a la Tierra', 'A specialist suggests calling Earth'), XT('Abre la radio para autorizarlo.', 'Open the radio to authorize it.'), 'info', () => elToggle(true)); elHudBadge(); return true; }
+    return true;
+  }
+  function elLogText(e) {
+    const k = e.k, p = e.p || {};
+    const T2 = { 'el.sent': [XT('Mensaje a la Tierra', 'Message to Earth'), p.intent], 'el.recv': [XT('Respuesta de la Tierra', 'Reply from Earth'), p.intent], 'el.alert': [XT('Alerta de la Tierra', 'Earth alert'), p.type], 'el.lost': [XT('Enlace degradado', 'Link degraded'), p.why], 'el.restored': [XT('Señal recuperada', 'Signal recovered'), ''], 'el.damage': [XT('Daño en equipos exteriores', 'Exterior equipment damaged'), ''], 'el.supply': [XT('Envío recibido', 'Shipment received'), p.k], 'el.mission': [XT('Misión activada por la Tierra', 'Mission activated by Earth'), p.id], 'el.prop': [XT('Propuesta de un especialista', 'Specialist suggestion'), p.intent] };
+    return T2[k] || [k, ''];
+  }
+  function elAttach() { if (erEl) { ELK.open = false; erEl.classList.add('hidden'); $('#app').classList.remove('er-on'); cancelAnimationFrame(ELK.raf); } ELK.sub = null; ELK.last = ''; if (S) elHudBadge(); }
+  const elDebug = { attach: elAttach, toggle: elToggle, send: elSend, render: elRender, speak: elSpeak, frame: elFrame, hud: elHudBadge, accept: (id) => { const r = EL.accept(S, id); if (r.ok) elAfterSend(r.msg); return r; }, get open() { return ELK.open; }, get sub() { return ELK.sub; }, get el() { return erEl; }, logToRadio: elLogToRadio };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
@@ -7633,6 +8226,7 @@ const Game = (function () {
       cv.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2 && d0) { const [a, b] = [...pts.values()], d1 = Math.hypot(a[0] - b[0], a[1] - b[1]); if (running && !modalOpen()) World.zoom(d1 / d0); d0 = d1; } });
       const up = (e) => { pts.delete(e.pointerId); d0 = 0; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); }
     $('#bCom').addEventListener('click', () => { if (running && !modalOpen()) openConsole({ id: 'comms' }); });
+    $('#bRadio').addEventListener('click', () => { if (running && !modalOpen()) elToggle(); });
     $('#bMap').addEventListener('click', () => toggleMap());
     miniCv.addEventListener('click', () => toggleMap());
     $('#bCrew').addEventListener('click', () => openCrew());
@@ -7648,7 +8242,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { exp: exDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 
