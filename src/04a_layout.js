@@ -95,7 +95,7 @@ const Layout = (function () {
     // Residuos
     ['bin', 98, 47, 2, 2], ['bin', 104, 47, 2, 2], ['recycler', 100, 52, 5, 3], ['crate', 98, 54, 2, 2],
     // Bahía del rover
-    ['rover', 36, 55, 6, 4], ['tools', 36, 61, 4, 2], ['benchs', 47, 63, 6, 1], ['pipe', 36, 53, 41, 1], ['crate', 47, 57, 2, 2], ['crate', 50, 57, 2, 2], ['crate', 47, 60, 2, 2], ['vent', 58, 56, 2, 2], ['vent', 46, 64, 2, 1]
+    ['rover', 36, 55, 6, 4], ['tools', 36, 61, 4, 2], ['benchs', 47, 63, 6, 1], ['pipe', 36, 53, 41, 1], ['crate', 47, 57, 2, 2], ['crate', 50, 57, 2, 2], ['crate', 47, 60, 2, 2], ['vent', 58, 56, 2, 2], ['vent', 46, 64, 2, 1], ['suitrack', 51, 65, 3, 1]
   ];
   // [id, sala, x, y, verbo, icono]
   const CONSOLES = [
@@ -108,7 +108,7 @@ const Layout = (function () {
     ['lab', 'lab', 10, 46, 'investigate', '🔬'], ['spec', 'lab', 17, 46, 'investigate', '🌈'], ['log', 'lab', 21, 49, 'investigate', '📚'], ['sampler', 'samples', 27, 50, 'manage', '🧪'],
     ['reactor', 'reactor', 103, 20, 'manage', '⚛️'], ['solar', 'reactor', 90, 37, 'play', '☀️'], ['balance', 'reactor', 102, 36, 'play', '⚖️'],
     ['work', 'workshop', 93, 49, 'manage', '🛠'], ['wastec', 'waste', 105, 50, 'manage', '♻️'],
-    ['rover', 'rad', 43, 56, 'explore', '🚙'], ['isru', 'rad', 44, 62, 'manage', '🧊'], ['shield', 'rad', 60, 58, 'manage', '🛡️'], ['lock', 'lock', 58, 65, 'interact', '🚪']
+    ['rover', 'rad', 43, 56, 'explore', '🚙'], ['isru', 'rad', 44, 62, 'manage', '🧊'], ['shield', 'rad', 60, 58, 'manage', '🛡️'], ['lock', 'lock', 58, 65, 'interact', '🚪'], ['suit', 'rad', 54, 65, 'equip', '🧑‍🚀']
   ];
   // Invernadero: seis jardineras de 3×2 (los índices de bed los usa la simulación)
   const PLANTERS = [[7, 19], [12, 19], [17, 19], [7, 25], [12, 25], [17, 25]];
@@ -158,7 +158,7 @@ const Layout = (function () {
     put('auxdome', X(10), Y(62), 4, 4, true); put('auxtank', X(16), Y(66), 3, 3, true); put('auxdome', X(mars ? 24 : 20), Y(72), 4, 4, true, { shelter: true });
     put('auxtank', X(104), Y(52), 3, 3, true); put('auxdome', X(114), Y(46), 4, 4, true);
     put('tripod', X(86), Y(71), 2, 2, true); put('tripod', X(28), Y(62), 2, 2, true, { s: 1 }); put('tripod', X(110), Y(70), 2, 2, true, { s: 1 });
-    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 }); put('vehicle', X(mars ? 66 : 64), Y(73), 4, 3, true, { v: 1 });
+    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 });
     // Geografía propia: la Luna con cráteres marcados y bloques sueltos; Marte con dunas, mesas y polvo
     const craters = [], dunes = [];
     if (mars) {

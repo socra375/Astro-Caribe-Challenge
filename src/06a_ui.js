@@ -97,6 +97,7 @@ const Game = (function () {
     if (k === 'job.recycle') return [es ? 'Residuos reciclados' : 'Waste recycled', es ? '+5 kg de materiales' : '+5 kg materials'];
     if (k === 'cm.sent') return [es ? 'Mensaje enviado' : 'Message sent', (es ? 'Tardará ' : 'Takes ') + fmt(p.ow) + (es ? ' h en llegar a la Tierra (simulado).' : ' h to reach Earth (simulated).')];
     if (k === 'cm.recv') return [es ? 'Respuesta de la Tierra' : 'Reply from Earth', (es ? 'Ida y vuelta: ' : 'Round trip: ') + fmt(p.rt) + ' h'];
+    if (k.startsWith('ex.')) return exLogText(e);
     if (k === 'm.start') return [(es ? 'Misión iniciada: ' : 'Mission started: ') + tr(DATA.MIS[p.id].t), ''];
     if (k === 'm.done') return [(es ? 'Misión completada: ' : 'Mission completed: ') + tr(DATA.MIS[p.id].t), '★'.repeat(p.stars)];
     if (k === 'm.fail') return [(es ? 'Misión no superada: ' : 'Mission not passed: ') + tr(DATA.MIS[p.id].t), tr(DATA.FAILWHY[p.why])];
@@ -209,6 +210,7 @@ const Game = (function () {
   function nextHint() {
     if (!S || S.ended) return null;
     const es = LANG === 'es';
+    const xh = S.ex && S.ex.suit.on ? exHint() : null; if (xh) return xh;
     const room = (k) => tr(DATA.ROOMS[k]);
     const storm = S.inc.find((i) => i.type === 'solar_storm' && !i.res);
     if (storm && !S.proto) return { t: es ? '¡Tormenta solar! Activa el protocolo en «Blindaje» (bahía del rover).' : 'Solar storm! Turn on the protocol at "Shielding" (rover bay).', p: World.consolePos('shield') };
@@ -258,7 +260,8 @@ const Game = (function () {
     let x = 0, y = 0;
     if (keys.ArrowLeft || keys.a || keys.A) x -= 1; if (keys.ArrowRight || keys.d || keys.D) x += 1;
     if (keys.ArrowUp || keys.w || keys.W) y -= 1; if (keys.ArrowDown || keys.s || keys.S) y += 1;
-    return { x: x + joy.x, y: y + joy.y };
+    const m = Math.hypot(joy.x, joy.y);
+    return { x: x + joy.x, y: y + joy.y, thr: -y, str: x, stick: m > 0.18 ? { x: joy.x, y: joy.y, m } : null };
   }
   window.addEventListener('keydown', (e) => {
     Sfx.init();
@@ -279,6 +282,11 @@ const Game = (function () {
     if (e.key === '+' || e.key === '=') World.zoom(1.2);
     if (e.key === '-' || e.key === '_') World.zoom(1 / 1.2);
     if (e.key === 'z' || e.key === 'Z') World.overview();
+    if (e.key === 'f' || e.key === 'F') useTool();
+    if (e.key === 'l' || e.key === 'L') useTool('light');
+    if (e.key === 'g' || e.key === 'G') { if (S && S.ex && S.ex.suit.on) storagePanel(); }
+    if (e.key === 'o' || e.key === 'O') exMissionsPanel();
+    if (e.key >= '1' && e.key <= '6' && S && S.ex && S.ex.suit.on) selectTool(Ex.TOOLS[+e.key - 1]);
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -290,6 +298,7 @@ const Game = (function () {
     const end = () => { joy.id = null; joy.x = 0; joy.y = 0; knob.style.transform = ''; };
     j.addEventListener('pointerup', end); j.addEventListener('pointercancel', end);
     $('#btnE').addEventListener('click', () => interact());
+    $('#btnF').addEventListener('click', () => useTool());
     window.addEventListener('touchstart', () => { if (!isTouch) { isTouch = true; if (running) $('#touch').classList.remove('hidden'); } }, { passive: true });
   }
 
@@ -304,6 +313,7 @@ const Game = (function () {
       if (live) {
         World.update(dt, S, inputVec());
         Sim.setPlayerZone(S, World.zone());
+        exFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
@@ -340,6 +350,7 @@ const Game = (function () {
       Icons.setText($('#actBtn'), '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : ''));
       p.classList.remove('hidden'); return;
     }
+    if (near && near.id.startsWith('x:')) { Icons.setText($('#actBtn'), (isTouch ? '' : '[E] ') + near.icon + ' ' + exPrompt(near)); p.classList.remove('hidden'); return; }
     if (near) {
       const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
       const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
@@ -350,7 +361,7 @@ const Game = (function () {
   function interact() {
     if (!running || modalOpen()) return;
     if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
-    Sfx.play('click'); openConsole(near);
+    Sfx.play('click'); if (near.id.startsWith('x:')) { exInteract(near); return; } openConsole(near);
   }
   function togglePause() { paused = !paused; updateHud(); if (paused) pauseMenu(); }
   function toggleMute() { settings.muted = !settings.muted; applySettings(); }
@@ -382,7 +393,7 @@ const Game = (function () {
     clearLayer(); running = true; paused = false;
     $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
-    buildHud(); updateHud(); saveRun();
+    buildHud(); updateHud(); exAttach(); saveRun();
   }
   function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });

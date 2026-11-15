@@ -230,13 +230,16 @@ const Art = (function () {
     // rótulos de sala (placas)
     c.textAlign = 'center';
     for (const k of rk) { const def = d.rooms[k]; if (def.g === 'tube') continue; const bb = bbox(def, TS), nm = (typeof tr === 'function' && DATA.ROOMS[k]) ? tr(DATA.ROOMS[k]) : k; c.font = 'bold 13px system-ui'; const tw = c.measureText(nm).width + 18, cx = (bb[0] + bb[2]) / 2, cy = bb[1] + TS * 0.9 + (k === 'bridge' ? TS * 2.2 : 0); c.fillStyle = 'rgba(5,8,20,.55)'; d.rr(c, cx - tw / 2, cy - 12, tw, 20, 8); c.fill(); c.fillStyle = d.ROOMCOL[k] || '#e8eefc'; c.fillText(nm, cx, cy + 3); }
-    // viñeta en los bordes del mundo
-    const eg = c.createLinearGradient(0, 0, 0, TS * 3); eg.addColorStop(0, 'rgba(0,0,0,.65)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg; c.fillRect(0, 0, w, TS * 3);
-    const eg2 = c.createLinearGradient(0, h, 0, h - TS * 3); eg2.addColorStop(0, 'rgba(0,0,0,.65)'); eg2.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg2; c.fillRect(0, h - TS * 3, w, TS * 3);
-    const eg3 = c.createLinearGradient(0, 0, TS * 3, 0); eg3.addColorStop(0, 'rgba(0,0,0,.65)'); eg3.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg3; c.fillRect(0, 0, TS * 3, h);
-    const eg4 = c.createLinearGradient(w, 0, w - TS * 3, 0); eg4.addColorStop(0, 'rgba(0,0,0,.65)'); eg4.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg4; c.fillRect(w - TS * 3, 0, TS * 3, h);
+    // mapa (M): el mundo de la base con una viñeta suave en sus bordes
     const mapCv = document.createElement('canvas'); mapCv.width = 1120; mapCv.height = Math.round(1120 * d.H / d.W);
     const mc = mapCv.getContext('2d'); mc.imageSmoothingEnabled = true; mc.imageSmoothingQuality = 'high'; mc.drawImage(cv, 0, 0, mapCv.width, mapCv.height);
+    mc.save(); mc.scale(mapCv.width / w, mapCv.width / w);
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, TS * 3, 0, 0, w, TS * 3], [0, h, 0, h - TS * 3, 0, h - TS * 3, w, TS * 3], [0, 0, TS * 3, 0, 0, 0, TS * 3, h], [w, 0, w - TS * 3, 0, w - TS * 3, 0, TS * 3, h]]) { const eg = mc.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(0,0,0,.65)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); mc.fillStyle = eg; mc.fillRect(rx, ry, rw, rh); }
+    mc.restore();
+    // en el juego, los bordes de la base se funden con el terreno de exploración que la rodea
+    c.save(); c.globalCompositeOperation = 'destination-out'; const F = TS * 7;
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, F, 0, 0, w, F], [0, h, 0, h - F, 0, h - F, w, F], [0, 0, F, 0, 0, 0, F, h], [w, 0, w - F, 0, w - F, 0, F, h]]) { const eg = c.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(0,0,0,1)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg; c.fillRect(rx, ry, rw, rh); }
+    c.restore();
     return { cv, mapCv };
   }
   return { build };

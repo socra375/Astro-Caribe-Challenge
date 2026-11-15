@@ -6,7 +6,7 @@
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
-    lock: { es: 'Esclusa', en: 'Airlock' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
+    lock: { es: 'Esclusa', en: 'Airlock' }, suit: { es: 'Traje y expedición', en: 'Suit & expedition' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
   const consoleName = (id) => tr(CNAME[id]) || id;
   function openConsole(c) {
@@ -15,6 +15,7 @@
     }
     if (c.id === 'plant') return plantCard(c.bed, c.slot);
     if (c.id === 'wardrobe') return wardrobePanel();
+    if (c.id === 'suit') return suitPanel();
     const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
@@ -386,7 +387,7 @@
       h('p', null, LANG === 'es' ? 'La esclusa nunca abre las dos puertas a la vez: así el aire de la base no se escapa. Se despresuriza para salir y se presuriza para entrar.' : 'The airlock never opens both doors at once, so base air does not escape. It depressurizes to go out and pressurizes to come in.'),
       h('p', null, (LANG === 'es' ? 'Estado: ' : 'State: ') + (a.st === 'in' ? (LANG === 'es' ? 'conectada al interior' : 'connected inside') : a.st === 'out' ? (LANG === 'es' ? 'conectada al exterior' : 'connected outside') : (LANG === 'es' ? 'ciclando…' : 'cycling…'))),
       S.mods && S.mods.spe > 0 ? h('p', { class: 'tag crit' }, LANG === 'es' ? '⛔ Tormenta solar: no salgas.' : '⛔ Solar storm: do not go out.') : null,
-      btn('🔄 ' + (LANG === 'es' ? 'Ciclar esclusa' : 'Cycle airlock'), () => { World.cycleLock(); pop(); }, 'primary'))), { narrow: true });
+      btn('🔄 ' + (LANG === 'es' ? 'Ciclar esclusa' : 'Cycle airlock'), () => { const r = World.cycleLock(); pop(); if (r === 'nosuit') { toast(LANG === 'es' ? 'Necesitas el traje para salir' : 'You need the suit to go out', LANG === 'es' ? 'Equípalo en el vestuario de la bahía.' : 'Put it on at the bay locker.', 'warn'); suitPanel(); } }, 'primary'))), { narrow: true });
   }
   function labPanel() {
     livePanel(() => panel('🔬 ' + consoleName('lab'), h('div', null, incHere(['lab']),
@@ -410,6 +411,7 @@
   function researchPanel() {
     push(panel('📚 ' + consoleName('log'), h('div', null,
       h('table', null, h('tbody', null, statRow(LANG === 'es' ? 'Muestras recogidas' : 'Samples collected', S.st.samplesTot), statRow(LANG === 'es' ? 'Puntos de ciencia' : 'Science points', S.science), statRow(LANG === 'es' ? 'Cosechas' : 'Harvests', Object.values(S.st.crops).reduce((a, b) => a + b, 0)))),
+      exReportCard(),
       h('div', { class: 'card' }, h('h3', null, 'NASA OSDR'), h('p', { class: 'small' }, LANG === 'es' ? 'El Open Science Data Repository guarda datos de experimentos biológicos en el espacio (plantas, microbios, animales). Sirve para investigar, no para vigilar la salud de una tripulación en tiempo real.' : 'The Open Science Data Repository stores data from biology experiments in space (plants, microbes, animals). It is for research, not real-time crew health monitoring.'), h('a', { href: 'https://osdr.nasa.gov/bio/repo/', target: '_blank', rel: 'noopener' }, 'osdr.nasa.gov')),
       h('div', { class: 'card' }, h('h3', null, LANG === 'es' ? 'Logros' : 'Achievements'), h('ul', null, Object.keys(DATA.ACH).map((k) => h('li', null, (ach[k] ? '🏅 ' : '⬜ ') + tr(DATA.ACH[k]))))))));
   }

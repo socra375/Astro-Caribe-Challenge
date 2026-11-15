@@ -457,7 +457,11 @@ const Sfx = (function () {
     bad: () => { tone(300, 0.2, 'square', 0, 0.12); tone(220, 0.3, 'square', 0.18, 0.12); },
     door: () => tone(180, 0.18, 'triangle', 0, 0.1),
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
-    step: () => tone(90, 0.04, 'triangle', 0, 0.04)
+    step: () => tone(90, 0.04, 'triangle', 0, 0.04),
+    scan: () => { tone(520, 0.14, 'sine', 0, 0.16); tone(880, 0.16, 'sine', 0.12, 0.18); tone(1320, 0.22, 'sine', 0.26, 0.18); },
+    geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
+    photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
+    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045)
   };
   return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
     setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },

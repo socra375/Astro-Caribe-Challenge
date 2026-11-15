@@ -88,6 +88,24 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 #joy{position:absolute;left:24px;bottom:24px;width:140px;height:140px;border-radius:50%;background:rgba(56,214,255,.12);border:2px solid rgba(56,214,255,.5)}
 #knob{position:absolute;left:45px;top:45px;width:50px;height:50px;border-radius:50%;background:rgba(56,214,255,.6)}
 #btnE{position:absolute;right:24px;bottom:180px;width:84px;height:84px;border-radius:50%;font-size:24px}
+#btnF{position:absolute;right:120px;bottom:190px;width:64px;height:64px;border-radius:50%;font-size:20px;pointer-events:auto}
+#btnF.hidden{display:none}
+#eva{position:absolute;right:8px;top:96px;width:208px;background:rgba(10,16,36,.92);border:1px solid var(--info);border-radius:12px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:5px;pointer-events:auto;z-index:5}
+#eva.hidden,#xtools.hidden,#xcard.hidden{display:none}
+#eva .xr{display:flex;align-items:center;gap:6px}
+#eva .xr b{min-width:58px;font-size:11px;white-space:nowrap}
+#eva .xb{flex:1;height:7px;background:#26345e;border-radius:5px;overflow:hidden}
+#eva .xb i{display:block;height:100%;width:0;background:var(--success);transition:width .2s}
+#eva .xr.warn .xb i{background:var(--warning)} #eva .xr.crit .xb i{background:var(--danger)}
+#eva .xr.warn .xv{color:#ffe7b3} #eva .xr.crit .xv{color:#ffb3b3;font-weight:700}
+#eva .xv{min-width:34px;text-align:right;font-variant-numeric:tabular-nums;font-size:11px}
+#eva .sig{display:inline-flex;gap:2px;align-items:flex-end;height:12px;flex:1} #eva .sig i{width:4px;background:#3a4570;display:block} #eva .sig i.on{background:var(--success)}
+#eva .xobj{border-top:1px solid var(--border);padding-top:5px;font-size:12px;cursor:pointer;line-height:1.3}
+#xtools{position:absolute;left:8px;bottom:190px;display:flex;flex-direction:column;gap:4px;pointer-events:auto;z-index:5}
+#xtools .btn{min-width:46px;min-height:46px;padding:0;font-size:20px;border-radius:12px;justify-content:center}
+#xtools .btn.on{outline:2px solid var(--warning)}
+#xcard{position:absolute;left:50%;transform:translateX(-50%);bottom:152px;width:min(440px,calc(100vw - 16px));background:rgba(10,16,36,.95);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;font-size:14px;z-index:5;pointer-events:none}
+#xcard .small{font-size:12px;margin:2px 0}
 
 /* ===== Screens & modals ===== */
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 30% 20%,#1a2a5c 0,#070b1a 60%);overflow:auto}
@@ -129,6 +147,14 @@ th,td{border-bottom:1px solid var(--border);padding:6px;text-align:left;vertical
   #toasts{top:auto;bottom:200px;left:6px}
   #prompt{bottom:190px}
   #btnE{bottom:40px;right:20px}
+  #btnF{bottom:44px;right:112px;width:56px;height:56px}
+  #eva{right:auto;left:6px;top:158px;width:min(206px,56vw);padding:5px 7px;gap:3px}
+  #eva .xr b{min-width:46px}
+  #app.eva #hint{display:none}
+  #app.eva #toasts{top:368px;bottom:auto;max-width:calc(100% - 64px)}
+  #app.eva #toasts > :nth-child(n+3){display:none}
+  #xtools{left:auto;right:6px;top:272px;bottom:auto;gap:3px}#xtools .btn{min-width:40px;min-height:40px;font-size:17px}
+  #xcard{bottom:312px;left:6px;right:6px;width:auto;transform:none}
   #joy{left:16px;bottom:24px}
   .panel{padding:12px}
 }
@@ -179,7 +205,10 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
   <div id="hint" class="hidden"></div>
   <div id="radio" class="hidden" role="status" aria-live="polite"></div>
   <div id="prompt" class="hidden"><button class="btn primary" id="actBtn"></button></div>
-  <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button class="btn primary" id="btnE" aria-label="Interactuar">E</button></div>
+  <div id="touch" class="hidden"><div id="joy"><div id="knob"></div></div><button class="btn primary" id="btnE" aria-label="Interactuar">E</button><button class="btn hidden" id="btnF" aria-label="Usar herramienta">F</button></div>
+  <div id="eva" class="hidden" aria-label="HUD de expedición"></div>
+  <div id="xtools" class="hidden" role="toolbar"></div>
+  <div id="xcard" class="hidden" role="status"></div>
   <canvas id="mini" class="hidden" width="380" height="300" aria-hidden="true"></canvas>
   <div id="zoomc" class="hidden"><button class="chip btn" id="zIn" aria-label="Acercar" title="Acercar (+)">+</button><button class="chip btn" id="zOut" aria-label="Alejar" title="Alejar (-)">−</button><button class="chip btn" id="zFit" aria-label="Vista general" title="Vista general (Z)"></button></div>
   <div id="layer"></div>
@@ -644,7 +673,11 @@ const Sfx = (function () {
     bad: () => { tone(300, 0.2, 'square', 0, 0.12); tone(220, 0.3, 'square', 0.18, 0.12); },
     door: () => tone(180, 0.18, 'triangle', 0, 0.1),
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
-    step: () => tone(90, 0.04, 'triangle', 0, 0.04)
+    step: () => tone(90, 0.04, 'triangle', 0, 0.04),
+    scan: () => { tone(520, 0.14, 'sine', 0, 0.16); tone(880, 0.16, 'sine', 0.12, 0.18); tone(1320, 0.22, 'sine', 0.26, 0.18); },
+    geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
+    photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
+    engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045)
   };
   return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
     setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
@@ -937,7 +970,7 @@ const Icons = (function () {
     '💬': 'chat', '♻': 'loop', '🧺': 'basket', '✂': 'scissors', '🔍': 'search', '🌡': 'thermo', '🕒': 'clock', '⛔': 'crit', '⚠': 'warn', 'ℹ': 'info', '✔': 'check',
     '✖': 'cross', '🏅': 'star', '📚': 'book', '🌈': 'chart', '🌰': 'seed', '🗺️': 'map', '🛡️': 'shield', '☀️': 'sun', '⚛️': 'bolt', '⚖️': 'scale', '⚙️': 'gear',
     '🛠️': 'wrench', '🌡️': 'thermo', '🛏️': 'bed', '♻️': 'loop', '✂️': 'scissors', '⏸️': 'pause', '▶️': 'play', 'ℹ️': 'info', '✔️': 'check', '⚠️': 'warn', '✖️': 'cross',
-    '🖥': 'chart', '🖥️': 'chart', '🏠': 'home'
+    '🖥': 'chart', '🖥️': 'chart', '🏠': 'home', '🔭': 'search', '🪨': 'cube', '📦': 'cube', '🧰': 'cube', '📥': 'basket', '📤': 'door', '☢': 'warn', '☢️': 'warn', '✅': 'check', '⭐': 'star'
   };
   const RX = /(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2139}\u{2190}-\u{21FF}]️?(?:‍[\u{1F300}-\u{1FAFF}]️?)*)/gu;
   const KEEP = new Set(['★', '☆', '→', '←', '↑', '↓', '↔', '✕']);
@@ -1622,7 +1655,7 @@ const Sim = (function () {
     S.pw = { gen: G, sol: solKw, rea: reaKw, demand, served, sun };
     S.st.eGen += G * h; S.st.eUsed += served * h;
     if (lf.o2 < 0.999 || lf.rec < 0.999 || lf.therm < 0.999) S.st.brownH += h;
-    if (sy.rover.batt < 100) sy.rover.batt = clamp(sy.rover.batt + 6 * h * (lf.rover || 0), 0, 100);
+    if (sy.rover.batt < 100 && (!S.ex || S.ex.rover.docked !== false)) sy.rover.batt = clamp(sy.rover.batt + 6 * h * (lf.rover || 0), 0, 100);
 
     /* --- Temperatura y presión --- */
     const tEff = clamp(lf.therm * (sy.thermal.h / 100) * M.thermMul, 0, 1);
@@ -1692,7 +1725,7 @@ const Sim = (function () {
       const Pn = S.pant; Pn.fresh = Math.max(0, Pn.fresh - fUse * h);
       const cf = Pn.cold && !S.emergency ? (lf.cold == null ? 1 : lf.cold) : 0, spoil = Math.min(Pn.fresh, r.food.v) * (0.01 - 0.0092 * cf) * h;
       if (spoil > 0) { Pn.fresh -= spoil; r.food.v -= spoil; S.st.spoiled += spoil; }
-      for (const e of S.sampleList) if (e.state === 'new' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
+      for (const e of S.sampleList) if (e.state === 'new' && e.loc !== 'hand' && e.loc !== 'rover' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
     }
     r.waste.prod = S.N * (P.WASTE_PER_PERSON_DAY / 24); r.waste.v += r.waste.prod * h; // envases y residuos sólidos
 
@@ -1844,7 +1877,7 @@ const Sim = (function () {
     if (j.kind === 'analyze') {
       const e = S.sampleList.find((x) => x.id === j.sid);
       const sci = e ? (e.state === 'degraded' ? 7 : 12) + (e.ok ? 3 : 0) : 12;
-      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; }
+      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; if (typeof Ex !== 'undefined') Ex.onAnalyzed(S, e); }
       S.science += sci; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {});
     }
     if (j.kind === 'cook') { S.morale = Math.min(100, S.morale + j.mor); S.r.well.v = Math.min(100, S.r.well.v + 2); S.st.meals++; log(S, 'ok', 'job.cook', {}); }
@@ -1903,7 +1936,7 @@ const Sim = (function () {
       S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 }); campCnt(S, 'cook');
     },
     sstore: (S, p) => {
-      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
+      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e) || (e.loc && e.loc !== 'base')) return 'err';
       if (!SAMPLE_CATS.includes(p.label)) return 'err';
       const sl = freeSlot(S); if (!sl) return 'noslot';
       e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded'; campCnt(S, 'sstore');
@@ -1916,7 +1949,7 @@ const Sim = (function () {
     analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      const pend = S.sampleList.filter((x) => x.an === 'pending');
+      const pend = S.sampleList.filter((x) => x.an === 'pending' && (!x.loc || x.loc === 'base'));
       const e = (p && p.id ? pend.find((x) => x.id === p.id) : null) || pend.find((x) => x.state === 'stored') || pend[0];
       if (!e) return 'nosample';
       e.an = 'inlab'; S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0, sid: e.id });
@@ -2275,7 +2308,7 @@ const Sim = (function () {
     };
   }
 
-  return { EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -2400,6 +2433,347 @@ const SelfTest = (function () {
 })();
 if (typeof module !== 'undefined') module.exports.SelfTest = SelfTest;
 /*TEST-END*/
+/* =====================================================================
+   EX — lógica de la expedición exterior (sin dibujo ni DOM): traje
+   espacial, recursos, radiación, señal de radio, recolección de muestras
+   con registro único (S.sampleList), almacenamiento del rover, misiones y
+   recuperación de seguridad. El estado vive en S.ex (se guarda con la
+   partida). Los valores científicos se simplifican por jugabilidad.
+   ===================================================================== */
+const Ex = (function () {
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const T = (es, en) => ({ es, en });
+  const CAP = { slots: 6, kg: 12, hand: 2 };
+  const EXLIM = 15; // dosis simulada máxima por salida (mSv de juego)
+  const DOSE_K = 0.5; // parte de la dosis de salida que pasa a la dosis de la tripulación del motor
+  const TOOLS = ['collector', 'container', 'scanner', 'camera', 'sensor', 'light'];
+  const RAD_RATE = { moon: 0.0125, mars: 0.006 }; // mSv de juego por segundo (la realidad: ~1,4 mSv/día en la Luna y ~0,7 en Marte)
+  const SIG_RANGE = { moon: 105, mars: 90 };
+  const REP_RANGE = 60;
+
+  function def() {
+    return {
+      suit: { on: false, integ: 100, o2: 100, en: 100, temp: 21, rad: 0 },
+      rover: { x: 74, y: 89.6, a: 0, v: 0, occ: false, docked: true, lights: false, odo: 0, load: [] },
+      hand: [], taken: {}, rev: {}, rep: {}, cache: {}, visited: {}, disc: {}, photos: 0, readings: 0, tool: 'collector', flash: false,
+      out: false, trip: { odo: 0, recall: false, t: 0 }, trips: 0, recalls: 0, sci: 0, scanCd: 0, f: {}, al: {}, cond: null, doseTot: 0,
+      m: { i: 0, done: {}, c: { m3unl: 0, m3rec: 0, m4shel: 0 } }
+    };
+  }
+  function ensure(S) {
+    if (S.ex && S.ex._v === 1) return S.ex;
+    const D = def();
+    if (!S.ex) S.ex = D;
+    const e = S.ex;
+    for (const k in D) if (e[k] == null) e[k] = D[k];
+    for (const k in D.suit) if (e.suit[k] == null) e.suit[k] = D.suit[k];
+    for (const k in D.rover) if (e.rover[k] == null) e.rover[k] = D.rover[k];
+    for (const k in D.m.c) if (e.m.c[k] == null) e.m.c[k] = D.m.c[k];
+    e._v = 1;
+    return e;
+  }
+  const role = (S) => S.playerRole || 'commander';
+  const isBase = (e) => !e.loc || e.loc === 'base';
+
+  /* ---------- Entorno ---------- */
+  function sun(S) { return 0.5 + 0.5 * Math.cos((S.t / 72) * Math.PI * 2); }
+  function incActive(S, ty) { return S.inc.some((i) => !i.res && i.type === ty && S.t >= i.from); }
+  function condOn(S) { const c = ensure(S).cond; return c && c.age < c.dur ? c : null; }
+  /** Condiciones en un punto: temperatura ambiente, tormenta de polvo, ráfaga de radiación, visibilidad. */
+  function env(S, x, y) {
+    const e = ensure(S), mars = S.scen === 'mars', sn = sun(S), cd = condOn(S), z = typeof Field !== 'undefined' ? Field.ground(x, y) : { k: 'plain' };
+    let amb = mars ? -75 + 93 * sn : -150 + 250 * sn;
+    const g = typeof Field !== 'undefined' && Field.G;
+    if (g && g.craters.some((c) => c.ice && Math.hypot(c.x - x, c.y - y) < c.r)) amb = Math.min(amb, -185);
+    const dust = (mars && (incActive(S, 'dust_storm') || (cd && cd.k === 'dust'))) ? 1 : 0;
+    const wave = cd && cd.k === 'rad' ? ((cd.age % 45) < 16 ? 1 : 0.15) : 0;
+    const burst = (S.mods && S.mods.spe > 0 ? 1 : 0) || wave;
+    return { amb, sun: sn, dust, burst, ground: z, vis: dust ? 7 : 26, mars };
+  }
+  /** Señal de radio (0–1): antena de la base y repetidores activados; la distancia, el polvo y las tormentas la reducen. */
+  function signal(S, x, y) {
+    const e = ensure(S), mars = S.scen === 'mars', nodes = [{ x: Field.PAD[0], y: Field.PAD[1], r: SIG_RANGE[S.scen] || 100 }];
+    for (const q of Field.G.rep) if (e.rep[q.id]) nodes.push({ x: q.x, y: q.y, r: REP_RANGE });
+    let best = 0;
+    for (const n of nodes) best = Math.max(best, 1 - Math.pow(Math.hypot(n.x - x, n.y - y) / n.r, 1.6));
+    const cm = S.sys && S.sys.comms ? S.sys.comms.h / 100 : 1, ev = env(S, x, y);
+    best *= 0.5 + 0.5 * cm; if (ev.dust) best *= 0.55; if (ev.burst) best *= 0.75; if (role(S) === 'commander') best *= 1.1;
+    return clamp(best, 0, 1);
+  }
+  const nearShelter = (x, y) => { for (const q of Field.G.shel) if (Math.hypot(q.x - x, q.y - y) < 4.2) return q.id; return null; };
+
+  /* ---------- Traje ---------- */
+  function checklist(S) {
+    const e = ensure(S), su = e.suit, es = LANG === 'es', free = CAP.slots - e.rover.load.length, b = S.sys.rover.batt;
+    return [
+      { k: 'integ', ok: su.integ >= 70, v: Math.round(su.integ) + ' %', t: T('Integridad del traje', 'Suit integrity') },
+      { k: 'o2', ok: su.o2 >= 90, v: Math.round(su.o2) + ' %', t: T('Oxígeno disponible', 'Oxygen available') },
+      { k: 'en', ok: su.en >= 80, v: Math.round(su.en) + ' %', t: T('Energía del traje', 'Suit power') },
+      { k: 'batt', ok: b >= 60, v: Math.round(b) + ' %', t: T('Batería del rover', 'Rover battery') },
+      { k: 'store', ok: free > 0, v: free + '/' + CAP.slots, t: T('Capacidad de almacenamiento', 'Storage capacity') },
+      { k: 'tools', ok: TOOLS.every((k) => k), v: TOOLS.length + '/' + TOOLS.length, t: T('Herramientas disponibles', 'Tools available') },
+      { k: 'goal', ok: e.m.i < EXM.length, v: e.m.i < EXM.length ? es ? EXM[e.m.i].t.es : EXM[e.m.i].t.en : '✔', t: T('Objetivo de exploración', 'Exploration goal') }
+    ];
+  }
+  /** Equipa el traje y lo recarga con oxígeno y energía de la base. */
+  function equip(S) {
+    const e = ensure(S), su = e.suit;
+    if (su.on) return 'on';
+    const need = (100 - su.o2) / 100 * 0.6;
+    if (S.r.o2.v < need + 1) return 'nobase';
+    S.r.o2.v -= need; su.o2 = 100; su.en = 100; su.temp = 21; su.rad = su.rad * 0.0; su.on = true; e.f.suit = true; e.cache = {};
+    e.trip = { odo: 0, recall: false, t: 0, rad0: e.doseTot }; e.al = {};
+    Sim.log(S, 'info', 'ex.equip', {}); return null;
+  }
+  function recharge(S) {
+    const e = ensure(S), su = e.suit, need = ((100 - su.o2) + (100 - su.en) * 0.3) / 100 * 0.6;
+    if (need < 0.02) return 'full';
+    if (S.r.o2.v < need + 1) return 'nobase';
+    S.r.o2.v -= need; su.o2 = 100; su.en = 100; e.al = {}; return null;
+  }
+  function repairSuit(S) {
+    const e = ensure(S), su = e.suit, cost = role(S) === 'engineer' ? 1 : 1.8;
+    if (su.integ >= 99) return 'full';
+    if (S.r.mat.v < cost) return 'nomat';
+    S.r.mat.v -= cost; su.integ = 100; return null;
+  }
+  /** Quita el traje en la base: las muestras que aún lleva en mano pasan al almacén. */
+  function unequip(S) {
+    const e = ensure(S), su = e.suit; if (!su.on) return 'off';
+    const n = unload(S, true);
+    su.on = false; e.out = false; e.rover.occ = false; e.flash = false; e.trips++; Sim.log(S, 'info', 'ex.unequip', { n }); return null;
+  }
+
+  /* ---------- Consumo y alertas ---------- */
+  /** c = { x, y, outside, inRover, move (0–1), working, inShel }. Devuelve los avisos nuevos. */
+  function tick(S, dt, c) {
+    const e = ensure(S), su = e.suit, out = [];
+    if (e.scanCd > 0) e.scanCd = Math.max(0, e.scanCd - dt);
+    if (e.cond) { e.cond.age += dt; if (e.cond.age >= e.cond.dur && !e.cond.done) { e.cond.done = true; out.push('cond.end'); } }
+    if (!su.on || !c.outside) { return out.concat(missionStep(S, dt, c)); }
+    const ev = env(S, c.x, c.y), r = role(S), integ = su.integ;
+    const leak = 1 + (100 - integ) / 45, rov = c.inRover ? 0.4 : 1;
+    const mv = clamp(c.move || 0, 0, 1);
+    su.o2 = Math.max(0, su.o2 - 0.115 * (1 + mv * 0.35 + (c.working ? 0.25 : 0)) * leak * rov * (r === 'medic' ? 0.9 : 1) * dt);
+    const therm = Math.abs(ev.amb - 21) / 140 * 0.09 * (c.inShel ? 0.2 : 1);
+    su.en = Math.max(0, su.en - (0.07 + therm + (e.flash ? 0.12 : 0) + mv * 0.02) * (c.inRover ? 0.5 : 1) * dt);
+    const tgt = su.en > 2 ? 21 + (ev.amb - 21) * 0.025 * (1 + (100 - integ) / 80) : clamp(ev.amb, -40, 70);
+    su.temp += (tgt - su.temp) * Math.min(1, dt * 0.3);
+    if (ev.dust) su.integ = Math.max(0, su.integ - 0.012 * dt);
+    else if (ev.ground.k === 'deep' && mv > 0.2 && !c.inRover) su.integ = Math.max(0, su.integ - 0.01 * dt);
+    const sh = c.inShel ? 0.08 : c.inRover ? 0.6 : 1;
+    const rate = RAD_RATE[S.scen] * sh * (1 + (100 - integ) / 120) * (ev.burst ? 5 : 1) * (S.mods && S.mods.spe > 0 ? 1.6 : 1) * (r === 'medic' ? 0.8 : 1) * (ev.dust ? 0.9 : 1);
+    su.rad += rate * dt; e.doseTot += rate * dt;
+    const cr = S.crew.find((q) => q.role === r); if (cr) cr.dose += rate * dt * DOSE_K;
+    if (c.inShel) { e.f.shelter = true; if (c.inShel && condOn(S)) e.m.c.m4shel += dt; }
+    // avisos con histéresis
+    const A = e.al, flag = (k, on, off) => { if (on && !A[k]) { A[k] = 1; out.push(k); } else if (A[k] && off) A[k] = 0; };
+    flag('o2.low', su.o2 < 30, su.o2 > 38); flag('o2.crit', su.o2 < 12, su.o2 > 20); flag('en.low', su.en < 30, su.en > 38); flag('en.crit', su.en < 12, su.en > 20);
+    flag('temp.hi', su.temp > 34, su.temp < 30); flag('temp.lo', su.temp < 8, su.temp > 12);
+    flag('rad.hi', su.rad > EXLIM * 0.6, false); flag('rad.crit', su.rad > EXLIM * 0.85, false); flag('int.low', su.integ < 50, su.integ > 60);
+    flag('batt.low', S.sys.rover.batt < 25 && (c.inRover || e.rover.odo > 0), S.sys.rover.batt > 35);
+    const sg = signal(S, c.x, c.y);
+    flag('sig.lost', sg < 0.1, sg > 0.2); flag('sig.low', sg < 0.3 && sg >= 0.1, sg > 0.4);
+    flag('burst', ev.burst > 0.5 && !c.inShel, ev.burst < 0.5 || !!c.inShel);
+    flag('dust', ev.dust > 0, ev.dust === 0);
+    flag('full', e.hand.length >= CAP.hand && !c.inRover, e.hand.length < CAP.hand);
+    flag('return', su.o2 < 35 || su.en < 25 || su.rad > EXLIM * 0.7, su.o2 > 50 && su.en > 40 && su.rad < EXLIM * 0.55);
+    if (su.o2 <= 0 || su.integ <= 0 || su.rad >= EXLIM * 1.05) out.push('recall');
+    return out.concat(missionStep(S, dt, c));
+  }
+  /** Recuperación de seguridad: nunca se queda atrapado. Pasan unas horas, la base recoge al astronauta y remolca el rover. */
+  function recall(S, why) {
+    const e = ensure(S), su = e.suit;
+    su.o2 = Math.max(su.o2, 20); su.en = Math.max(su.en, 30); su.integ = Math.max(su.integ, 35); su.temp = 21;
+    e.rover.occ = false; e.rover.v = 0; e.rover.x = 74; e.rover.y = 89.6; e.rover.a = 0; e.rover.lights = false; e.flash = false;
+    S.sys.rover.batt = Math.max(S.sys.rover.batt, 15);
+    e.recalls++; e.trip.recall = true; e.m.c.m3rec += 1; S.morale = clamp(S.morale - 5, 0, 100); e.al = {};
+    Sim.log(S, 'warn', 'ex.recall', { why: why || 'o2' });
+    Sim.step(S, 1.2);
+    return null;
+  }
+
+  /* ---------- Muestras ---------- */
+  const RES = {
+    regolith: { moon: T('Vidrio y fragmentos de impacto; el polvo es afilado. Útil para estudiar la radiación solar pasada.', 'Glass and impact fragments; the dust is sharp. Useful to study past solar radiation.'), mars: T('Polvo fino con óxidos de hierro y sales. Explica su color rojizo.', 'Fine dust with iron oxides and salts. It explains the reddish color.') },
+    rock: { moon: T('Basalto y anortosita: rocas de la corteza y de antiguos volcanes lunares.', 'Basalt and anorthosite: crust and ancient lunar volcano rocks.'), mars: T('Basalto marciano: lava enfriada, con pistas de su historia volcánica.', 'Martian basalt: cooled lava with clues to its volcanic history.') },
+    mineral: { moon: T('Mineral con hierro y titanio: puede servir para fabricar materiales en la base.', 'Mineral with iron and titanium: could be used to make materials at the base.'), mars: T('Mineral con hierro o sulfatos: se forma con agua; una pista de un pasado húmedo.', 'Mineral with iron or sulfates: it forms with water, a clue to a wetter past.') },
+    sediment: { moon: T('Material fino depositado en capas.', 'Fine material deposited in layers.'), mars: T('Capas de limo y arcilla: señal de agua que antes fluía o se estancaba.', 'Silt and clay layers: a sign of water that once flowed or pooled.') },
+    ice: { moon: T('Agua congelada mezclada con polvo: puede dar agua y oxígeno a futuras bases.', 'Frozen water mixed with dust: could give water and oxygen to future bases.'), mars: T('Hielo y sales: el agua es un recurso para beber y producir combustible.', 'Ice and salts: water is a resource for drinking and making fuel.') }
+  };
+  function mkRecord(S, s, by) {
+    const e = ensure(S), seq = S.sampleSeq++, inf = Field.info(s), d = Math.floor(S.t / 24) + 1, hh = Math.floor(S.t % 24), mm = Math.floor((S.t * 60) % 60);
+    return {
+      id: 'MS-' + String(seq).padStart(3, '0'), seq, origin: 'field', t: S.t, cat: Field.CAT[s.kind], label: null, state: 'new', slot: null, an: 'pending', ok: false, sci: 0,
+      site: s.id, kind: s.kind, planet: S.scen, name: s.name, xy: [Math.round(s.x * 10) / 10, Math.round(s.y * 10) / 10], poi: s.poi, int: s.int, kg: inf.kg, by, day: d, hh, mm, loc: 'hand', desc: inf.desc
+    };
+  }
+  /** Recoge una muestra: crea un registro único. No permite duplicados ni exceder el contenedor. */
+  function collect(S, id) {
+    const e = ensure(S), s = Field.site(id), su = e.suit;
+    if (!s) return 'err'; if (e.taken[id]) return 'taken';
+    if (!su.on) return 'nosuit'; if (e.rover.occ) return 'inrover';
+    if (s.hidden && !e.rev[id]) return 'hidden';
+    if (e.hand.length >= CAP.hand) return 'full';
+    const r = mkRecord(S, s, role(S)); if (S.sampleList.some((x) => x.id === r.id)) return 'dup';
+    S.sampleList.push(r); e.hand.push(r.id); e.taken[id] = r.id; S.st.samplesTot++;
+    su.en = Math.max(0, su.en - 1.2); e.f.collected = (e.f.collected || 0) + 1; e.trip.col = (e.trip.col || 0) + 1;
+    if (s.poi === 'p1' && e.m.i === 1) { e.f.m2col = r.id; }
+    if (s.poi === 'p2' && e.m.i === 3 && condOn(S)) { e.f.m4col = r.id; }
+    Sim.log(S, 'ok', 'ex.collect', { id: r.id, kind: s.kind, int: s.int });
+    return r;
+  }
+  const rec = (S, id) => S.sampleList.find((x) => x.id === id);
+  const kgOf = (S, list) => list.reduce((a, id) => a + ((rec(S, id) || {}).kg || 0), 0);
+  function storage(S) { const e = ensure(S), L = e.rover.load.map((id) => rec(S, id)).filter(Boolean); return { list: L, kg: kgOf(S, e.rover.load), slots: CAP.slots, maxKg: CAP.kg, hand: e.hand.map((id) => rec(S, id)).filter(Boolean) }; }
+  /** Pasa las muestras del contenedor de mano al compartimento del rover. */
+  function deposit(S) {
+    const e = ensure(S); let n = 0;
+    for (const id of e.hand.slice()) {
+      const r = rec(S, id); if (!r) { e.hand.splice(e.hand.indexOf(id), 1); continue; }
+      if (e.rover.load.length >= CAP.slots || kgOf(S, e.rover.load) + r.kg > CAP.kg) break;
+      e.hand.splice(e.hand.indexOf(id), 1); e.rover.load.push(id); r.loc = 'rover'; n++;
+    }
+    return n ? n : (e.hand.length ? 'full' : 'none');
+  }
+  function withdraw(S, id) {
+    const e = ensure(S), i = e.rover.load.indexOf(id), r = rec(S, id);
+    if (i < 0 || !r) return 'err'; if (e.hand.length >= CAP.hand) return 'handfull';
+    e.rover.load.splice(i, 1); e.hand.push(id); r.loc = 'hand'; return null;
+  }
+  function sortStorage(S, by) {
+    const e = ensure(S), L = e.rover.load, cmp = { id: (a, b) => a.localeCompare(b), kg: (a, b) => (rec(S, b).kg - rec(S, a).kg), kind: (a, b) => (rec(S, a).kind || '').localeCompare(rec(S, b).kind || '') }[by] || ((a, b) => 0);
+    L.sort(cmp);
+  }
+  /** Descarga rover y contenedor en el almacén de muestras de la base (las mismas muestras: ahora disponibles en el laboratorio). */
+  function unload(S, quiet) {
+    const e = ensure(S); let n = 0;
+    for (const id of e.hand.concat(e.rover.load)) { const r = rec(S, id); if (!r) continue; r.loc = 'base'; r.t = S.t; n++; }
+    e.hand = []; e.rover.load = [];
+    if (n) { S.samples += n; e.m.c.m3unl += (e.m.i === 2 ? n : 0); e.f.unl = (e.f.unl || 0) + n; e.trip.unl = (e.trip.unl || 0) + n; Sim.log(S, 'ok', 'ex.unload', { n, q: quiet ? 1 : 0 }); }
+    return n;
+  }
+  /** Muestras todavía en el exterior (mano o rover). */
+  const inField = (S) => S.sampleList.filter((x) => x.loc === 'hand' || x.loc === 'rover');
+  function onAnalyzed(S, r) { if (!r.site) return; r.res = RES[r.kind] ? RES[r.kind][r.planet || S.scen] : null; S.science += r.int || 0; ensure(S).sci += r.int || 0; }
+
+  /* ---------- Herramientas ---------- */
+  function scan(S, x, y) {
+    const e = ensure(S), su = e.suit;
+    if (!su.on) return { err: 'nosuit' }; if (e.scanCd > 0) return { err: 'cd', cd: e.scanCd };
+    if (su.en < 5) return { err: 'noen' };
+    su.en -= 4; e.scanCd = 6; const rad = role(S) === 'scientist' ? 32 : 22, found = [], pois = [];
+    for (const s of Field.G.sites) if (!e.taken[s.id] && Math.hypot(s.x - x, s.y - y) < rad && s.hidden && !e.rev[s.id]) { e.rev[s.id] = true; found.push(s.id); }
+    for (const p of Field.G.pois) if (Math.hypot(p.x - x, p.y - y) < rad * 1.6) { if (!e.disc[p.id]) pois.push(p.id); e.disc[p.id] = true; }
+    const p1 = Field.poi('p1'); if (e.m.i === 1 && p1 && Math.hypot(p1.x - x, p1.y - y) < 20) e.f.m2scan = true;
+    e.f.scan = (e.f.scan || 0) + 1; e.scanT = 12;
+    return { found, pois, rad };
+  }
+  function measure(S, x, y, inShel) {
+    const e = ensure(S), ev = env(S, x, y), g = ev.ground; e.readings++; e.f.read = true;
+    const rate = RAD_RATE[S.scen] * (inShel ? 0.08 : 1) * (ev.burst ? 5 : 1);
+    return { amb: ev.amb, temp: e.suit.temp, rad: rate, ground: g.k, wind: ev.mars ? (ev.dust ? 24 : 6) : 0, sig: signal(S, x, y), dust: ev.dust, burst: ev.burst, vis: ev.vis };
+  }
+  function photo(S, x, y) {
+    const e = ensure(S), su = e.suit; if (!su.on) return { err: 'nosuit' }; if (su.en < 2) return { err: 'noen' };
+    su.en -= 1.2; let best = null, bd = 12;
+    for (const p of Field.G.pois) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = { k: 'poi', id: p.id, n: p.n }; } }
+    for (const q of Field.G.rep) { const d = Math.hypot(q.x - x, q.y - y); if (d < bd) { bd = d; best = { k: 'rep', id: q.id, n: T('Repetidor de radio', 'Radio relay') }; } }
+    e.photos++; if (best) { e.f['ph' + best.id] = 1; if (!e.visited['ph' + best.id]) { e.visited['ph' + best.id] = 1; e.sci += 1; S.science += 1; } }
+    return { subject: best };
+  }
+  /** Investigar un punto de interés con el sensor: una vez por punto. */
+  function investigate(S, poiId, x, y) {
+    const e = ensure(S), p = Field.poi(poiId); if (!p) return { err: 'err' };
+    if (!e.suit.on) return { err: 'nosuit' };
+    const first = !e.visited[poiId]; e.visited[poiId] = 1;
+    if (first) { e.sci += 2; S.science += 2; S.pts += 4; e.trip.vis = (e.trip.vis || 0) + 1; Sim.log(S, 'ok', 'ex.visit', { id: poiId }); }
+    return { first, poi: p, read: measure(S, x, y, false) };
+  }
+  function activateRepeater(S, id) {
+    const e = ensure(S); if (!Field.rep(id)) return 'err'; if (e.rep[id]) return 'on';
+    e.rep[id] = true; e.f.rep = (e.f.rep || 0) + 1; if (e.m.i === 3) e.f.rep2 = true; S.pts += 5; Sim.log(S, 'ok', 'ex.repeater', { id }); return null;
+  }
+  function useCache(S, shelId) {
+    const e = ensure(S), su = e.suit; if (!su.on) return 'nosuit'; if (e.cache[shelId]) return 'used';
+    e.cache[shelId] = 1; su.o2 = Math.min(100, su.o2 + 40); su.en = Math.min(100, su.en + 40); e.al = {}; return null;
+  }
+  const sendOk = (S, x, y) => signal(S, x, y) >= 0.3;
+
+  /* ---------- Misiones de exploración ---------- */
+  const EXM = [
+    { id: 'e1', t: T('Primer recorrido', 'First outing'), b: T('Equípate, sal por la esclusa, conduce el rover y vuelve sano y salvo.', 'Suit up, go through the airlock, drive the rover and come back safe.'), obj: [
+      ['suit', T('Equipar el traje', 'Put on the suit')], ['out', T('Salir de la base', 'Leave the base')], ['drive', T('Conducir el rover (40 casillas)', 'Drive the rover (40 tiles)')], ['back', T('Regresar de forma segura', 'Return safely')]] },
+    { id: 'e2', t: T('Reconocimiento geológico', 'Geological survey'), b: T('Llega a la primera zona de interés, baja del rover, escanea, recoge una muestra y analízala.', 'Reach the first area of interest, leave the rover, scan, collect a sample and analyze it.'), obj: [
+      ['m2reach', T('Llegar a la zona de interés (marcada)', 'Reach the area of interest (marked)')], ['m2foot', T('Bajar del rover cerca de la zona', 'Leave the rover near the area')], ['m2scan', T('Escanear el terreno', 'Scan the terrain')],
+      ['m2col', T('Recoger una muestra de la zona', 'Collect a sample there')], ['m2back', T('Regresar y descargar la muestra', 'Return and unload the sample')], ['m2an', T('Analizarla en el laboratorio', 'Analyze it in the lab')]] },
+    { id: 'e3', t: T('Exploración ampliada', 'Extended exploration'), b: T('Investiga tres puntos, administra tus reservas, transporta tres muestras y envía el informe.', 'Investigate three sites, manage your reserves, carry three samples and send the report.'), obj: [
+      ['m3vis', T('Investigar 3 puntos de interés', 'Investigate 3 sites')], ['m3unl', T('Transportar 3 muestras a la base', 'Carry 3 samples to the base')], ['m3safe', T('Sin evacuación de emergencia', 'No emergency recovery')], ['m3rep', T('Enviar el informe a la Tierra', 'Send the report to Earth')]] },
+    { id: 'e4', t: T('Condiciones adversas', 'Adverse conditions'), b: T('Sal con mal tiempo: activa un repetidor, usa un refugio, recoge la muestra de la mesa y regresa con los datos.', 'Go out in bad conditions: activate a relay, use a shelter, collect the target sample and return with the data.'), obj: [
+      ['m4rep', T('Activar un repetidor de radio', 'Activate a radio relay')], ['m4shel', T('Refugiarte 8 s durante la alerta', 'Take shelter for 8 s during the alert')], ['m4col', T('Recoger la muestra del objetivo', 'Collect the target sample')], ['m4rep2', T('Regresar y enviar los datos', 'Return and send the data')]] }
+  ];
+  function objDone(S, k) {
+    const e = ensure(S), f = e.f, c = e.m.c;
+    switch (k) {
+      case 'suit': return !!f.suit; case 'out': return !!f.out; case 'drive': return e.rover.odo >= 40; case 'back': return !!f.back1;
+      case 'm2reach': return !!f.m2reach; case 'm2foot': return !!f.m2foot; case 'm2scan': return !!f.m2scan; case 'm2col': return !!f.m2col;
+      case 'm2back': { const r = f.m2col && rec(S, f.m2col); return !!(r && r.loc === 'base'); } case 'm2an': { const r = f.m2col && rec(S, f.m2col); return !!(r && r.an === 'done'); }
+      case 'm3vis': return Object.keys(e.visited).filter((q) => q[0] === 'p').length >= 3; case 'm3unl': return c.m3unl >= 3; case 'm3safe': return c.m3rec === 0 && !!f.m3start; case 'm3rep': return !!f.report3;
+      case 'm4rep': return !!f.rep2; case 'm4shel': return c.m4shel >= 8; case 'm4col': return !!f.m4col; case 'm4rep2': return !!f.report4;
+    }
+    return false;
+  }
+  function objectives(S) {
+    const e = ensure(S), m = EXM[e.m.i]; if (!m) return null;
+    return { m, i: e.m.i, list: m.obj.map((o) => ({ k: o[0], t: o[1], ok: objDone(S, o[0]) })) };
+  }
+  /** Punto del mapa hacia el que apunta la misión actual (para la flecha y el radar). */
+  function goal(S) {
+    const e = ensure(S), i = e.m.i, f = e.f;
+    if (i >= EXM.length) return null;
+    const back = { x: Field.PAD[0], y: Field.PAD[1] + 2 };
+    if (i === 0) return !f.out ? back : e.rover.odo < 40 ? { x: Field.PAD[0], y: 112 } : back;
+    if (i === 1) { const p = Field.poi('p1'); return !f.m2col ? { x: p.x, y: p.y, poi: 'p1' } : back; }
+    if (i === 2) { const L = ['p1', 'p2', 'p3', 'p4'].filter((id) => !e.visited[id]); const p = Field.poi(L[0] || 'p1'); return Object.keys(e.visited).filter((q) => q[0] === 'p').length < 3 ? { x: p.x, y: p.y, poi: p.id } : back; }
+    if (i === 3) { const p = Field.poi('p2'); return !f.rep2 && !f.m4col ? { x: 70, y: 150 } : !f.m4col ? { x: p.x, y: p.y, poi: 'p2' } : back; }
+    return null;
+  }
+  function complete(S, i) {
+    const e = ensure(S), m = EXM[i]; if (!m || e.m.done[m.id]) return;
+    e.m.done[m.id] = 1; e.m.i = Math.min(EXM.length, i + 1); S.pts += 25 * (i + 1); S.science += 6; Sim.log(S, 'ok', 'ex.mission', { id: m.id, n: i + 1 });
+    if (e.m.i === 2) { e.f.m3start = true; e.m.c.m3rec = 0; e.m.c.m3unl = 0; }
+    if (e.m.i === 3) { e.cond = null; e.f.m4start = true; }
+  }
+  /** Seguimiento de misiones (cada fotograma, barato). */
+  function missionStep(S, dt, c) {
+    const e = ensure(S), out = [], f = e.f;
+    if (e.m.i === 0 && f.suit && f.out && e.rover.odo >= 40 && !c.outside && e.suit.on && !e.trip.recall && !f.back1) f.back1 = true;
+    if (e.m.i === 1 && c.outside && e.suit.on) {
+      const p = Field.poi('p1'), d = Math.hypot(p.x - c.x, p.y - c.y);
+      if (d < 9) f.m2reach = true;
+      if (f.m2reach && !c.inRover && d < 12) f.m2foot = true;
+    }
+    if (e.m.i === 2 && !f.m3start) f.m3start = true;
+    if (e.m.i === 3 && !e.cond && f.m4start && c.outside && e.suit.on && !e.cond) { e.cond = { k: S.scen === 'mars' ? 'dust' : 'rad', age: 0, dur: 300 }; out.push('cond.start'); }
+    if (e.m.i < EXM.length) { const m = EXM[e.m.i]; if (m.obj.every((o) => objDone(S, o[0]))) { complete(S, e.m.i); out.push('mission'); } }
+    return out;
+  }
+  /** Enviar el informe de la expedición a la Tierra (necesita señal; ofrece ciencia por lo investigado). */
+  function report(S, x, y) {
+    const e = ensure(S); if (!sendOk(S, x, y)) return { err: 'nosig' };
+    const f = e.f, vis = Object.keys(e.visited).filter((q) => q[0] === 'p').length; let ok = false;
+    if (e.m.i === 2 && vis >= 3 && e.m.c.m3unl >= 3) { f.report3 = true; ok = true; }
+    if (e.m.i === 3 && f.m4col && rec(S, f.m4col) && rec(S, f.m4col).loc === 'base') { f.report4 = true; ok = true; }
+    const n = (e.f.reported || 0); e.f.reported = S.st.samplesTot; const add = Math.max(0, Math.min(6, S.st.samplesTot - n) * 1.5);
+    S.science += add; e.sci += add; Sim.log(S, 'ok', 'ex.report', { ok, add });
+    return { ok, add, vis };
+  }
+  /** La tripulación llega a la base: cierra la salida actual. */
+  function arrived(S) { const e = ensure(S); e.out = false; e.rover.docked = true; }
+  function left(S) { const e = ensure(S); e.out = true; e.f.out = true; e.trip.t = 0; }
+
+  return { CAP, EXLIM, TOOLS, EXM, RES, def, ensure, env, signal, nearShelter, checklist, equip, recharge, repairSuit, unequip, tick, recall, collect, storage, deposit, withdraw, sortStorage, unload, inField, onAnalyzed, scan, measure, photo, investigate, activateRepeater, useCache, sendOk, objectives, goal, complete, report, arrived, left, condOn, kgOf, rec, isBase, missionStep };
+})();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
    Unidades locales: pivote en los pies (0,0), altura ≈ 64 u (≈3,5 cabezas).
@@ -2771,6 +3145,16 @@ const Chars = (function () {
    * Dibuja un astronauta. o: { dir, t, pose, moving, scale, rm (reducir movimiento), shadow }
    * Pivote: pies en (x,y). Altura visual ≈ 64 * scale px.
    */
+  /** Equipo de salida exterior: casco sellado con visor reflectante, mochila de soporte vital, depósito de oxígeno, antena y luces de estado. */
+  function evaOverlay(c, D, t, rm) {
+    const blink = rm || Math.sin(t * 4) > 0;
+    if (D === 0) { rr(c, -9, -47, 18, 20, 4); fillOl(c, '#cfd5e3', 1.4); rr(c, -6.5, -44, 5, 13, 2); fillOl(c, '#4fb3ff', 0.8); rr(c, 1.5, -44, 5, 13, 2); fillOl(c, '#ff9a4f', 0.8); dot(c, 0, -29.5, 1.3, blink ? '#6fffa0' : '#2c6b48'); }
+    else if (D === 1) { rr(c, -13, -48, 8, 21, 3); fillOl(c, '#cfd5e3', 1.3); rr(c, -11.5, -45, 4.2, 12, 1.6); fillOl(c, '#4fb3ff', 0.7); dot(c, -9, -29.5, 1.2, blink ? '#6fffa0' : '#2c6b48'); }
+    else { c.strokeStyle = '#8c93a3'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(8, -47); c.lineTo(11, -61); c.stroke(); dot(c, 11, -62, 1.5, blink ? '#ffc24a' : '#6b4f1f'); rr(c, -5.5, -40, 11, 6, 1.6); fillOl(c, '#2b3550', 0.8); dot(c, -3, -37, 1, '#6fffa0'); dot(c, 0, -37, 1, blink ? '#ffc24a' : '#6b4f1f'); dot(c, 3, -37, 1, '#38d6ff'); }
+    c.save(); c.beginPath(); c.arc(0, -54, D === 1 ? 11.8 : 12.4, 0, Math.PI * 2); c.fillStyle = 'rgba(180,225,255,.2)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.5; c.stroke();
+    if (D !== 0) { c.beginPath(); c.ellipse(D === 1 ? 3.2 : 0, -54, D === 1 ? 5.6 : 8.2, 6.3, 0, 0, Math.PI * 2); c.fillStyle = 'rgba(212,168,60,.6)'; c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(D === 1 ? 4.4 : -3, -57, 2.3, 1.2, -0.5, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+  }
   function draw(c, role, x, y, o) {
     const R = ROLES[role] || ROLES.commander, P = R.pal, B = R.body;
     o = o || {};
@@ -2833,6 +3217,7 @@ const Chars = (function () {
       if (pose === 'carry') { box(c, near.hx + 1.5, near.hy - 1.5); dot(c, near.hx, near.hy, B.arm * 0.66, P.glove, true); }
       else if (pose !== 'celebrate') accessory(c, R, near.hx, near.hy, pose, t, 1);
     }
+    if (o.eva) evaOverlay(c, D, t, rm);
     c.restore();
     if (pose === 'alert') { c.save(); c.font = 'bold ' + Math.round(14 * s * 1.1) + 'px system-ui'; c.textAlign = 'center'; c.fillStyle = '#ffc24a'; c.strokeStyle = OL; c.lineWidth = 3; const yy = y + (-76 + bob) * s; c.strokeText('!', x, yy); c.fillText('!', x, yy); c.restore(); }
   }
@@ -3128,7 +3513,7 @@ const Layout = (function () {
     // Residuos
     ['bin', 98, 47, 2, 2], ['bin', 104, 47, 2, 2], ['recycler', 100, 52, 5, 3], ['crate', 98, 54, 2, 2],
     // Bahía del rover
-    ['rover', 36, 55, 6, 4], ['tools', 36, 61, 4, 2], ['benchs', 47, 63, 6, 1], ['pipe', 36, 53, 41, 1], ['crate', 47, 57, 2, 2], ['crate', 50, 57, 2, 2], ['crate', 47, 60, 2, 2], ['vent', 58, 56, 2, 2], ['vent', 46, 64, 2, 1]
+    ['rover', 36, 55, 6, 4], ['tools', 36, 61, 4, 2], ['benchs', 47, 63, 6, 1], ['pipe', 36, 53, 41, 1], ['crate', 47, 57, 2, 2], ['crate', 50, 57, 2, 2], ['crate', 47, 60, 2, 2], ['vent', 58, 56, 2, 2], ['vent', 46, 64, 2, 1], ['suitrack', 51, 65, 3, 1]
   ];
   // [id, sala, x, y, verbo, icono]
   const CONSOLES = [
@@ -3141,7 +3526,7 @@ const Layout = (function () {
     ['lab', 'lab', 10, 46, 'investigate', '🔬'], ['spec', 'lab', 17, 46, 'investigate', '🌈'], ['log', 'lab', 21, 49, 'investigate', '📚'], ['sampler', 'samples', 27, 50, 'manage', '🧪'],
     ['reactor', 'reactor', 103, 20, 'manage', '⚛️'], ['solar', 'reactor', 90, 37, 'play', '☀️'], ['balance', 'reactor', 102, 36, 'play', '⚖️'],
     ['work', 'workshop', 93, 49, 'manage', '🛠'], ['wastec', 'waste', 105, 50, 'manage', '♻️'],
-    ['rover', 'rad', 43, 56, 'explore', '🚙'], ['isru', 'rad', 44, 62, 'manage', '🧊'], ['shield', 'rad', 60, 58, 'manage', '🛡️'], ['lock', 'lock', 58, 65, 'interact', '🚪']
+    ['rover', 'rad', 43, 56, 'explore', '🚙'], ['isru', 'rad', 44, 62, 'manage', '🧊'], ['shield', 'rad', 60, 58, 'manage', '🛡️'], ['lock', 'lock', 58, 65, 'interact', '🚪'], ['suit', 'rad', 54, 65, 'equip', '🧑‍🚀']
   ];
   // Invernadero: seis jardineras de 3×2 (los índices de bed los usa la simulación)
   const PLANTERS = [[7, 19], [12, 19], [17, 19], [7, 25], [12, 25], [17, 25]];
@@ -3191,7 +3576,7 @@ const Layout = (function () {
     put('auxdome', X(10), Y(62), 4, 4, true); put('auxtank', X(16), Y(66), 3, 3, true); put('auxdome', X(mars ? 24 : 20), Y(72), 4, 4, true, { shelter: true });
     put('auxtank', X(104), Y(52), 3, 3, true); put('auxdome', X(114), Y(46), 4, 4, true);
     put('tripod', X(86), Y(71), 2, 2, true); put('tripod', X(28), Y(62), 2, 2, true, { s: 1 }); put('tripod', X(110), Y(70), 2, 2, true, { s: 1 });
-    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 }); put('vehicle', X(mars ? 66 : 64), Y(73), 4, 3, true, { v: 1 });
+    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 });
     // Geografía propia: la Luna con cráteres marcados y bloques sueltos; Marte con dunas, mesas y polvo
     const craters = [], dunes = [];
     if (mars) {
@@ -3223,6 +3608,392 @@ const Layout = (function () {
   LOCK.x += OX; LOCK.inY += OY; LOCK.outY += OY; START[0] += OX; START[1] += OY; REACTOR_C[0] += OX; REACTOR_C[1] += OY;
 
   return { W, H, OX, OY, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
+})();
+/* =====================================================================
+   FIELD — terreno de exploración exterior (Luna / Marte): rocas, cráteres,
+   zonas de suelo, rutas, puntos de interés, muestras, repetidores y
+   refugios. Determinista por escenario. El terreno se dibuja por bloques
+   (chunks) en caché; los objetos interactivos se dibujan en vivo.
+   Coordenadas en baldosas, en el mismo sistema que la base (World).
+   ===================================================================== */
+const Field = (function () {
+  const TS = 32, CK = 16, W = Layout.W, H = Layout.H;
+  const B = { x0: -72, y0: -48, x1: W + 72, y1: H + 112 };
+  const PAD = [68, 88];
+  const T = (es, en) => ({ es, en });
+  const inRect = (x, y, m) => x > -(m || 0) && y > -(m || 0) && x < W + (m || 0) && y < H + (m || 0);
+
+  /* ---------- Datos por escenario ---------- */
+  const POI = {
+    moon: [
+      { id: 'p1', k: 'icecrater', x: 42, y: 132, r: 7.5, n: T('Cráter Aurora', 'Aurora Crater'), d: T('Un cráter con el fondo en sombra permanente: ahí podría haber hielo de agua.', 'A crater with a permanently shadowed floor: water ice may hide there.') },
+      { id: 'p2', k: 'lava', x: 104, y: 134, r: 8, n: T('Colada de basalto', 'Basalt flow'), d: T('Roca volcánica antigua que cuenta cómo era el interior de la Luna.', 'Ancient volcanic rock that tells what the Moon interior was like.') },
+      { id: 'p3', k: 'seismo', x: 166, y: 92, r: 5, n: T('Estación sísmica SG-2', 'Seismic station SG-2'), d: T('Un sismómetro que escucha los «lunamotos».', 'A seismometer that listens to moonquakes.') },
+      { id: 'p4', k: 'lander', x: -34, y: 104, r: 6, n: T('Módulo de aterrizaje antiguo', 'Old lander'), d: T('Una sonda abandonada: sirve para estudiar cómo envejecen los materiales.', 'An abandoned probe: useful to study how materials age.') },
+      { id: 'p5', k: 'mesa', x: 8, y: -22, r: 7, n: T('Meseta de anortosita', 'Anorthosite plateau'), d: T('Roca clara de la corteza primitiva lunar.', 'Light rock from the early lunar crust.') },
+      { id: 'p6', k: 'ejecta', x: 182, y: 40, r: 7, n: T('Cresta de eyecciones', 'Ejecta ridge'), d: T('Bloques lanzados por un gran impacto.', 'Blocks thrown out by a large impact.') }
+    ],
+    mars: [
+      { id: 'p1', k: 'delta', x: 38, y: 130, r: 8, n: T('Delta fósil', 'Fossil delta'), d: T('Capas de sedimento donde antes pudo correr agua.', 'Sediment layers where water may once have flowed.') },
+      { id: 'p2', k: 'hematite', x: 110, y: 128, r: 8, n: T('Mesa de hematita', 'Hematite mesa'), d: T('Una mesa con minerales de hierro rojizos.', 'A mesa with reddish iron minerals.') },
+      { id: 'p3', k: 'weather', x: 168, y: 90, r: 5, n: T('Estación meteorológica MW-1', 'Weather station MW-1'), d: T('Mide viento, polvo y temperatura del aire.', 'Measures wind, dust and air temperature.') },
+      { id: 'p4', k: 'canyon', x: -36, y: 106, r: 7, n: T('Cañón de arcilla', 'Clay canyon'), d: T('Un cañón con arcillas: indican agua en el pasado.', 'A canyon with clays: they point to water in the past.') },
+      { id: 'p5', k: 'dune', x: 4, y: -24, r: 8, n: T('Duna barján', 'Barchan dune'), d: T('Una duna en forma de media luna moldeada por el viento.', 'A crescent dune shaped by the wind.') },
+      { id: 'p6', k: 'boulders', x: 184, y: 38, r: 7, n: T('Campo de bloques', 'Boulder field'), d: T('Bloques caídos de una pared erosionada.', 'Blocks fallen from an eroded wall.') }
+    ]
+  };
+  const REPEATERS = { moon: [{ id: 'rA', x: 70, y: 150 }, { id: 'rB', x: 150, y: 62 }, { id: 'rC', x: -22, y: 46 }, { id: 'rD', x: -22, y: 114 }], mars: [{ id: 'rA', x: 70, y: 150 }, { id: 'rB', x: 150, y: 62 }, { id: 'rC', x: -22, y: 46 }, { id: 'rD', x: -22, y: 114 }] };
+  const SHELTERS = { moon: [{ id: 'sA', x: 96, y: 144 }, { id: 'sB', x: -26, y: 96 }, { id: 'sC', x: 150, y: 90 }], mars: [{ id: 'sA', x: 98, y: 142 }, { id: 'sB', x: -24, y: 98 }, { id: 'sC', x: 152, y: 88 }] };
+  const TRAILS = [
+    [[68, 94], [68, 110], [62, 120], [42, 132]], [[68, 110], [90, 122], [104, 134]], [[80, 94], [110, 100], [140, 100], [166, 92]],
+    [[60, 94], [30, 100], [0, 104], [-34, 104]], [[-34, 104], [-30, 40], [-12, 0], [8, -22]], [[140, 100], [170, 70], [182, 40]],
+    [[68, 110], [70, 150]], [[166, 92], [150, 62]], [[96, 144], [104, 134]], [[-34, 104], [-26, 96]], [[-30, 42], [-22, 46]], [[-34, 104], [-22, 114]]
+  ];
+  // [id, tipo, x, y, oculta, interés]
+  const SITES = {
+    moon: [['f01', 'regolith', 54, 112, 0, 1], ['f02', 'rock', 98, 130, 0, 2], ['f03', 'rock', 110, 138, 1, 2], ['f04', 'mineral', 118, 130, 1, 3], ['f05', 'ice', 40, 134, 0, 3], ['f06', 'ice', 46, 128, 1, 3], ['f07', 'regolith', 36, 122, 0, 2],
+      ['f08', 'rock', 10, -20, 0, 2], ['f09', 'rock', 186, 44, 0, 2], ['f10', 'regolith', 160, 96, 0, 1], ['f11', 'mineral', 170, 100, 1, 2], ['f12', 'rock', -30, 108, 0, 2], ['f13', 'regolith', -38, 100, 1, 2], ['f14', 'mineral', 76, 120, 1, 3], ['f15', 'regolith', 140, 120, 0, 1]],
+    mars: [['f01', 'sediment', 40, 128, 0, 3], ['f02', 'sediment', 32, 134, 1, 3], ['f03', 'rock', 60, 112, 0, 1], ['f04', 'mineral', 112, 126, 0, 3], ['f05', 'mineral', 104, 134, 1, 2], ['f06', 'rock', 118, 134, 0, 2], ['f07', 'regolith', 4, -22, 0, 1],
+      ['f08', 'sediment', -34, 108, 0, 2], ['f09', 'mineral', -40, 102, 1, 2], ['f10', 'rock', 182, 44, 0, 2], ['f11', 'regolith', 160, 96, 0, 1], ['f12', 'mineral', 172, 84, 1, 2], ['f13', 'rock', 140, 122, 0, 2], ['f14', 'sediment', -20, 90, 0, 2], ['f15', 'regolith', 90, 150, 0, 1]]
+  };
+  const KG = { regolith: 0.8, rock: 1.8, mineral: 1.2, sediment: 1.0, ice: 0.9 };
+  const CAT = { regolith: 'regolith', sediment: 'regolith', rock: 'rock', mineral: 'rock', ice: 'ice' };
+  const KIND_T = {
+    regolith: T('Regolito', 'Regolith'), rock: T('Roca', 'Rock'), mineral: T('Mineral', 'Mineral'), sediment: T('Sedimento', 'Sediment'), ice: T('Hielo de agua', 'Water ice')
+  };
+  const SITE_N = {
+    moon: { f01: T('Regolito fino junto a la ruta', 'Fine regolith by the route'), f02: T('Basalto vesicular', 'Vesicular basalt'), f03: T('Basalto con olivino', 'Olivine-bearing basalt'), f04: T('Ilmenita (hierro y titanio)', 'Ilmenite (iron and titanium)'), f05: T('Hielo de agua del cráter sombreado', 'Shadowed-crater water ice'), f06: T('Escarcha de agua bajo el borde', 'Water frost under the rim'), f07: T('Regolito de cráter reciente', 'Fresh-crater regolith'), f08: T('Anortosita de la meseta', 'Plateau anorthosite'), f09: T('Brecha de impacto', 'Impact breccia'), f10: T('Regolito calentado por el Sol', 'Sun-heated regolith'), f11: T('Piroxeno', 'Pyroxene'), f12: T('Roca junto al módulo', 'Rock beside the lander'), f13: T('Polvo cargado de electricidad', 'Electrostatic dust'), f14: T('Vidrio volcánico', 'Volcanic glass'), f15: T('Regolito profundo', 'Deep regolith') },
+    mars: { f01: T('Lutita laminada del delta', 'Laminated delta mudstone'), f02: T('Arcilla con capas finas', 'Thin-layered clay'), f03: T('Basalto marciano', 'Martian basalt'), f04: T('Hematita gris', 'Gray hematite'), f05: T('Veta de sulfato', 'Sulfate vein'), f06: T('Roca de la mesa', 'Mesa rock'), f07: T('Arena de duna', 'Dune sand'), f08: T('Limo cementado', 'Cemented silt'), f09: T('Sales del cañón', 'Canyon salts'), f10: T('Bloque erosionado', 'Weathered block'), f11: T('Regolito rojizo', 'Reddish regolith'), f12: T('Olivino', 'Olivine'), f13: T('Roca con vetas', 'Veined rock'), f14: T('Barro seco con grietas', 'Cracked dried mud'), f15: T('Polvo fino de tormenta', 'Fine storm dust') }
+  };
+  const SITE_D = {
+    regolith: T('Polvo y fragmentos finos del suelo. Guarda la historia de la radiación y los impactos.', 'Fine soil dust and fragments. It records radiation and impact history.'),
+    rock: T('Un fragmento de roca para fechar y comparar con las de la Tierra.', 'A rock fragment to date and compare with Earth rocks.'),
+    mineral: T('Un mineral simulado: sirve para saber de qué está hecho el suelo.', 'A simulated mineral: it tells what the ground is made of.'),
+    sediment: T('Capas de material depositado: pistas sobre agua y clima antiguos.', 'Layers of deposited material: clues about ancient water and climate.'),
+    ice: T('Hielo de agua: un recurso para beber, respirar y fabricar combustible.', 'Water ice: a resource for drinking, breathing and making fuel.')
+  };
+  const WHY = { 1: T('Interés bajo: muestra de referencia.', 'Low interest: reference sample.'), 2: T('Interés medio: aporta datos útiles.', 'Medium interest: gives useful data.'), 3: T('Interés alto: puede cambiar lo que sabemos.', 'High interest: may change what we know.') };
+
+  /* ---------- Generación ---------- */
+  let sc = 'moon', G = null, hash = null, chunks = new Map(), chunkQ = 0;
+  const rngOf = (seed) => { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
+  const cellKey = (cx, cy) => cx * 4096 + cy;
+  function addObs(o) { G.obs.push(o); const x0 = Math.floor((o.x - o.r) / 4), x1 = Math.floor((o.x + o.r) / 4), y0 = Math.floor((o.y - o.r) / 4), y1 = Math.floor((o.y + o.r) / 4); for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const k = cellKey(cx, cy); (hash.get(k) || hash.set(k, []).get(k)).push(o); } }
+  function distSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1; let u = ((px - ax) * dx + (py - ay) * dy) / l2; u = Math.max(0, Math.min(1, u)); return Math.hypot(px - (ax + dx * u), py - (ay + dy * u)); }
+  const trailDist = (x, y) => { let m = 1e9; for (const t of TRAILS) for (let i = 1; i < t.length; i++) m = Math.min(m, distSeg(x, y, t[i - 1][0], t[i - 1][1], t[i][0], t[i][1])); return m; };
+  function init(s) {
+    sc = s === 'mars' ? 'mars' : 'moon'; chunks = new Map(); hash = new Map();
+    const mars = sc === 'mars', rnd = rngOf(mars ? 777 : 313);
+    G = { obs: [], craters: [], zones: [], dunes: [], pois: POI[sc].map((p) => Object.assign({}, p)), rep: REPEATERS[sc].map((p) => Object.assign({}, p)), shel: SHELTERS[sc].map((p) => Object.assign({}, p)), sites: [], pebbles: [] };
+    // muestras: las del entorno de la base (mismas posiciones que ya existían) y las de las zonas de exploración
+    const KINDS = ['regolith', 'rock', 'regolith', 'ice', 'rock', 'regolith', 'rock', 'regolith'];
+    Layout.SAMPLES_OUT[sc].forEach((p, i) => G.sites.push({ id: 'n' + (i + 1), kind: mars && KINDS[i] === 'ice' ? 'rock' : KINDS[i % KINDS.length], x: p[0], y: p[1], hidden: false, int: 1, near: true }));
+    SITES[sc].forEach((s) => G.sites.push({ id: s[0], kind: s[1], x: s[2], y: s[3], hidden: !!s[4], int: s[5] }));
+    for (const s of G.sites) {
+      const nm = SITE_N[sc][s.id]; s.name = nm || (s.kind === 'rock' ? T('Roca cercana a la base', 'Rock near the base') : T('Regolito cercano a la base', 'Regolith near the base'));
+      let best = null, bd = 16; for (const p of G.pois) { const d = Math.hypot(p.x - s.x, p.y - s.y); if (d < bd) { bd = d; best = p; } } s.poi = best ? best.id : null;
+    }
+    // cráteres grandes (el rover no los cruza) y pequeños
+    const bigC = mars ? [[22, 112, 9], [124, 108, 8], [-18, 126, 10], [150, 138, 11], [30, 160, 9]] : [[26, 110, 9], [122, 110, 8], [-18, 126, 10], [150, 140, 11], [30, 160, 9], [90, 168, 8]];
+    for (const c of bigC) if (trailDist(c[0], c[1]) > c[2] + 1.5) { G.craters.push({ x: c[0], y: c[1], r: c[2], big: true }); addObs({ x: c[0], y: c[1], r: c[2] * 0.7, rover: true, t: 'crater' }); }
+    for (const p of G.pois) if (p.k === 'icecrater') { G.craters.push({ x: p.x, y: p.y, r: p.r, ice: true }); }
+    const okFree = (x, y, m) => !inRect(x, y, 4 + (m || 0)) && trailDist(x, y) > 3.6 + (m || 0) && Math.hypot(x - PAD[0], y - PAD[1]) > 12 && G.pois.every((p) => Math.hypot(p.x - x, p.y - y) > p.r * 0.5 + 3) && G.sites.every((s) => Math.hypot(s.x - x, s.y - y) > 2.2) && G.rep.every((q) => Math.hypot(q.x - x, q.y - y) > 4) && G.shel.every((q) => Math.hypot(q.x - x, q.y - y) > 4.5);
+    for (let i = 0; i < 70; i++) { const c = { x: B.x0 + 4 + rnd() * (B.x1 - B.x0 - 8), y: B.y0 + 4 + rnd() * (B.y1 - B.y0 - 8), r: 1.6 + rnd() * 3.4 }; if (okFree(c.x, c.y, c.r) && G.craters.every((q) => Math.hypot(q.x - c.x, q.y - c.y) > q.r + c.r + 1)) G.craters.push(c); }
+    // zonas de suelo (movilidad)
+    const Z = mars ? [['sand', 130, 110, 18, 10], ['sand', 60, 142, 14, 9], ['sand', -22, 72, 14, 10], ['sand', 8, -8, 16, 10], ['slope', 90, 160, 16, 6], ['slope', 176, 60, 10, 14]] : [['deep', 140, 122, 16, 9], ['deep', 30, 150, 14, 8], ['deep', -12, 36, 12, 9], ['deep', 176, 100, 12, 8], ['deep', 74, 132, 10, 6]];
+    for (const z of Z) G.zones.push({ k: z[0], x: z[1], y: z[2], rx: z[3], ry: z[4] });
+    if (mars) for (let i = 0; i < 16; i++) G.dunes.push({ x: B.x0 + 8 + rnd() * (B.x1 - B.x0 - 16), y: B.y0 + 8 + rnd() * (B.y1 - B.y0 - 16), w: 8 + rnd() * 12, a: rnd() * 0.6 - 0.3 });
+    // rocas sólidas y guijarros
+    const nRock = mars ? 190 : 230;
+    for (let i = 0, n = 0; i < 4000 && n < nRock; i++) {
+      const r = mars ? 1 + rnd() * 2.2 : 0.55 + rnd() * 1.25, x = B.x0 + 2 + rnd() * (B.x1 - B.x0 - 4), y = B.y0 + 2 + rnd() * (B.y1 - B.y0 - 4);
+      if (!okFree(x, y, r) || G.obs.some((o) => !o.rover && Math.hypot(o.x - x, o.y - y) < o.r + r + 0.8)) continue;
+      addObs({ x, y, r, t: mars ? 'mesa' : 'rock', v: rnd() }); n++;
+    }
+    for (let i = 0; i < 700; i++) { const x = B.x0 + rnd() * (B.x1 - B.x0), y = B.y0 + rnd() * (B.y1 - B.y0); if (!inRect(x, y, 2)) G.pebbles.push({ x, y, s: 0.25 + rnd() * 0.45, v: rnd() }); }
+    for (const p of G.pois) if (p.k === 'lander' || p.k === 'seismo' || p.k === 'weather') addObs({ x: p.x, y: p.y, r: p.k === 'lander' ? 1.6 : 0.8, t: 'equip' });
+    for (const q of G.rep) addObs({ x: q.x, y: q.y, r: 0.9, t: 'equip' });
+    for (const q of G.shel) addObs({ x: q.x, y: q.y, r: 2.3, t: 'dome' });
+  }
+
+  /* ---------- Consultas ---------- */
+  function hit(x, y, r, rover) {
+    if (!G) return false;
+    const x0 = Math.floor((x - r - 3) / 4), x1 = Math.floor((x + r + 3) / 4), y0 = Math.floor((y - r - 3) / 4), y1 = Math.floor((y + r + 3) / 4);
+    for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const L = hash.get(cellKey(cx, cy)); if (!L) continue; for (const o of L) { if (o.rover && !rover) continue; if (Math.hypot(o.x - x, o.y - y) < o.r + r) return true; } }
+    return false;
+  }
+  const PLAIN = { k: 'plain', f: 1, r: 1 };
+  const GR = { deep: { k: 'deep', f: 0.72, r: 0.6 }, sand: { k: 'sand', f: 0.8, r: 0.68 }, slope: { k: 'slope', f: 0.7, r: 0.55 }, crater: { k: 'crater', f: 0.65, r: 0.55 } };
+  function ground(x, y) {
+    if (!G || inRect(x, y)) return PLAIN;
+    for (const z of G.zones) { const dx = (x - z.x) / z.rx, dy = (y - z.y) / z.ry; if (dx * dx + dy * dy < 1) return GR[z.k]; }
+    for (const c of G.craters) if (!c.big && Math.hypot(x - c.x, y - c.y) < c.r) return GR.crater;
+    return PLAIN;
+  }
+  const near = (x, y, list, r) => list.filter((o) => Math.hypot(o.x - x, o.y - y) < r);
+  /** Texto y datos de una muestra de campo. */
+  function info(s) { return { name: s.name, kind: KIND_T[s.kind], desc: SITE_D[s.kind], why: WHY[s.int], kg: KG[s.kind] }; }
+  /** Coordenadas simuladas: 25 m por baldosa, con origen en la plataforma de la base. */
+  function coord(x, y, es) { const e = Math.round((x - PAD[0]) * 25), n = Math.round((PAD[1] - y) * 25), sg = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString(es === false ? 'en-US' : 'es-DO'); return (es === false ? 'E ' : 'E ') + sg(e) + ' m · N ' + sg(n) + ' m'; }
+
+  /* ---------- Terreno por bloques ---------- */
+  function palette() { return sc === 'mars' ? { base: '#9a5230', dark: '#6e3820', light: '#c27a47', dust: '216,150,98', rock: ['#7a3d22', '#a85a35', '#4f2616'] } : { base: '#686970', dark: '#44454b', light: '#8d8e96', dust: '170,170,180', rock: ['#5a5b62', '#8a8b93', '#34353b'] }; }
+  function drawRock(c, o, P) {
+    const x = o.x * TS, y = o.y * TS, r = o.r * TS, v = o.v || 0;
+    c.fillStyle = 'rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(x + r * 0.45, y + r * 0.55, r * 1.05, r * 0.6, 0.2, 0, 7); c.fill();
+    c.beginPath(); const n = 7; for (let i = 0; i < n; i++) { const a = (i / n) * 6.283 + v * 2, rr = r * (0.82 + 0.3 * Math.sin(i * 12.9 + v * 40)); i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.86) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.86); } c.closePath();
+    const g = c.createLinearGradient(x - r, y - r, x + r, y + r); g.addColorStop(0, P.rock[1]); g.addColorStop(1, P.rock[2]); c.fillStyle = g; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.14)'; c.beginPath(); c.ellipse(x - r * 0.25, y - r * 0.3, r * 0.4, r * 0.22, -0.4, 0, 7); c.fill();
+  }
+  function buildChunk(cx, cy) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = CK * TS; const c = cv.getContext('2d'), P = palette(), mars = sc === 'mars';
+    const ox = cx * CK * TS, oy = cy * CK * TS, rnd = rngOf(((cx * 73856093) ^ (cy * 19349663) ^ (mars ? 55 : 9)) >>> 0 || 7);
+    c.translate(-ox, -oy);
+    c.fillStyle = P.base; c.fillRect(ox, oy, CK * TS, CK * TS);
+    { // manchas tonales por regiones globales: se solapan entre bloques vecinos y no se ven las costuras
+      const RG = 12 * TS;
+      for (let gy = Math.floor((oy - 340) / RG); gy <= Math.floor((oy + CK * TS + 340) / RG); gy++) for (let gx = Math.floor((ox - 340) / RG); gx <= Math.floor((ox + CK * TS + 340) / RG); gx++) {
+        const rr = rngOf(((gx * 92837111) ^ (gy * 689287499) ^ (mars ? 31 : 17)) >>> 0 || 5);
+        for (let i = 0; i < 2; i++) { const x = gx * RG + rr() * RG, y = gy * RG + rr() * RG, r = 120 + rr() * 220, d = rr() < 0.5; if (x + r < ox || x - r > ox + CK * TS || y + r < oy || y - r > oy + CK * TS) continue; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, d ? P.dark + '55' : P.light + '40'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      }
+    }
+    for (let i = 0; i < 520; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,' + (0.06 + rnd() * 0.12) + ')' : 'rgba(255,255,255,' + (0.04 + rnd() * 0.09) + ')'; c.fillRect(ox + rnd() * CK * TS, oy + rnd() * CK * TS, 1 + rnd() * 2.2, 1 + rnd() * 1.6); }
+    const vis = (x, y, r) => x * TS + r * TS > ox && x * TS - r * TS < ox + CK * TS && y * TS + r * TS > oy && y * TS - r * TS < oy + CK * TS;
+    for (const z of G.zones) if (vis(z.x, z.y, Math.max(z.rx, z.ry))) {
+      c.save(); c.translate(z.x * TS, z.y * TS); c.scale(z.rx * TS, z.ry * TS); const g = c.createRadialGradient(0, 0, 0.1, 0, 0, 1);
+      if (z.k === 'deep') { g.addColorStop(0, 'rgba(30,30,36,.42)'); g.addColorStop(0.8, 'rgba(30,30,36,.25)'); } else if (z.k === 'sand') { g.addColorStop(0, 'rgba(' + P.dust + ',.34)'); g.addColorStop(0.8, 'rgba(' + P.dust + ',.2)'); } else { g.addColorStop(0, 'rgba(60,24,12,.34)'); g.addColorStop(0.8, 'rgba(60,24,12,.18)'); }
+      g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, 1, 0, 7); c.fill(); c.restore();
+      c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 1; for (let k = 0; k < 14; k++) { const a = rnd() * 6.28, d = rnd() * 0.85; const px = (z.x + Math.cos(a) * d * z.rx) * TS, py = (z.y + Math.sin(a) * d * z.ry) * TS; c.beginPath(); c.moveTo(px - 10, py); c.quadraticCurveTo(px, py - 4, px + 12, py + 1); c.stroke(); }
+    }
+    for (const u of G.dunes) if (vis(u.x, u.y, u.w)) { const x = u.x * TS, y = u.y * TS, ww = u.w * TS, hh = (1.2 + u.w * 0.12) * TS; c.save(); c.translate(x, y); c.rotate(u.a); c.fillStyle = 'rgba(70,28,14,.28)'; c.beginPath(); c.ellipse(ww / 2, hh * 0.65, ww / 2, hh * 0.55, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(' + P.dust + ',.30)'; c.beginPath(); c.ellipse(ww / 2, hh * 0.5, ww / 2, hh * 0.5, 0, Math.PI, 0); c.fill(); c.strokeStyle = 'rgba(' + P.dust + ',.5)'; c.lineWidth = 2; c.beginPath(); c.ellipse(ww / 2, hh * 0.5, ww / 2, hh * 0.5, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.restore(); }
+    for (const k of G.craters) if (vis(k.x, k.y, k.r * 1.5)) {
+      const x = k.x * TS, y = k.y * TS, r = k.r * TS, g = c.createRadialGradient(x - r * 0.25, y - r * 0.25, r * 0.1, x, y, r);
+      g.addColorStop(0, k.ice ? 'rgba(20,34,60,.75)' : mars ? 'rgba(60,24,12,.36)' : 'rgba(10,10,16,.62)'); g.addColorStop(0.75, k.ice ? 'rgba(30,44,70,.5)' : mars ? 'rgba(60,24,12,.22)' : 'rgba(20,20,26,.42)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+      c.lineWidth = Math.max(2, r * 0.07); c.strokeStyle = 'rgba(255,255,255,' + (mars ? 0.16 : 0.26) + ')'; c.beginPath(); c.arc(x, y, r, Math.PI * 0.95, Math.PI * 1.75); c.stroke(); c.strokeStyle = 'rgba(0,0,0,' + (mars ? 0.22 : 0.34) + ')'; c.beginPath(); c.arc(x, y, r, -Math.PI * 0.1, Math.PI * 0.7); c.stroke();
+      if (k.ice) { c.fillStyle = 'rgba(190,230,255,.28)'; for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, d = rnd() * r * 0.6; c.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d, 2 + rnd() * 3, 1.5 + rnd() * 2); } }
+    }
+    // rutas: huellas paralelas de rover con marcas de rodadura
+    c.lineCap = 'round';
+    for (const t of TRAILS) for (let i = 1; i < t.length; i++) {
+      const a = t[i - 1], b = t[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / l, ny = (b[0] - a[0]) / l;
+      if (Math.max(a[0], b[0]) * TS < ox - 40 || Math.min(a[0], b[0]) * TS > ox + CK * TS + 40 || Math.max(a[1], b[1]) * TS < oy - 40 || Math.min(a[1], b[1]) * TS > oy + CK * TS + 40) continue;
+      c.strokeStyle = mars ? 'rgba(60,24,12,.30)' : 'rgba(20,20,26,.30)'; c.lineWidth = 3.2;
+      for (const s of [-0.62, 0.62]) { c.beginPath(); c.moveTo((a[0] + nx * s) * TS, (a[1] + ny * s) * TS); c.lineTo((b[0] + nx * s) * TS, (b[1] + ny * s) * TS); c.stroke(); }
+      c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 1.2; for (let u = 0; u < l; u += 0.7) for (const s of [-0.62, 0.62]) { const px = (a[0] + (b[0] - a[0]) * u / l + nx * s) * TS, py = (a[1] + (b[1] - a[1]) * u / l + ny * s) * TS; c.beginPath(); c.moveTo(px - nx * 4, py - ny * 4); c.lineTo(px + nx * 4, py + ny * 4); c.stroke(); }
+    }
+    c.lineCap = 'butt';
+    // rasgos de los puntos de interés
+    for (const p of G.pois) if (vis(p.x, p.y, p.r * 1.3)) poiGround(c, p, P, rnd);
+    for (const q of G.pebbles) if (vis(q.x, q.y, 1)) { c.fillStyle = q.v < 0.5 ? P.rock[1] : P.rock[0]; c.beginPath(); c.ellipse(q.x * TS, q.y * TS, q.s * TS * 0.5, q.s * TS * 0.34, q.v * 3, 0, 7); c.fill(); }
+    for (const o of G.obs) if ((o.t === 'rock' || o.t === 'mesa') && vis(o.x, o.y, o.r + 1)) drawRock(c, o, P);
+    return cv;
+  }
+  function poiGround(c, p, P, rnd) {
+    const x = p.x * TS, y = p.y * TS, r = p.r * TS; c.save();
+    if (p.k === 'lava') { const g = c.createRadialGradient(x, y, 0, x, y, r * 1.2); g.addColorStop(0, 'rgba(18,18,24,.7)'); g.addColorStop(1, 'rgba(18,18,24,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(x, y, r * 1.3, r * 0.8, 0.3, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 1.5; for (let i = 0; i < 10; i++) { c.beginPath(); c.arc(x + (rnd() - 0.5) * r, y + (rnd() - 0.5) * r * 0.7, 8 + rnd() * 20, 0.3, 2.6); c.stroke(); } }
+    else if (p.k === 'delta') { c.fillStyle = 'rgba(214,176,128,.38)'; c.beginPath(); c.moveTo(x - r * 1.2, y + r * 0.2); c.quadraticCurveTo(x, y - r * 1.1, x + r * 1.2, y + r * 0.5); c.quadraticCurveTo(x, y + r * 0.2, x - r * 1.2, y + r * 0.2); c.fill(); c.strokeStyle = 'rgba(110,60,30,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 7; i++) { c.beginPath(); c.moveTo(x - r * (1.1 - i * 0.07), y + r * 0.2 - i * 6); c.quadraticCurveTo(x, y - r * (0.9 - i * 0.1), x + r * (1.1 - i * 0.08), y + r * 0.5 - i * 6); c.stroke(); } }
+    else if (p.k === 'hematite' || p.k === 'mesa') { c.fillStyle = 'rgba(40,24,22,.45)'; c.beginPath(); c.ellipse(x + 6, y + 8, r * 1.1, r * 0.7, 0, 0, 7); c.fill(); c.fillStyle = p.k === 'mesa' ? 'rgba(200,200,205,.5)' : 'rgba(90,50,44,.7)'; c.beginPath(); c.ellipse(x, y, r * 1.05, r * 0.66, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, r * 1.05, r * 0.66, 0, Math.PI, Math.PI * 1.8); c.stroke(); }
+    else if (p.k === 'canyon') { c.strokeStyle = 'rgba(40,16,8,.7)'; c.lineWidth = r * 0.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(x - r * 1.3, y - r * 0.3); c.quadraticCurveTo(x, y + r * 0.6, x + r * 1.3, y - r * 0.2); c.stroke(); c.strokeStyle = 'rgba(255,200,150,.2)'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - r * 1.3, y - r * 0.55); c.quadraticCurveTo(x, y + r * 0.35, x + r * 1.3, y - r * 0.45); c.stroke(); }
+    else if (p.k === 'dune') { c.fillStyle = 'rgba(' + P.dust + ',.42)'; c.beginPath(); c.arc(x, y, r * 1.1, Math.PI * 0.15, Math.PI * 1.05); c.arc(x + r * 0.2, y - 6, r * 0.7, Math.PI * 1.0, Math.PI * 0.2, true); c.fill(); c.strokeStyle = 'rgba(' + P.dust + ',.7)'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, r * 1.1, Math.PI * 0.2, Math.PI * 1.0); c.stroke(); }
+    else if (p.k === 'ejecta' || p.k === 'boulders') { for (let i = 0; i < 12; i++) { const o = { x: p.x + (rnd() - 0.5) * p.r * 1.8, y: p.y + (rnd() - 0.5) * p.r * 1.2, r: 0.35 + rnd() * 0.5, v: rnd() }; drawRock(c, o, P); } }
+    else if (p.k === 'icecrater') { /* el cráter ya se dibuja en la lista */ }
+    else if (p.k === 'lander') { c.fillStyle = 'rgba(255,255,255,.1)'; c.beginPath(); c.ellipse(x, y, r * 1.1, r * 0.8, 0, 0, 7); c.fill(); }
+    c.restore();
+  }
+  function ensureChunk(cx, cy, budget) { const k = cx + ',' + cy; let ch = chunks.get(k); if (ch) { ch.u = chunkQ; return ch.cv; } if (!budget.n) return null; budget.n--; ch = { cv: buildChunk(cx, cy), u: chunkQ }; chunks.set(k, ch); if (chunks.size > 48) { let oldest = null; for (const [kk, v] of chunks) if (!oldest || v.u < oldest[1].u) oldest = [kk, v]; if (oldest && oldest[1].u < chunkQ - 2) chunks.delete(oldest[0]); } return ch.cv; }
+  /** Dibuja el terreno visible (la base se pinta encima, con bordes difuminados). */
+  function drawTerrain(ctx, cx, cy, vw, vh) {
+    if (!G) return;
+    const P = palette(); ctx.fillStyle = P.base; ctx.fillRect(cx, cy, vw, vh); chunkQ++;
+    const x0 = Math.floor(cx / (CK * TS)), x1 = Math.floor((cx + vw) / (CK * TS)), y0 = Math.floor(cy / (CK * TS)), y1 = Math.floor((cy + vh) / (CK * TS)), budget = { n: 2 };
+    for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
+      const bx = gx * CK, by = gy * CK;
+      if (bx >= 7 && by >= 7 && bx + CK <= W - 7 && by + CK <= H - 7) continue; // cubierto por la base
+      if (bx < B.x0 - CK || by < B.y0 - CK || bx > B.x1 || by > B.y1) continue;
+      const cv = ensureChunk(gx, gy, budget); if (cv) ctx.drawImage(cv, bx * TS, by * TS);
+    }
+    // borde del mundo: se oscurece
+    ctx.save(); ctx.fillStyle = 'rgba(2,4,12,.9)'; const e = TS * 3;
+    if (cx < B.x0 * TS) ctx.fillRect(cx, cy, B.x0 * TS - cx, vh); if (cy < B.y0 * TS) ctx.fillRect(cx, cy, vw, B.y0 * TS - cy);
+    if (cx + vw > B.x1 * TS) ctx.fillRect(B.x1 * TS, cy, cx + vw - B.x1 * TS, vh); if (cy + vh > B.y1 * TS) ctx.fillRect(cx, B.y1 * TS, vw, cy + vh - B.y1 * TS);
+    ctx.restore();
+  }
+  function reset() { chunks = new Map(); }
+
+  /* ---------- Objetos en vivo ---------- */
+  const rrect = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  function sprite(c, k, x, y, t, st) {
+    c.save(); c.translate(x, y);
+    const sh = () => { c.fillStyle = 'rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(5, 6, 20, 9, 0, 0, 7); c.fill(); };
+    if (k === 'seismo') { sh(); c.fillStyle = '#c9cfdc'; c.beginPath(); c.arc(0, 0, 14, 0, 7); c.fill(); c.fillStyle = '#e6ebf5'; c.beginPath(); c.arc(0, -3, 11, Math.PI, 0); c.fill(); c.fillStyle = '#2b3550'; c.fillRect(-9, -2, 18, 4); c.strokeStyle = '#8c93a3'; c.lineWidth = 2; c.beginPath(); c.moveTo(8, -8); c.lineTo(18, -26); c.stroke(); c.fillStyle = (Math.sin(t * 4) > 0) ? '#6fffa0' : '#2c6b48'; c.beginPath(); c.arc(18, -27, 3, 0, 7); c.fill(); }
+    else if (k === 'weather') { sh(); c.strokeStyle = '#aab2c4'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 6); c.lineTo(0, -34); c.stroke(); c.fillStyle = '#2b3550'; c.fillRect(-12, -18, 12, 8); c.fillStyle = '#4f7dff'; c.fillRect(-11, -17, 10, 6); c.save(); c.translate(0, -36); c.rotate(t * (sc === 'mars' ? 5 : 1.2)); c.strokeStyle = '#e6ebf5'; c.lineWidth = 2; for (let i = 0; i < 3; i++) { c.rotate(2.094); c.beginPath(); c.moveTo(0, 0); c.lineTo(10, 0); c.stroke(); c.fillStyle = '#ff8a2a'; c.beginPath(); c.arc(10, 0, 2.6, 0, 7); c.fill(); } c.restore(); }
+    else if (k === 'lander') { sh(); c.strokeStyle = '#9aa2b4'; c.lineWidth = 3; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 10, 0); c.lineTo(s * 26, 14); c.stroke(); c.fillStyle = '#b7bfd0'; c.beginPath(); c.ellipse(s * 26, 15, 6, 3, 0, 0, 7); c.fill(); } c.fillStyle = '#d6b45a'; c.beginPath(); for (let i = 0; i < 8; i++) { const a = i * 0.785 + 0.39; i ? c.lineTo(Math.cos(a) * 18, Math.sin(a) * 15 - 4) : c.moveTo(Math.cos(a) * 18, Math.sin(a) * 15 - 4); } c.closePath(); c.fill(); c.strokeStyle = '#7a6224'; c.lineWidth = 2; c.stroke(); c.fillStyle = '#e8ecf5'; c.beginPath(); c.arc(0, -4, 8, 0, 7); c.fill(); c.strokeStyle = '#8c93a3'; c.beginPath(); c.moveTo(0, -12); c.lineTo(10, -30); c.stroke(); c.beginPath(); c.ellipse(11, -32, 8, 4, -0.6, 0, 7); c.stroke(); }
+    else if (k === 'rpt') { sh(); c.strokeStyle = '#b7bfd0'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-9, 8); c.lineTo(0, -44); c.lineTo(9, 8); c.stroke(); c.lineWidth = 1.5; for (let i = 0; i < 4; i++) { const yy = 2 - i * 11, ww = 8 - i * 1.7; c.beginPath(); c.moveTo(-ww, yy); c.lineTo(ww, yy - 6); c.moveTo(ww, yy); c.lineTo(-ww, yy - 6); c.stroke(); } c.save(); c.translate(0, -46); c.rotate(st ? t * 1.5 : 0.4); c.fillStyle = '#e6ebf5'; c.beginPath(); c.ellipse(0, 0, 11, 4, 0, 0, 7); c.fill(); c.strokeStyle = '#6a7390'; c.lineWidth = 1.5; c.stroke(); c.restore(); c.fillStyle = st ? (Math.sin(t * 5) > -0.2 ? '#6fffa0' : '#2c6b48') : (Math.sin(t * 3) > 0 ? '#ff5a5a' : '#6b2c2c'); c.beginPath(); c.arc(0, -52, 3.2, 0, 7); c.fill(); if (st) { c.strokeStyle = 'rgba(111,255,160,' + (0.5 - ((t * 0.8) % 1) * 0.5) + ')'; c.lineWidth = 2; c.beginPath(); c.arc(0, -46, 8 + ((t * 0.8) % 1) * 30, 0, 7); c.stroke(); } }
+    else if (k === 'shelter') { c.fillStyle = 'rgba(0,0,0,.36)'; c.beginPath(); c.ellipse(6, 9, 62, 26, 0, 0, 7); c.fill(); const g = c.createRadialGradient(-12, -16, 6, 0, 0, 62); g.addColorStop(0, '#dfe5f2'); g.addColorStop(1, '#7c86a0'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, 58, Math.PI, 0); c.lineTo(58, 8); c.lineTo(-58, 8); c.closePath(); c.fill(); c.strokeStyle = '#4a526a'; c.lineWidth = 2.5; c.stroke(); c.save(); c.clip(); c.fillStyle = 'rgba(255,194,74,.55)'; for (let i = -6; i < 6; i++) { c.beginPath(); c.moveTo(i * 14, 8); c.lineTo(i * 14 + 8, 8); c.lineTo(i * 14 + 30, -60); c.lineTo(i * 14 + 22, -60); c.closePath(); c.fill(); } c.restore(); c.fillStyle = '#2b3550'; rrect(c, -9, -16, 18, 24, 5); c.fill(); c.fillStyle = (st && st.open) ? '#6fffa0' : '#ffc24a'; c.fillRect(-6, -13, 12, 4); c.fillStyle = '#ffc24a'; c.font = 'bold 12px system-ui'; c.textAlign = 'center'; c.fillText('☢ ' + st.id.toUpperCase().replace('S', 'R-'), 0, -40); }
+    c.restore();
+  }
+  function siteSprite(c, s, x, y, t, scanned) {
+    c.save(); c.translate(x, y); const k = s.kind;
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(2, 4, 11, 5, 0, 0, 7); c.fill();
+    if (k === 'ice') { c.fillStyle = '#bfe6ff'; for (const p of [[-5, 0, 4], [3, -2, 5], [7, 3, 3]]) { c.beginPath(); c.moveTo(p[0], p[1] - p[2] * 2); c.lineTo(p[0] + p[2], p[1]); c.lineTo(p[0], p[1] + p[2] * 0.6); c.lineTo(p[0] - p[2], p[1]); c.closePath(); c.fill(); c.strokeStyle = '#eef9ff'; c.lineWidth = 1; c.stroke(); } }
+    else if (k === 'mineral') { c.fillStyle = sc === 'mars' ? '#8a8a96' : '#7b6f9a'; c.beginPath(); c.moveTo(-8, 3); c.lineTo(-4, -7); c.lineTo(3, -5); c.lineTo(8, 3); c.closePath(); c.fill(); c.strokeStyle = '#2b2b36'; c.lineWidth = 1; c.stroke(); c.fillStyle = '#ffe9a0'; if (Math.sin(t * 4 + x) > 0.3) { c.fillRect(-1, -5, 2, 2); c.fillRect(4, -1, 2, 2); } }
+    else if (k === 'sediment') { for (let i = 0; i < 3; i++) { c.fillStyle = ['#d3b48a', '#b4875a', '#c9a074'][i]; rrect(c, -9 + i, -6 + i * 3.4, 18 - i * 2, 3.6, 1.6); c.fill(); } }
+    else if (k === 'rock') { c.fillStyle = sc === 'mars' ? '#7a3d22' : '#6a6b72'; c.beginPath(); c.moveTo(-8, 3); c.lineTo(-6, -4); c.lineTo(0, -8); c.lineTo(7, -3); c.lineTo(8, 3); c.closePath(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1; c.stroke(); c.fillStyle = 'rgba(255,255,255,.2)'; c.fillRect(-3, -5, 4, 2); }
+    else { c.fillStyle = sc === 'mars' ? '#7a3d22' : '#4a4b52'; c.beginPath(); c.ellipse(0, 1, 10, 5, 0, 0, 7); c.fill(); c.fillStyle = sc === 'mars' ? '#a85a35' : '#7c7d86'; c.beginPath(); c.ellipse(-1, -1, 7, 3, 0, 0, 7); c.fill(); }
+    const a = 0.5 + 0.5 * Math.sin(t * 3 + x * 0.1); c.strokeStyle = 'rgba(111,255,160,' + (0.35 + 0.35 * a) + ')'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, 15 + 2 * a, 0, 7); c.stroke();
+    if (scanned) { c.fillStyle = '#6fffa0'; c.font = 'bold 11px system-ui'; c.textAlign = 'center'; c.fillText('✦', 0, -14 - 2 * a); }
+    c.restore();
+  }
+  /** Entidades dinámicas ordenadas por profundidad. */
+  function ents(ctx, S, t, cam, vw, vh, ex) {
+    if (!G) return [];
+    const out = [], vis = (x, y, m) => x * TS > cam.x - m && x * TS < cam.x + vw + m && y * TS > cam.y - m && y * TS < cam.y + vh + m;
+    for (const p of G.pois) if (vis(p.x, p.y, 120) && ['seismo', 'weather', 'lander'].includes(p.k)) out.push({ y: p.y, f: () => sprite(ctx, p.k, p.x * TS, p.y * TS, t, 0) });
+    for (const q of G.rep) if (vis(q.x, q.y, 120)) out.push({ y: q.y, f: () => sprite(ctx, 'rpt', q.x * TS, q.y * TS, t, !!(ex && ex.rep && ex.rep[q.id])) });
+    for (const q of G.shel) if (vis(q.x, q.y, 140)) out.push({ y: q.y, f: () => sprite(ctx, 'shelter', q.x * TS, q.y * TS, t, { id: q.id, open: ex && ex.inShel === q.id }) });
+    for (const s of G.sites) {
+      if (ex && ex.taken && ex.taken[s.id]) continue;
+      if (s.hidden && !(ex && ex.rev && ex.rev[s.id])) continue;
+      if (vis(s.x, s.y, 40)) out.push({ y: s.y, f: () => siteSprite(ctx, s, s.x * TS, s.y * TS, t, !!(ex && ex.rev && ex.rev[s.id])) });
+    }
+    return out;
+  }
+  /** Postes-guía parpadeantes a lo largo de las rutas (reconocer el camino de regreso). */
+  function guideLights(ctx, t, cam, vw, vh) {
+    if (!G) return;
+    for (const tr0 of TRAILS) for (let i = 1; i < tr0.length; i++) {
+      const a = tr0[i - 1], b = tr0[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      for (let u = 6; u < l; u += 12) { const x = (a[0] + (b[0] - a[0]) * u / l) * TS, y = (a[1] + (b[1] - a[1]) * u / l) * TS; if (x < cam.x - 20 || x > cam.x + vw + 20 || y < cam.y - 20 || y > cam.y + vh + 20) continue; ctx.fillStyle = '#2b3550'; ctx.fillRect(x - 1.5, y - 8, 3, 10); ctx.fillStyle = Math.sin(t * 3 + u) > 0 ? '#ffc24a' : '#6b4f1f'; ctx.beginPath(); ctx.arc(x, y - 10, 3, 0, 7); ctx.fill(); }
+    }
+  }
+
+  return { B, PAD, TRAILS, init, reset, hit, ground, near, info, coord, drawTerrain, ents, guideLights, KG, CAT, KIND_T, WHY, inRect,
+    get G() { return G; }, get sc() { return sc; }, poi: (id) => G && G.pois.find((p) => p.id === id), site: (id) => G && G.sites.find((s) => s.id === id), rep: (id) => G && G.rep.find((r) => r.id === id) };
+})();
+/* =====================================================================
+   ROVER — vehículo explorador tripulado: física sencilla (aceleración
+   gradual, velocidad máxima, frenado, giro, resistencia del terreno),
+   colisiones por círculos, batería, polvo, huellas y dibujo cenital.
+   El estado (posición, rumbo, carga) vive en S.ex.rover.
+   ===================================================================== */
+const Rover = (function () {
+  const TS = 32, VMAX = 10.5, VREV = 3.8, ACC = 8.5, BRK = 17, TURN = 2.2;
+  let R = null, S0 = null, parts = [], tracks = [], ph = 0, lastTrk = null, bump = 0, flash = 0, hatch = 0;
+  const rrect = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  function bind(S) { S0 = S; R = Ex.ensure(S).rover; parts = []; tracks = []; lastTrk = null; }
+  const state = () => R;
+  /** Círculos del chasis (para colisiones). */
+  const body = (x, y, a) => [[x + Math.cos(a) * 0.95, y + Math.sin(a) * 0.95, 0.8], [x, y, 0.88], [x - Math.cos(a) * 0.95, y - Math.sin(a) * 0.95, 0.8]];
+  /**
+   * ctl = { thr, str, stick:{x,y,m}|null }; free(x,y,a) → bool. Devuelve eventos ('bump').
+   */
+  function update(dt, S, ctl, free) {
+    if (!R || !S0) return [];
+    const ev = [], g = Field.ground(R.x, R.y), bat = S.sys.rover.batt, hp = S.sys.rover.h;
+    const cap = (bat > 0 ? 1 : 0.3) * (hp < 30 ? 0.75 : 1);
+    const vmax = Math.max(bat > 0 ? 2.6 : 3.2, VMAX * g.r * cap), vrev = Math.max(2.2, VREV * g.r);
+    let thr = ctl.thr || 0, str = ctl.str || 0;
+    if (ctl.stick && ctl.stick.m > 0.18) { // control táctil: el rumbo sigue a la palanca
+      let d = Math.atan2(ctl.stick.y, ctl.stick.x) - R.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      const back = Math.abs(d) > 2.2; if (back) d = d > 0 ? d - Math.PI : d + Math.PI;
+      str = Math.max(-1, Math.min(1, d * 2.2)); thr = (back ? -1 : 1) * Math.min(1, ctl.stick.m * 1.15) * (Math.abs(d) > 1.2 ? 0.25 : 1);
+    }
+    if (thr > 0.05) { if (R.v < vmax) R.v = Math.min(vmax, R.v + ACC * g.r * dt * thr); }
+    else if (thr < -0.05) { if (R.v > 0.3) R.v = Math.max(0, R.v - BRK * dt); else R.v = Math.max(-vrev, R.v - ACC * 0.7 * dt); }
+    else { const d = (1.6 + (1 - g.r) * 5) * dt; R.v = Math.abs(R.v) <= d ? 0 : R.v - Math.sign(R.v) * d; }
+    if (R.v > vmax) R.v = Math.max(vmax, R.v - 12 * dt);
+    const mv = Math.abs(R.v);
+    // giro: como un coche; casi parado, gira sobre sí mismo despacio
+    const rate = mv < 0.45 ? str * 1.05 : str * TURN * Math.min(1, 0.4 + mv / 5) * (R.v >= 0 ? 1 : -1);
+    if (Math.abs(rate) > 0.001) { const na = R.a + rate * dt; if (free(R.x, R.y, na)) R.a = na; }
+    const dx = Math.cos(R.a) * R.v * dt, dy = Math.sin(R.a) * R.v * dt;
+    let moved = false;
+    if (free(R.x + dx, R.y + dy, R.a)) { R.x += dx; R.y += dy; moved = true; }
+    else if (Math.abs(dx) > 0.002 && free(R.x + dx, R.y, R.a)) { R.x += dx; moved = true; R.v *= 0.85; }
+    else if (Math.abs(dy) > 0.002 && free(R.x, R.y + dy, R.a)) { R.y += dy; moved = true; R.v *= 0.85; }
+    else if (mv > 0.2) {
+      if (mv > 6) { S.sys.rover.h = Math.max(10, S.sys.rover.h - (mv - 6) * 0.9); ev.push('bump'); }
+      for (let i = 0; i < 6; i++) parts.push({ x: R.x + Math.cos(R.a) * 1.4, y: R.y + Math.sin(R.a) * 1.4, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 2, t: 0, life: 0.4, k: 'spark' });
+      R.v = -R.v * 0.25; bump = 0.3;
+    }
+    const step = mv * dt; R.odo += step; if (S.ex) { S.ex.trip.odo += step; }
+    ph += R.v * dt * 3.2;
+    // batería: gasta según el esfuerzo; sin carga queda una reserva lenta para volver
+    const eng = S.playerRole === 'engineer' ? 0.75 : 1;
+    S.sys.rover.batt = Math.max(0, S.sys.rover.batt - (0.04 + 0.95 * (mv / VMAX) * (2 - g.r) + (R.lights ? 0.1 : 0)) * eng * dt);
+    // polvo/regolito y huellas
+    const mars = S.scen === 'mars';
+    if (mv > 1.5 && Math.random() < dt * 28 * Math.min(1, mv / 6)) {
+      const c = Math.cos(R.a), s = Math.sin(R.a), side = Math.random() < 0.5 ? -1 : 1;
+      parts.push({ x: R.x - c * 1.3 - s * side * 0.7, y: R.y - s * 1.3 + c * side * 0.7, vx: -c * mv * 0.18 + (Math.random() - 0.5) * 1.2, vy: -s * mv * 0.18 + (Math.random() - 0.5) * 1.2, t: 0, life: 0.5 + Math.random() * 0.7, k: 'dust', mars, deep: g.k === 'deep' || g.k === 'sand' });
+    }
+    if (mv > 0.5 && (!lastTrk || Math.hypot(lastTrk[0] - R.x, lastTrk[1] - R.y) > 0.55)) {
+      const c = Math.cos(R.a), s = Math.sin(R.a), px = -s * 0.68, py = c * 0.68, bx = R.x - c * 0.95, by = R.y - s * 0.95;
+      tracks.push([bx + px, by + py, bx - px, by - py, R.a]); if (tracks.length > 420) tracks.shift(); lastTrk = [R.x, R.y];
+    }
+    for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.k === 'spark') p.vy += 8 * dt; }
+    parts = parts.filter((p) => p.t < p.life); if (parts.length > 160) parts.splice(0, parts.length - 160);
+    if (bump > 0) bump -= dt; return ev;
+  }
+  /** Sitios junto a las puertas laterales y la trasera. */
+  function sides() {
+    const c = Math.cos(R.a), s = Math.sin(R.a);
+    return { left: [R.x + s * 2.2, R.y - c * 2.2], right: [R.x - s * 2.2, R.y + c * 2.2], rear: [R.x - c * 2.35, R.y - s * 2.35], hatchPt: [R.x - c * 1.9, R.y - s * 1.9] };
+  }
+  function drawFx(c, t) { // polvo y huellas (debajo del rover)
+    c.save(); c.lineWidth = 3; c.lineCap = 'round';
+    for (const k of tracks) { c.strokeStyle = S0 && S0.scen === 'mars' ? 'rgba(50,20,10,.3)' : 'rgba(20,20,26,.32)'; c.beginPath(); c.moveTo(k[0] * TS, k[1] * TS); c.lineTo(k[0] * TS + Math.cos(k[4]) * 6, k[1] * TS + Math.sin(k[4]) * 6); c.stroke(); c.beginPath(); c.moveTo(k[2] * TS, k[3] * TS); c.lineTo(k[2] * TS + Math.cos(k[4]) * 6, k[3] * TS + Math.sin(k[4]) * 6); c.stroke(); }
+    c.restore();
+  }
+  function drawParts(c) {
+    for (const p of parts) {
+      const u = p.t / p.life; c.globalAlpha = (1 - u) * (p.k === 'spark' ? 1 : 0.55);
+      if (p.k === 'spark') { c.fillStyle = '#ffe27a'; c.fillRect(p.x * TS, p.y * TS, 3, 3); }
+      else { c.fillStyle = p.mars ? '#c98a5c' : '#a9a9b3'; c.beginPath(); c.arc(p.x * TS, p.y * TS, (3 + u * (p.deep ? 12 : 8)), 0, 7); c.fill(); }
+    }
+    c.globalAlpha = 1;
+  }
+  /** o = { occ, role, boarding(0–1 rampa), night, storeOpen }. */
+  function draw(c, S, t, o) {
+    o = o || {}; const x = R.x * TS, y = R.y * TS, mv = Math.abs(R.v), rm = o.rm;
+    const sus = rm ? 0 : Math.sin(ph * 2.3) * 0.9 * Math.min(1, mv / 5), pal = (Chars.ROLES[o.role || 'commander'] || Chars.ROLES.commander).pal;
+    c.save(); c.translate(x, y);
+    c.fillStyle = 'rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(7, 9, 50, 30, R.a, 0, 7); c.fill();
+    c.rotate(R.a);
+    if (R.lights || o.night) { // faros
+      for (const sy of [-13, 13]) { const g = c.createLinearGradient(44, 0, 190, 0); g.addColorStop(0, 'rgba(255,244,200,.55)'); g.addColorStop(1, 'rgba(255,244,200,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(44, sy * 0.6); c.lineTo(190, sy * 3.2 - 30); c.lineTo(190, sy * 3.2 + 30); c.closePath(); c.fill(); }
+    }
+    // suspensión: balancines y ruedas con dibas de rodadura que avanzan
+    c.strokeStyle = '#404759'; c.lineWidth = 3;
+    for (const i of [-1, 0, 1]) for (const s of [-1, 1]) { const wx = i * 27, wy = s * (24 + sus * s * (i % 2 ? 1 : -1)); c.beginPath(); c.moveTo(i * 24, s * 15); c.lineTo(wx, wy); c.stroke(); }
+    for (const i of [-1, 0, 1]) for (const s of [-1, 1]) {
+      const wx = i * 27 - 7, wy = s * (24 + sus * s * (i % 2 ? 1 : -1)) - 6;
+      c.fillStyle = '#15181f'; rrect(c, wx, wy, 14, 12, 4); c.fill(); c.fillStyle = '#2b303d'; for (let k = 0; k < 4; k++) { const u = ((k * 3.5 + ph * 5) % 14 + 14) % 14; c.fillRect(wx + u, wy + 1, 1.6, 10); }
+      c.strokeStyle = '#4a5166'; c.lineWidth = 1; rrect(c, wx, wy, 14, 12, 4); c.stroke();
+    }
+    // chasis
+    const g2 = c.createLinearGradient(0, -22, 0, 22); g2.addColorStop(0, '#f4f6fb'); g2.addColorStop(1, '#aab2c6'); c.fillStyle = g2; rrect(c, -44, -21, 88, 42, 11); c.fill(); c.strokeStyle = '#4a526a'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#1f9dc9'; c.fillRect(-40, -3, 80, 6); c.fillStyle = '#ff8a2a'; c.fillRect(30, -21, 6, 42);
+    // techo solar y compartimento de carga (parte trasera)
+    c.fillStyle = '#1d2c58'; rrect(c, -40, -17, 38, 34, 5); c.fill(); c.strokeStyle = '#4f7dff'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(-40 + k * 9.5, -17); c.lineTo(-40 + k * 9.5, 17); c.stroke(); } c.beginPath(); c.moveTo(-40, 0); c.lineTo(-2, 0); c.stroke();
+    c.fillStyle = o.storeOpen ? '#ffc24a' : '#2b3550'; rrect(c, -46, -9, 8, 18, 2); c.fill(); c.strokeStyle = '#ffc24a'; c.lineWidth = 1.2; c.stroke();
+    // cabina
+    c.fillStyle = 'rgba(120,220,255,.75)'; rrect(c, 2, -15, 28, 30, 9); c.fill(); c.strokeStyle = '#2b3550'; c.lineWidth = 1.6; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(10, -8, 8, 3, -0.4, 0, 7); c.fill();
+    if (o.occ) { c.fillStyle = pal.suit; c.beginPath(); c.arc(14, 0, 9, 0, 7); c.fill(); c.strokeStyle = '#2b3550'; c.lineWidth = 1.4; c.stroke(); c.fillStyle = pal.visor; c.beginPath(); c.ellipse(17, 0, 5, 6.5, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(15, -4, 2, 2); c.fillStyle = pal.shade; rrect(c, 4, -12, 5, 24, 2); c.fill(); }
+    // rampa lateral al subir/bajar
+    if (o.boarding > 0) { c.fillStyle = '#d6dbe8'; c.strokeStyle = '#4a526a'; c.lineWidth = 1.6; const hl = 12 + 14 * o.boarding; c.fillRect(8, 21, 16, hl * 0.5); c.strokeRect(8, 21, 16, hl * 0.5); c.fillRect(8, -21 - hl * 0.5, 16, hl * 0.5); c.strokeRect(8, -21 - hl * 0.5, 16, hl * 0.5); }
+    // antena y faros delanteros
+    c.strokeStyle = '#6a7390'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, -14); c.lineTo(-18, -34); c.stroke(); c.fillStyle = (rm || Math.sin(t * 5) > 0) ? (o.occ ? '#6fffa0' : '#ffc24a') : '#2b3550'; c.beginPath(); c.arc(-18, -35, 3, 0, 7); c.fill();
+    c.fillStyle = R.lights || o.night ? '#fff6c8' : '#cfd6e6'; for (const sy of [-13, 13]) { c.beginPath(); c.arc(43, sy, 3.4, 0, 7); c.fill(); }
+    // indicador de batería (4 segmentos)
+    const lv = S.sys.rover.batt / 100; for (let k = 0; k < 4; k++) { c.fillStyle = lv > (k + 0.4) / 4 ? (lv < 0.25 ? '#ff5a5a' : '#6fffa0') : '#2b3550'; c.fillRect(-28 + k * 6, 11, 4.5, 4); }
+    c.restore();
+  }
+  return { bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
 })();
 
 /* =====================================================================
@@ -3456,13 +4227,16 @@ const Art = (function () {
     // rótulos de sala (placas)
     c.textAlign = 'center';
     for (const k of rk) { const def = d.rooms[k]; if (def.g === 'tube') continue; const bb = bbox(def, TS), nm = (typeof tr === 'function' && DATA.ROOMS[k]) ? tr(DATA.ROOMS[k]) : k; c.font = 'bold 13px system-ui'; const tw = c.measureText(nm).width + 18, cx = (bb[0] + bb[2]) / 2, cy = bb[1] + TS * 0.9 + (k === 'bridge' ? TS * 2.2 : 0); c.fillStyle = 'rgba(5,8,20,.55)'; d.rr(c, cx - tw / 2, cy - 12, tw, 20, 8); c.fill(); c.fillStyle = d.ROOMCOL[k] || '#e8eefc'; c.fillText(nm, cx, cy + 3); }
-    // viñeta en los bordes del mundo
-    const eg = c.createLinearGradient(0, 0, 0, TS * 3); eg.addColorStop(0, 'rgba(0,0,0,.65)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg; c.fillRect(0, 0, w, TS * 3);
-    const eg2 = c.createLinearGradient(0, h, 0, h - TS * 3); eg2.addColorStop(0, 'rgba(0,0,0,.65)'); eg2.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg2; c.fillRect(0, h - TS * 3, w, TS * 3);
-    const eg3 = c.createLinearGradient(0, 0, TS * 3, 0); eg3.addColorStop(0, 'rgba(0,0,0,.65)'); eg3.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg3; c.fillRect(0, 0, TS * 3, h);
-    const eg4 = c.createLinearGradient(w, 0, w - TS * 3, 0); eg4.addColorStop(0, 'rgba(0,0,0,.65)'); eg4.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg4; c.fillRect(w - TS * 3, 0, TS * 3, h);
+    // mapa (M): el mundo de la base con una viñeta suave en sus bordes
     const mapCv = document.createElement('canvas'); mapCv.width = 1120; mapCv.height = Math.round(1120 * d.H / d.W);
     const mc = mapCv.getContext('2d'); mc.imageSmoothingEnabled = true; mc.imageSmoothingQuality = 'high'; mc.drawImage(cv, 0, 0, mapCv.width, mapCv.height);
+    mc.save(); mc.scale(mapCv.width / w, mapCv.width / w);
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, TS * 3, 0, 0, w, TS * 3], [0, h, 0, h - TS * 3, 0, h - TS * 3, w, TS * 3], [0, 0, TS * 3, 0, 0, 0, TS * 3, h], [w, 0, w - TS * 3, 0, w - TS * 3, 0, TS * 3, h]]) { const eg = mc.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(0,0,0,.65)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); mc.fillStyle = eg; mc.fillRect(rx, ry, rw, rh); }
+    mc.restore();
+    // en el juego, los bordes de la base se funden con el terreno de exploración que la rodea
+    c.save(); c.globalCompositeOperation = 'destination-out'; const F = TS * 7;
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, F, 0, 0, w, F], [0, h, 0, h - F, 0, h - F, w, F], [0, 0, F, 0, 0, 0, F, h], [w, 0, w - F, 0, w - F, 0, F, h]]) { const eg = c.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(0,0,0,1)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg; c.fillRect(rx, ry, rw, rh); }
+    c.restore();
     return { cv, mapCv };
   }
   return { build };
@@ -3485,7 +4259,8 @@ const World = (function () {
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false, zoomMul = 1, fitAll = false;
   const isTube = (r) => /^t\d/.test(r || '');
-  let fxVeh = null, steamT = 0;
+  let hullBuf = [], fxVeh = null, steamT = 0, boardAnim = null, shelIn = null, collect = null, camDrive = 0, noRov = false, needSuitT = -9;
+  const fx = { scanT: 0, photoT: 0, scanR: 22 };
   /** Llegada de un vehículo: un rover regresa por la ruta del este hasta la plataforma. */
   function vehicleArrival() { const tr0 = scenery && scenery.tracks[2]; if (tr0) fxVeh = { t: 0, path: tr0.slice().reverse() }; }
 
@@ -3527,15 +4302,18 @@ const World = (function () {
     const S0 = SHELTER;
     for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
     for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
-    samples = Layout.SAMPLES_OUT[scen].map((p) => ({ x: p[0], y: p[1], taken: false }));
+    samples = []; Field.init(scen);
     // Terreno exterior
     scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
     props = scenery.props;
     // Solidez
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || x === 0 || y === 0 || x === W - 1 || y === H - 1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL;
     for (const f of furn) if (!['window', 'pipe', 'vent', 'rug'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
     for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
+    // margen alrededor de la base: el rover no se pega al casco (el arte del casco es más grueso que la pared de colisión)
+    hullBuf = [];
+    for (let y = 0; y < H; y++) { hullBuf.push(new Array(W).fill(false)); for (let x = 0; x < W; x++) { if (grid[y][x] !== OUT) continue; for (let dy = -1; dy <= 1 && !hullBuf[y][x]; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W && grid[yy][xx] !== OUT) { hullBuf[y][x] = true; break; } } } }
   }
 
   /* ---------- Rutas por la cuadrícula real ---------- */
@@ -3612,29 +4390,47 @@ const World = (function () {
   }
 
   /* ---------- Colisión ---------- */
+  function roverBlocks(x, y) {
+    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov) return false;
+    for (const b of Rover.body(E.rover.x, E.rover.y, E.rover.a)) if (Math.hypot(b[0] - x, b[1] - y) < b[2] * 0.95) return true;
+    return false;
+  }
   function blocked(x, y) {
     const tx = Math.floor(x), ty = Math.floor(y);
-    if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
+    if (tx < 0 || ty < 0 || tx >= W || ty >= H) { const B = Field.B; return x < B.x0 || y < B.y0 || x > B.x1 || y > B.y1 || Field.hit(x, y, 0, false) || roverBlocks(x, y); }
     if (grid[ty][tx] === DOOR) { const d = doorAt(tx, ty); return !d || d.open < 0.6; }
-    return solid[ty][tx];
+    return solid[ty][tx] || (grid[ty][tx] === OUT && roverBlocks(x, y));
   }
   function doorAt(x, y) { return doors.find((d) => x >= d.x && x < d.x + d.w && y >= d.y && y < d.y + d.h); }
   function canStand(x, y, r) { return !blocked(x - r, y - r) && !blocked(x + r, y - r) && !blocked(x - r, y + r) && !blocked(x + r, y + r); }
   function room(x, y) { const tx = Math.floor(x), ty = Math.floor(y); if (ty < 0 || ty >= H || tx < 0 || tx >= W) return null; const r = roomAt[ty][tx]; if (r) return r; const d = doorAt(tx, ty); return d ? 'hall' : null; }
   function inShelter(x, y) { return x >= SHELTER[0] && x <= SHELTER[2] + 1 && y >= SHELTER[1] && y <= SHELTER[3] + 1; }
-  function zone() { const r = room(player.x, player.y); if (r === 'pad') return 'outside'; if (inShelter(player.x, player.y)) return 'shelter'; return 'hab'; }
+  function zone() { const r = room(player.x, player.y); if (r === 'pad' || r === null) return 'outside'; if (inShelter(player.x, player.y)) return 'shelter'; return 'hab'; }
   function roomName(x, y) { const r = room(x, y); return isTube(r) ? 'hall' : r; }
 
   /* ---------- Actualización ---------- */
   function update(dt, S, inp) {
     lastT += dt; curS = S;
+    const E = S ? Ex.ensure(S) : null; if (E && Rover.state() !== E.rover) { Rover.bind(S); shelIn = null; }
     if (marker && (marker.until < lastT || Math.hypot(player.x - marker.p[0], player.y - marker.p[1]) < 1.6)) marker = null;
     let vx = inp.x, vy = inp.y;
     const len = Math.hypot(vx, vy);
     if (len > 1) { vx /= len; vy /= len; }
-    const sp = 4.4;
-    player.moving = len > 0.15;
-    if (player.moving) {
+    const drive = !!(E && E.rover.occ) && !boardAnim;
+    if (E) { const dd = Math.hypot(E.rover.x - Field.PAD[0], E.rover.y - Field.PAD[1]); E.rover.docked = dd < 11; }
+    const sp = 4.4 * (E && E.suit.on ? Field.ground(player.x, player.y).f : 1);
+    player.moving = !drive && !boardAnim && !shelIn && len > 0.15;
+    if (shelIn && len > 0.5) leaveShelter();
+    if (boardAnim) stepBoard(dt);
+    if (collect) { if (len > 0.3 || !E || !E.suit.on) collect = null; else { collect.t += dt; player.act = 'interact'; player.actT = 0.2; if (collect.t >= collect.dur) { const cb = collect.done; collect = null; player.act = null; cb(); } } }
+    if (fx.scanT > 0) fx.scanT -= dt; if (fx.photoT > 0) fx.photoT -= dt;
+    if (drive) {
+      const ev = Rover.update(dt, S, { thr: inp.thr || 0, str: inp.str || 0, stick: inp.stick || null }, roverFree);
+      player.x = E.rover.x; player.y = E.rover.y; player.dir = Math.abs(Math.cos(E.rover.a)) > Math.abs(Math.sin(E.rover.a)) ? (Math.cos(E.rover.a) > 0 ? 1 : 3) : (Math.sin(E.rover.a) > 0 ? 2 : 0);
+      if (ev.indexOf('bump') >= 0) Sfx.play('bad');
+      fx.eng = (fx.eng || 0) + dt; if (fx.eng > 0.34 && Math.abs(E.rover.v) > 1) { fx.eng = 0; Sfx.play('engine'); }
+    }
+    if (player.moving && !boardAnim) {
       const nx = player.x + vx * sp * dt, ny = player.y + vy * sp * dt;
       if (canStand(nx, player.y, 0.3)) player.x = nx;
       if (canStand(player.x, ny, 0.3)) player.y = ny;
@@ -3667,8 +4463,13 @@ const World = (function () {
       if (airlock.t >= 3) { airlock.st = airlock.st === 'cycle_out' ? 'out' : 'in'; airlock.t = 0; Sfx.play('info'); }
     } else {
       const rn = room(player.x, player.y);
-      if (airlock.st === 'out' && rn === 'rad' && Math.abs(player.x - LOCK.x) < 2.2 && player.y > LOCK.inY - 1.2) cycleLock();
-      if (airlock.st === 'in' && rn === 'pad' && Math.abs(player.x - LOCK.x) < 2.2 && player.y < LOCK.outY) cycleLock();
+      if (airlock.st === 'out' && rn === 'rad' && Math.abs(player.x - LOCK.x) < 2.2 && player.y > LOCK.inY - 1.2) cycleLock(true);
+      if (airlock.st === 'in' && rn === 'pad' && Math.abs(player.x - LOCK.x) < 2.2 && player.y < LOCK.outY) cycleLock(true);
+      // dentro de la cámara: el sentido de la marcha decide el ciclo (salir con traje / entrar presurizando)
+      if (rn === 'lock' && player.moving && !boardAnim) {
+        if (airlock.st === 'in' && player.dir === 2) { if (!E || E.suit.on) cycleLock(true); else needSuitT = lastT; }
+        else if (airlock.st === 'out' && player.dir === 0) cycleLock(true);
+      }
     }
     const rm = !reduced;
     if (rm && S) {
@@ -3680,8 +4481,8 @@ const World = (function () {
     for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; }
     parts = parts.filter((p) => p.t < p.life);
   }
-  function cycleLock() {
-    if (airlock.st === 'in') { airlock.st = 'cycle_out'; airlock.t = 0; Sfx.play('warn'); return true; }
+  function cycleLock(auto) {
+    if (airlock.st === 'in') { if (!auto && curS && curS.ex && !curS.ex.suit.on) return 'nosuit'; airlock.st = 'cycle_out'; airlock.t = 0; Sfx.play('warn'); return true; }
     if (airlock.st === 'out') { airlock.st = 'cycle_in'; airlock.t = 0; Sfx.play('warn'); return true; }
     return false;
   }
@@ -3731,6 +4532,7 @@ const World = (function () {
     for (const f of furn) if (f.kind === 'planter') for (let k = 0; k < 3; k++) { const pp = [f.x + 0.5 + k, f.y + 1.45]; const d = Math.hypot(player.x - pp[0], player.y - pp[1]); if (d < 1.45 && d < bd + 0.3) { bd = Math.min(bd, d); best = { id: 'plant', bed: f.bed, slot: k, verb: 'investigate', icon: '🌱' }; } }
     for (const c of consoles) { const d = Math.hypot(player.x - (c.x + 0.5), player.y - (c.y + 0.5)); if (d < bd) { bd = d; best = c; } }
     for (const s of samples) if (!s.taken) { const d = Math.hypot(player.x - s.x, player.y - s.y); if (d < 1.2 && d < bd) { bd = d; best = { id: 'sample', verb: 'collect', icon: '🪨', s }; } }
+    const xn = exNear(); if (xn && (!best || xn.d < bd)) best = xn;
     return best;
   }
   /** Puerta bloqueada cercana (para explicar qué la abre). */
@@ -3746,6 +4548,127 @@ const World = (function () {
   }
   function setMarker(p, label) { if (p) marker = { p, label: label || '', until: lastT + 90 }; }
   function setPickable() { return null; }
+
+
+  /* ---------- Exploración exterior: rover, refugios, recolección y efectos ---------- */
+  function circleFree(cx, cy, r) {
+    const B = Field.B; if (cx - r < B.x0 || cy - r < B.y0 || cx + r > B.x1 || cy + r > B.y1) return false;
+    for (let yy = Math.floor(cy - r); yy <= Math.floor(cy + r); yy++) for (let xx = Math.floor(cx - r); xx <= Math.floor(cx + r); xx++) {
+      if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      if (grid[yy][xx] !== OUT || solid[yy][xx] || hullBuf[yy][xx]) { const nx = clampN(cx, xx, xx + 1), ny = clampN(cy, yy, yy + 1); if ((cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) < r * r) return false; }
+    }
+    return !Field.hit(cx, cy, r, true);
+  }
+  function roverFree(x, y, a) { for (const b of Rover.body(x, y, a)) if (!circleFree(b[0], b[1], b[2])) return false; return true; }
+  const standOK = (x, y) => { noRov = true; const v = canStand(x, y, 0.3); noRov = false; return v; };
+  function boardRover() {
+    const E = curS && curS.ex; if (!E) return 'err'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
+    const sd = Rover.sides(), dl = Math.hypot(player.x - sd.left[0], player.y - sd.left[1]), dr = Math.hypot(player.x - sd.right[0], player.y - sd.right[1]), side = dl < dr ? sd.left : sd.right;
+    boardAnim = { kind: 'in', t: 0, dur: 0.7, fx: player.x, fy: player.y, sx: side[0], sy: side[1] }; player.act = null; collect = null; Sfx.play('door'); return null;
+  }
+  function exitRover() {
+    const E = curS && curS.ex; if (!E || !E.rover.occ || boardAnim) return 'busy'; if (Math.abs(E.rover.v) > 1.5) return 'fast';
+    const sd = Rover.sides(); let spot = null; noRov = true;
+    for (const q of [sd.left, sd.right, sd.rear]) if (canStand(q[0], q[1], 0.3)) { spot = q; break; }
+    for (let r = 2.6; r < 8 && !spot; r += 0.6) for (let k = 0; k < 16 && !spot; k++) { const a = k * Math.PI / 8, x = E.rover.x + Math.cos(a) * r, y = E.rover.y + Math.sin(a) * r; if (canStand(x, y, 0.3)) spot = [x, y]; }
+    noRov = false; if (!spot) return 'blocked';
+    E.rover.occ = false; E.rover.v = 0; Rover.state().v = 0;
+    boardAnim = { kind: 'out', t: 0, dur: 0.7, fx: E.rover.x, fy: E.rover.y, sx: spot[0], sy: spot[1], tx: spot[0], ty: spot[1] }; Sfx.play('door'); return null;
+  }
+  function stepBoard(dt) {
+    const b = boardAnim, R = curS.ex.rover; b.t += dt; const u = Math.min(1, b.t / b.dur);
+    const lerp = (a, c, k) => a + (c - a) * k;
+    if (b.kind === 'in') {
+      if (u < 0.55) { const k = u / 0.55; player.x = lerp(b.fx, b.sx, k); player.y = lerp(b.fy, b.sy, k); player.moving = true; } else { const k = (u - 0.55) / 0.45; player.x = lerp(b.sx, R.x, k); player.y = lerp(b.sy, R.y, k); player.moving = false; player.act = 'interact'; player.actT = 0.2; }
+      player.dir = Math.abs(R.x - player.x) > Math.abs(R.y - player.y) ? (R.x > player.x ? 1 : 3) : (R.y > player.y ? 2 : 0);
+      if (u >= 1) { boardAnim = null; R.occ = true; R.v = 0; player.x = R.x; player.y = R.y; player.act = null; }
+    } else {
+      player.x = lerp(R.x, b.tx, u); player.y = lerp(R.y, b.ty, u); player.moving = u > 0.3; player.dir = Math.abs(b.tx - R.x) > Math.abs(b.ty - R.y) ? (b.tx > R.x ? 1 : 3) : (b.ty > R.y ? 2 : 0);
+      if (u >= 1) { boardAnim = null; player.x = b.tx; player.y = b.ty; player.moving = false; }
+    }
+    player.anim += dt * 8;
+  }
+  function enterShelter(id) { const q = Field.G.shel.find((z) => z.id === id); if (!q || shelIn) return false; shelIn = id; player.x = q.x; player.y = q.y + 0.6; player.moving = false; Sfx.play('door'); return true; }
+  function leaveShelter() { const q = shelIn && Field.G.shel.find((z) => z.id === shelIn); shelIn = null; if (q) { const c = standAt2(q.x, q.y + 3.2); player.x = c[0]; player.y = c[1]; } }
+  function standAt2(x, y) { for (let r = 0; r < 8; r += 0.5) for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, xx = x + Math.cos(a) * r, yy = y + Math.sin(a) * r; if (canStand(xx, yy, 0.3)) return [xx, yy]; } return [x, y]; }
+  function beginCollect(site, dur, done) { collect = { id: site.id, x: site.x, y: site.y, t: 0, dur, done }; }
+  function scanFx(rad) { fx.scanT = 1.2; fx.scanR = rad; fx.scanX = player.x; fx.scanY = player.y; }
+  function photoFx() { fx.photoT = 0.28; }
+  /** Tras una evacuación de emergencia: el astronauta aparece junto a la esclusa, sin obstáculos. */
+  function teleportHome() { boardAnim = null; shelIn = null; collect = null; const p = standAt2(Field.PAD[0] - 1.6, Field.PAD[1] - 1.5); player.x = p[0]; player.y = p[1]; player.act = null; Rover.clearFx(); }
+  function exNear() {
+    const E = curS && curS.ex; if (!E || boardAnim) return null;
+    if (E.rover.occ) return { id: 'x:exit', verb: 'unboard', icon: '🚪', d: 0 };
+    if (shelIn) return { id: 'x:shelx', verb: 'leave', icon: '🚪', d: 0, q: Field.G.shel.find((z) => z.id === shelIn) };
+    let best = null, bd = 9; const px = player.x, py = player.y, R = E.rover, sd = Rover.sides();
+    const cons = (d, it) => { if (d < bd) { bd = d; best = Object.assign(it, { d }); } };
+    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y);
+    if (dh < 1.6) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
+    if (dr < 3.3) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
+    for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; const d = Math.hypot(px - q.x, py - q.y); if (d < 1.5) cons(d, { id: 'x:site', verb: 'collect', icon: '🪨', s: q }); }
+    for (const p of Field.G.pois) { const d = Math.hypot(px - p.x, py - p.y); if (d < Math.max(3.4, p.r * 0.55)) cons(d + 0.8, { id: 'x:poi', verb: 'investigate', icon: '🔭', p }); }
+    for (const q of Field.G.rep) { const d = Math.hypot(px - q.x, py - q.y); if (d < 2.4) cons(d, { id: 'x:rep', verb: 'activate', icon: '📡', q }); }
+    for (const q of Field.G.shel) { const d = Math.hypot(px - q.x, py - (q.y + 2.6)); if (d < 2.4) cons(d, { id: 'x:shel', verb: 'enter', icon: '🛡️', q }); }
+    return best;
+  }
+  function exCtx() {
+    const E = curS && curS.ex; if (!E) return null;
+    const out = zone() === 'outside';
+    return { x: player.x, y: player.y, outside: out, inRover: !!E.rover.occ, move: E.rover.occ ? Math.min(1, Math.abs(E.rover.v) / Rover.VMAX) : (player.moving ? 1 : 0), working: !!collect, inShel: out ? shelIn : null };
+  }
+  function exRender(c, S, ents, t, rm, vw, vh, o) {
+    const E = S && S.ex; if (!E) return;
+    Rover.drawFx(c, t); Field.guideLights(c, t, cam, vw, vh);
+    for (const e of Field.ents(c, S, t, cam, vw, vh, { taken: E.taken, rev: E.rev, rep: E.rep, inShel: shelIn })) ents.push(e);
+    const R = E.rover, ev = Ex.env(S, R.x, R.y), nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.7 : 1);
+    const seated = R.occ || (boardAnim && boardAnim.kind === 'in' && boardAnim.t / boardAnim.dur > 0.9);
+    const bd = boardAnim ? Math.sin(Math.min(1, boardAnim.t / boardAnim.dur) * Math.PI) : 0;
+    ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
+    ents.push({ y: 1e6, f: () => {
+      Rover.drawParts(c);
+      if (collect) { const x = collect.x * TS, y = collect.y * TS, u = collect.t / collect.dur; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y - 6, 20, 0, 7); c.stroke(); c.strokeStyle = '#6fffa0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y - 6, 20, -Math.PI / 2, -Math.PI / 2 + u * 6.283); c.stroke(); }
+      if (fx.scanT > 0) { const u = 1 - fx.scanT / 1.2, rad = fx.scanR * TS * u; c.strokeStyle = 'rgba(111,255,160,' + (0.8 * (1 - u)) + ')'; c.lineWidth = 3; c.beginPath(); c.arc(fx.scanX * TS, fx.scanY * TS, rad, 0, 7); c.stroke(); c.strokeStyle = 'rgba(111,255,160,' + (0.35 * (1 - u)) + ')'; c.beginPath(); c.arc(fx.scanX * TS, fx.scanY * TS, rad * 0.8, 0, 7); c.stroke(); }
+      if (E.flash && !shelIn && !R.occ) { const a = [-Math.PI / 2, 0, Math.PI / 2, Math.PI][player.dir], x = player.x * TS, y = player.y * TS - 20, g = c.createRadialGradient(x, y, 4, x + Math.cos(a) * 170, y + Math.sin(a) * 170, 190); g.addColorStop(0, 'rgba(255,244,200,.34)'); g.addColorStop(1, 'rgba(255,244,200,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(x, y); c.arc(x, y, 230, a - 0.42, a + 0.42); c.closePath(); c.fill(); }
+      if (shelIn) { const q = Field.G.shel.find((z) => z.id === shelIn); if (q) { c.fillStyle = 'rgba(111,255,160,.16)'; c.beginPath(); c.arc(q.x * TS, q.y * TS, 64, 0, 7); c.fill(); } }
+    } });
+  }
+  /** Capas de pantalla del exterior: noche, polvo, radiación, destello de cámara y flecha hacia la base. */
+  function exOverlay(c, S, o, cw, ch, zoom, dpr, t, rm) {
+    const E = S && S.ex; if (!E || !E.suit.on || zone() !== 'outside') return;
+    const ev = Ex.env(S, player.x, player.y), px = (player.x * TS - cam.x) * zoom, py = (player.y * TS - cam.y) * zoom, u = TS * zoom;
+    const nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.42 : 0.62), lr = (E.flash ? 13 : E.rover.lights && E.rover.occ ? 12 : 7) * u;
+    if (nightF > 0.04 && !shelIn) { const g = c.createRadialGradient(px, py, lr * 0.3, px, py, lr * 1.5); g.addColorStop(0, 'rgba(2,4,14,0)'); g.addColorStop(1, 'rgba(2,4,14,' + nightF + ')'); c.fillStyle = g; c.fillRect(0, 0, cw, ch); }
+    if (ev.dust) { const vr = (ev.vis + (E.flash ? 3 : 0)) * u, g = c.createRadialGradient(px, py, vr * 0.35, px, py, vr * 1.25); g.addColorStop(0, 'rgba(180,105,60,0.12)'); g.addColorStop(1, 'rgba(176,100,56,.93)'); c.fillStyle = g; c.fillRect(0, 0, cw, ch); }
+    if (ev.burst > 0.5 && !shelIn) { c.fillStyle = 'rgba(255,170,40,' + (rm ? 0.1 : 0.07 + 0.07 * Math.abs(Math.sin(t * 6))) + ')'; c.fillRect(0, 0, cw, ch); if (!rm) { c.fillStyle = 'rgba(255,240,180,.8)'; for (let i = 0; i < 14; i++) c.fillRect(((i * 197 + t * 700) % cw), ((i * 89 + t * 330) % ch), 2 * dpr, 2 * dpr); } }
+    if (E.suit.o2 < 12 || E.suit.en < 12) { c.strokeStyle = 'rgba(255,60,60,' + (rm ? 0.5 : 0.25 + 0.3 * Math.abs(Math.sin(t * 5))) + ')'; c.lineWidth = 14 * dpr; c.strokeRect(0, 0, cw, ch); }
+    if (fx.photoT > 0) { c.fillStyle = 'rgba(255,255,255,' + Math.min(0.85, fx.photoT * 3) + ')'; c.fillRect(0, 0, cw, ch); }
+    // flecha hacia la base cuando está lejos o fuera de pantalla
+    const bx = (Field.PAD[0] * TS - cam.x) * zoom, by = (Field.PAD[1] * TS - cam.y) * zoom, dist = Math.hypot(Field.PAD[0] - player.x, Field.PAD[1] - player.y);
+    if (dist > 14 && (bx < 0 || by < 0 || bx > cw || by > ch)) {
+      const ang = Math.atan2(by - ch / 2, bx - cw / 2), m = 74 * dpr, ax = clampN(cw / 2 + Math.cos(ang) * cw, m, cw - m), ay0 = clampN(ch / 2 + Math.sin(ang) * ch, m, ch - m), ay = ax > cw - 250 * dpr && ay0 < 330 * dpr ? 330 * dpr : ay0;
+      c.save(); c.translate(ax, ay); c.rotate(ang); c.fillStyle = '#38d6ff'; c.strokeStyle = '#000'; c.lineWidth = 2 * dpr; c.beginPath(); c.moveTo(20 * dpr, 0); c.lineTo(-10 * dpr, -13 * dpr); c.lineTo(-4 * dpr, 0); c.lineTo(-10 * dpr, 13 * dpr); c.closePath(); c.fill(); c.stroke(); c.restore();
+      c.font = 'bold ' + 12 * dpr + 'px system-ui'; c.textAlign = 'center'; c.fillStyle = '#e8f6ff'; c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 3 * dpr; const lb = (LANG === 'es' ? 'Base ' : 'Base ') + Math.round(dist * 25) + ' m'; c.strokeText(lb, ax, ay + 26 * dpr); c.fillText(lb, ax, ay + 26 * dpr);
+    }
+  }
+  /** Radar de la expedición: terreno, base, rutas, puntos descubiertos, repetidores, refugios, rover y jugador. */
+  function fieldRadar(c, S, target) {
+    const E = S && S.ex; if (!E || !E.suit.on || zone() !== 'outside' || !Field.G) return false;
+    const w = c.canvas.width, h = c.canvas.height, B = Field.B, bw = B.x1 - B.x0, bh = B.y1 - B.y0, s = Math.min(w / bw, h / bh), ox = (w - bw * s) / 2 - B.x0 * s, oy = (h - bh * s) / 2 - B.y0 * s, X = (x) => ox + x * s, Y = (y) => oy + y * s;
+    const mars = S.scen === 'mars'; c.clearRect(0, 0, w, h);
+    c.fillStyle = mars ? '#5a2e18' : '#3a3b42'; c.fillRect(X(B.x0), Y(B.y0), bw * s, bh * s);
+    for (const z of Field.G.zones) { c.fillStyle = z.k === 'deep' ? 'rgba(0,0,0,.28)' : z.k === 'sand' ? 'rgba(230,170,110,.25)' : 'rgba(40,10,0,.3)'; c.beginPath(); c.ellipse(X(z.x), Y(z.y), z.rx * s, z.ry * s, 0, 0, 7); c.fill(); }
+    for (const k of Field.G.craters) { c.strokeStyle = k.big ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.18)'; c.lineWidth = 1.5; c.beginPath(); c.arc(X(k.x), Y(k.y), k.r * s, 0, 7); c.stroke(); }
+    c.strokeStyle = 'rgba(255,214,120,.55)'; c.lineWidth = 2; c.setLineDash([5, 4]); for (const tr0 of Field.TRAILS) { c.beginPath(); tr0.forEach((q, i) => (i ? c.lineTo(X(q[0]), Y(q[1])) : c.moveTo(X(q[0]), Y(q[1])))); c.stroke(); } c.setLineDash([]);
+    if (mapCv) { c.globalAlpha = 0.95; c.drawImage(mapCv, X(0), Y(0), W * s, H * s); c.globalAlpha = 1; }
+    for (const p of Field.G.pois) { const known = E.disc[p.id] || E.visited[p.id] || Math.hypot(player.x - p.x, player.y - p.y) < 45; if (!known) continue; c.fillStyle = E.visited[p.id] ? '#6fffa0' : '#ffd36b'; c.save(); c.translate(X(p.x), Y(p.y)); c.rotate(0.785); c.fillRect(-4, -4, 8, 8); c.restore(); }
+    for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; c.fillStyle = '#9dffe3'; c.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
+    for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
+    for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
+    const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
+    const R = E.rover; c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(X(player.x), Y(player.y), 4.5, 0, 7); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
+    return true;
+  }
 
   /* ---------- Render ---------- */
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -3779,6 +4702,7 @@ const World = (function () {
       case 'o2gen': c.fillStyle = '#2e5276'; rr(c, x, y, w, h, 8); c.fill(); c.fillStyle = '#bfe9ff'; c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillText('O₂', x + w / 2, y + h / 2 + 8); break;
       case 'reactor': c.fillStyle = '#2b1a10'; c.beginPath(); c.arc(x + w / 2, y + h / 2, w / 2, 0, 7); c.fill(); c.strokeStyle = '#ff9a3d'; c.lineWidth = 4; c.stroke(); break;
       case 'battery': c.fillStyle = '#28331f'; rr(c, x + 2, y + 2, w - 4, h - 4, 6); c.fill(); c.strokeStyle = '#8fe36b'; c.lineWidth = 2; c.stroke(); break;
+      case 'suitrack': c.fillStyle = '#232b45'; rr(c, x + 1, y + 2, w - 2, h - 4, 5); c.fill(); c.strokeStyle = '#4f6db8'; c.lineWidth = 1.5; c.stroke(); for (let k = 0; k < 3; k++) { const cx = x + (k + 0.5) * TS; c.fillStyle = '#e9edf7'; rr(c, cx - 9, y + 12, 18, 16, 5); c.fill(); c.fillStyle = '#c2c9d8'; c.beginPath(); c.arc(cx, y + 9, 7, 0, 7); c.fill(); c.fillStyle = '#d9a72b'; c.beginPath(); c.ellipse(cx, y + 9, 5, 4, 0, 0, 7); c.fill(); c.fillStyle = '#6fffa0'; c.fillRect(cx - 3, y + 20, 6, 2); } break;
       case 'rover': c.fillStyle = '#20242d'; c.fillRect(x + 4, y + 4, 22, h - 8); c.fillRect(x + w - 26, y + 4, 22, h - 8); c.fillStyle = '#e8ebf2'; rr(c, x + 14, y + 18, w - 28, h - 36, 12); c.fill(); c.fillStyle = '#38d6ff'; rr(c, x + w - 60, y + 30, 34, h - 60, 8); c.fill(); break;
       case 'tools': c.fillStyle = '#3a3f4f'; c.fillRect(x, y + 4, w, h - 8); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(x + 12 + i * 20, y + 10); c.lineTo(x + 12 + i * 20, y + h - 10); c.stroke(); } break;
       case 'shieldwall': c.fillStyle = '#5d6470'; c.fillRect(x, y, w, h); c.fillStyle = '#ffc24a'; c.fillRect(x, y + h / 2 - 3, w, 6); break;
@@ -3807,9 +4731,9 @@ const World = (function () {
     if (b.task === 'shelter') return 'idle';
     return b.work ? 'interact' : 'idle';
   }
-  function drawChar(c, role, x, y, dir, t, pose, moving, label) {
+  function drawChar(c, role, x, y, dir, t, pose, moving, label, eva) {
     const sc = 0.82;
-    Chars.draw(c, role, x, y, { dir, t, pose, moving, scale: sc, rm: reduced });
+    Chars.draw(c, role, x, y, { dir, t, pose, moving, scale: sc, rm: reduced, eva });
     if (label) {
       c.font = 'bold 11px system-ui'; c.textAlign = 'center';
       const tw = c.measureText(label).width + 10, ly = y - Chars.HEIGHT * sc - 14;
@@ -3829,16 +4753,21 @@ const World = (function () {
     const cw = ctx.canvas.width, ch = ctx.canvas.height, dpr = o.dpr || 1;
     const cssW = cw / dpr, cssH = ch / dpr;
     const across = clampN(cssW / 24, 14, 54); // escritorio: cámara amplia; móvil: algo más cercana para leer a los personajes
-    let zoom = clampN(cssW / (across * TS), 0.3, 1.5) * zoomMul * dpr;
+    const driving = !!(curS && curS.ex && curS.ex.rover.occ); camDrive += ((driving ? 1 : 0) - camDrive) * 0.05;
+    let zoom = clampN(cssW / (across * TS), 0.3, 1.5) * zoomMul * dpr * (1 - 0.24 * camDrive);
     if (fitAll) zoom = Math.min(cw / (W * TS), ch / (H * TS));
     cam.z = zoom;
     const vw = cw / zoom, vh = ch / zoom;
     if (fitAll) { cam.x = (W * TS - vw) / 2; cam.y = (H * TS - vh) / 2; }
-    else { cam.x = clampN(player.x * TS - vw / 2, -TS * 2, Math.max(-TS * 2, W * TS - vw + TS * 2)); cam.y = clampN(player.y * TS - vh / 2, -TS * 2, Math.max(-TS * 2, H * TS - vh + TS * 2)); }
+    else {
+      const R2 = driving ? curS.ex.rover : null, tx = player.x + (R2 ? Math.cos(R2.a) * R2.v * 0.3 : 0), ty = player.y + (R2 ? Math.sin(R2.a) * R2.v * 0.3 : 0), BB = Field.B;
+      cam.x = clampN(tx * TS - vw / 2, BB.x0 * TS - TS * 2, Math.max(BB.x0 * TS - TS * 2, BB.x1 * TS - vw + TS * 2)); cam.y = clampN(ty * TS - vh / 2, BB.y0 * TS - TS * 2, Math.max(BB.y0 * TS - TS * 2, BB.y1 * TS - vh + TS * 2));
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#02040c'; ctx.fillRect(0, 0, cw, ch);
     ctx.setTransform(zoom, 0, 0, zoom, -cam.x * zoom, -cam.y * zoom);
     ctx.imageSmoothingEnabled = false;
+    Field.drawTerrain(ctx, cam.x, cam.y, vw, vh);
     ctx.drawImage(staticCv, 0, 0);
     const t = lastT, rm = reduced;
     // Puertas (hojas que se deslizan; horizontales y verticales)
@@ -3854,7 +4783,7 @@ const World = (function () {
     }
     // Estado de eventos
     const incA = (ty) => !!S && S.inc.some((i) => !i.res && i.type === ty && S.t >= i.from);
-    const stormD = incA('dust_storm'), stormR = incA('solar_storm'), pDrop = incA('power_drop');
+    const stormD = incA('dust_storm') || !!(S && S.ex && Ex.condOn(S) && S.ex.cond.k === 'dust'), stormR = incA('solar_storm') || !!(S && S.ex && Ex.condOn(S) && S.ex.cond.k === 'rad'), pDrop = incA('power_drop');
     const dim = S ? Math.max(pDrop ? 0.3 : 0, S.d && S.d.power < 0.12 ? 0.4 : 0) : 0;
     if (dim > 0) { // interrupción eléctrica: la base se oscurece y parpadea; las consolas siguen encendidas
       const fl = rm ? 1 : 0.8 + 0.2 * Math.sin(t * 17) * Math.sin(t * 5.3);
@@ -3928,14 +4857,15 @@ const World = (function () {
       if (!rm && Math.random() < 0.6) spawnP(vx / TS - Math.cos(ang) * 1.2, vy / TS + 0.5, scen === 'mars' ? 'rgba(216,150,98,.5)' : 'rgba(190,190,200,.45)', 'steam');
       if (fxVeh.t > 11) fxVeh = null;
     }
-    // Rover fuera
     // Muestras
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
     // Entidades (orden por y)
     const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
     const ents = bots.map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
     plantEnts.forEach((pe) => ents.push(pe));
-    ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
+    const eva = !!(S && S.ex && S.ex.suit.on), inRov = !!(S && S.ex && S.ex.rover.occ) && !boardAnim, cargo = !!(S && S.ex && S.ex.hand.length);
+    if (!inRov && !shelIn) ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? (cargo ? 'carry' : 'walk') : (cargo && !player.act && pPose === 'idle' ? 'carry' : pPose), player.moving, o.youLabel || '', eva) });
+    exRender(ctx, S, ents, t, rm, vw, vh, o);
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     // Secciones bloqueadas: velo con la forma real de cada sala
     if (S && S.camp) for (const k in MAIN) if (locked(k)) {
@@ -3964,6 +4894,7 @@ const World = (function () {
       if (!rm) { ctx.strokeStyle = 'rgba(240,190,140,' + 0.35 * k + ')'; ctx.lineWidth = 2 * dpr; for (let i = 0; i < (stormD ? 70 : 12); i++) { const sx = ((i * 173.7 + t * (stormD ? 900 : 150)) % (cw + 200)) - 100, sy = (i * 97.3 + Math.sin(t + i) * 30) % ch; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - (stormD ? 60 : 20) * dpr, sy + 6 * dpr); ctx.stroke(); } }
     }
     if (!rm && S) { ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 26; i++) ctx.fillRect(((i * 131 + t * 6 * (1 + (i % 3))) % cw), ((i * 89 + t * 3) % ch), 1.6 * dpr, 1.6 * dpr); }
+    exOverlay(ctx, S, o, cw, ch, zoom, dpr, t, rm);
     // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
     const tgt = marker ? marker.p : o.target;
     if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
@@ -3982,6 +4913,7 @@ const World = (function () {
 
 
   function minimap(c, S, target) {
+    if (fieldRadar(c, S, target)) return;
     const w = c.canvas.width, h = c.canvas.height, s = Math.min(w / W, h / H);
     c.clearRect(0, 0, w, h);
     const ox = (w - W * s) / 2, oy = (h - H * s) / 2;
@@ -4013,24 +4945,24 @@ const World = (function () {
     return p ? [[player.x, player.y]].concat(p.slice(1)) : null;
   }
   function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, room: roomName(b.x, b.y) })); }
-  function state() { return { role: player.role, px: player.x, py: player.y, samples: samples.map((s) => s.taken), lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
+  function state() { return { role: player.role, px: player.x, py: player.y, shel: shelIn, lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
     if (Number.isFinite(o.px) && Number.isFinite(o.py) && canStand(o.px, o.py, 0.3)) { player.x = o.px; player.y = o.py; }
-    if (Array.isArray(o.samples)) o.samples.forEach((t, i) => { if (samples[i]) samples[i].taken = !!t; });
+    shelIn = o.shel || null;
     airlock.st = o.lock === 'out' ? 'out' : 'in';
     if (o.role && o.role !== 'commander') setPlayerRole(o.role);
     player.act = null;
   }
-  function respawnSamples() { samples.forEach((s) => (s.taken = false)); }
+  function respawnSamples() { if (curS && curS.ex) { curS.ex.taken = {}; curS.ex.rev = {}; } }
   function setReduced(v) { reduced = !!v; }
   function invalidate() { staticCv = null; }
   function zoom(f) { zoomMul = clampN(zoomMul * f, 0.45, 2.4); fitAll = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
-    _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return samples; }, get scenery() { return scenery; }, get furn() { return furn; } } };
+    _test: { get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
 /* =====================================================================
    MINIGAMES — 6 minijuegos 2D originales (Canvas). Cada definición:
@@ -4440,6 +5372,7 @@ const Game = (function () {
     if (k === 'job.recycle') return [es ? 'Residuos reciclados' : 'Waste recycled', es ? '+5 kg de materiales' : '+5 kg materials'];
     if (k === 'cm.sent') return [es ? 'Mensaje enviado' : 'Message sent', (es ? 'Tardará ' : 'Takes ') + fmt(p.ow) + (es ? ' h en llegar a la Tierra (simulado).' : ' h to reach Earth (simulated).')];
     if (k === 'cm.recv') return [es ? 'Respuesta de la Tierra' : 'Reply from Earth', (es ? 'Ida y vuelta: ' : 'Round trip: ') + fmt(p.rt) + ' h'];
+    if (k.startsWith('ex.')) return exLogText(e);
     if (k === 'm.start') return [(es ? 'Misión iniciada: ' : 'Mission started: ') + tr(DATA.MIS[p.id].t), ''];
     if (k === 'm.done') return [(es ? 'Misión completada: ' : 'Mission completed: ') + tr(DATA.MIS[p.id].t), '★'.repeat(p.stars)];
     if (k === 'm.fail') return [(es ? 'Misión no superada: ' : 'Mission not passed: ') + tr(DATA.MIS[p.id].t), tr(DATA.FAILWHY[p.why])];
@@ -4552,6 +5485,7 @@ const Game = (function () {
   function nextHint() {
     if (!S || S.ended) return null;
     const es = LANG === 'es';
+    const xh = S.ex && S.ex.suit.on ? exHint() : null; if (xh) return xh;
     const room = (k) => tr(DATA.ROOMS[k]);
     const storm = S.inc.find((i) => i.type === 'solar_storm' && !i.res);
     if (storm && !S.proto) return { t: es ? '¡Tormenta solar! Activa el protocolo en «Blindaje» (bahía del rover).' : 'Solar storm! Turn on the protocol at "Shielding" (rover bay).', p: World.consolePos('shield') };
@@ -4601,7 +5535,8 @@ const Game = (function () {
     let x = 0, y = 0;
     if (keys.ArrowLeft || keys.a || keys.A) x -= 1; if (keys.ArrowRight || keys.d || keys.D) x += 1;
     if (keys.ArrowUp || keys.w || keys.W) y -= 1; if (keys.ArrowDown || keys.s || keys.S) y += 1;
-    return { x: x + joy.x, y: y + joy.y };
+    const m = Math.hypot(joy.x, joy.y);
+    return { x: x + joy.x, y: y + joy.y, thr: -y, str: x, stick: m > 0.18 ? { x: joy.x, y: joy.y, m } : null };
   }
   window.addEventListener('keydown', (e) => {
     Sfx.init();
@@ -4622,6 +5557,11 @@ const Game = (function () {
     if (e.key === '+' || e.key === '=') World.zoom(1.2);
     if (e.key === '-' || e.key === '_') World.zoom(1 / 1.2);
     if (e.key === 'z' || e.key === 'Z') World.overview();
+    if (e.key === 'f' || e.key === 'F') useTool();
+    if (e.key === 'l' || e.key === 'L') useTool('light');
+    if (e.key === 'g' || e.key === 'G') { if (S && S.ex && S.ex.suit.on) storagePanel(); }
+    if (e.key === 'o' || e.key === 'O') exMissionsPanel();
+    if (e.key >= '1' && e.key <= '6' && S && S.ex && S.ex.suit.on) selectTool(Ex.TOOLS[+e.key - 1]);
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -4633,6 +5573,7 @@ const Game = (function () {
     const end = () => { joy.id = null; joy.x = 0; joy.y = 0; knob.style.transform = ''; };
     j.addEventListener('pointerup', end); j.addEventListener('pointercancel', end);
     $('#btnE').addEventListener('click', () => interact());
+    $('#btnF').addEventListener('click', () => useTool());
     window.addEventListener('touchstart', () => { if (!isTouch) { isTouch = true; if (running) $('#touch').classList.remove('hidden'); } }, { passive: true });
   }
 
@@ -4647,6 +5588,7 @@ const Game = (function () {
       if (live) {
         World.update(dt, S, inputVec());
         Sim.setPlayerZone(S, World.zone());
+        exFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
@@ -4683,6 +5625,7 @@ const Game = (function () {
       Icons.setText($('#actBtn'), '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : ''));
       p.classList.remove('hidden'); return;
     }
+    if (near && near.id.startsWith('x:')) { Icons.setText($('#actBtn'), (isTouch ? '' : '[E] ') + near.icon + ' ' + exPrompt(near)); p.classList.remove('hidden'); return; }
     if (near) {
       const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;
       const name = near.id === 'sample' ? _('collect') : near.id === 'plant' ? (np ? tr(Flora.SPECIES[np.sp].name) + ' · ' + Flora.STAGES[LANG][Flora.stage(np.prog)] : (LANG === 'es' ? 'Hueco para sembrar' : 'Empty slot')) : consoleName(near.id);
@@ -4693,7 +5636,7 @@ const Game = (function () {
   function interact() {
     if (!running || modalOpen()) return;
     if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
-    Sfx.play('click'); openConsole(near);
+    Sfx.play('click'); if (near.id.startsWith('x:')) { exInteract(near); return; } openConsole(near);
   }
   function togglePause() { paused = !paused; updateHud(); if (paused) pauseMenu(); }
   function toggleMute() { settings.muted = !settings.muted; applySettings(); }
@@ -4725,7 +5668,7 @@ const Game = (function () {
     clearLayer(); running = true; paused = false;
     $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
-    buildHud(); updateHud(); saveRun();
+    buildHud(); updateHud(); exAttach(); saveRun();
   }
   function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
@@ -4831,7 +5774,7 @@ const Game = (function () {
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
-    lock: { es: 'Esclusa', en: 'Airlock' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
+    lock: { es: 'Esclusa', en: 'Airlock' }, suit: { es: 'Traje y expedición', en: 'Suit & expedition' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
   const consoleName = (id) => tr(CNAME[id]) || id;
   function openConsole(c) {
@@ -4840,6 +5783,7 @@ const Game = (function () {
     }
     if (c.id === 'plant') return plantCard(c.bed, c.slot);
     if (c.id === 'wardrobe') return wardrobePanel();
+    if (c.id === 'suit') return suitPanel();
     const ROOM_OF = { cmd: 'bridge', comms: 'bridge', med: 'life', gh: 'gh', reactor: 'reactor', solar: 'reactor', balance: 'reactor', water: 'water', o2: 'water', shield: 'rad', rover: 'rad', isru: 'rad', lab: 'lab', spec: 'lab', log: 'lab' };
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
@@ -5211,7 +6155,7 @@ const Game = (function () {
       h('p', null, LANG === 'es' ? 'La esclusa nunca abre las dos puertas a la vez: así el aire de la base no se escapa. Se despresuriza para salir y se presuriza para entrar.' : 'The airlock never opens both doors at once, so base air does not escape. It depressurizes to go out and pressurizes to come in.'),
       h('p', null, (LANG === 'es' ? 'Estado: ' : 'State: ') + (a.st === 'in' ? (LANG === 'es' ? 'conectada al interior' : 'connected inside') : a.st === 'out' ? (LANG === 'es' ? 'conectada al exterior' : 'connected outside') : (LANG === 'es' ? 'ciclando…' : 'cycling…'))),
       S.mods && S.mods.spe > 0 ? h('p', { class: 'tag crit' }, LANG === 'es' ? '⛔ Tormenta solar: no salgas.' : '⛔ Solar storm: do not go out.') : null,
-      btn('🔄 ' + (LANG === 'es' ? 'Ciclar esclusa' : 'Cycle airlock'), () => { World.cycleLock(); pop(); }, 'primary'))), { narrow: true });
+      btn('🔄 ' + (LANG === 'es' ? 'Ciclar esclusa' : 'Cycle airlock'), () => { const r = World.cycleLock(); pop(); if (r === 'nosuit') { toast(LANG === 'es' ? 'Necesitas el traje para salir' : 'You need the suit to go out', LANG === 'es' ? 'Equípalo en el vestuario de la bahía.' : 'Put it on at the bay locker.', 'warn'); suitPanel(); } }, 'primary'))), { narrow: true });
   }
   function labPanel() {
     livePanel(() => panel('🔬 ' + consoleName('lab'), h('div', null, incHere(['lab']),
@@ -5235,6 +6179,7 @@ const Game = (function () {
   function researchPanel() {
     push(panel('📚 ' + consoleName('log'), h('div', null,
       h('table', null, h('tbody', null, statRow(LANG === 'es' ? 'Muestras recogidas' : 'Samples collected', S.st.samplesTot), statRow(LANG === 'es' ? 'Puntos de ciencia' : 'Science points', S.science), statRow(LANG === 'es' ? 'Cosechas' : 'Harvests', Object.values(S.st.crops).reduce((a, b) => a + b, 0)))),
+      exReportCard(),
       h('div', { class: 'card' }, h('h3', null, 'NASA OSDR'), h('p', { class: 'small' }, LANG === 'es' ? 'El Open Science Data Repository guarda datos de experimentos biológicos en el espacio (plantas, microbios, animales). Sirve para investigar, no para vigilar la salud de una tripulación en tiempo real.' : 'The Open Science Data Repository stores data from biology experiments in space (plants, microbes, animals). It is for research, not real-time crew health monitoring.'), h('a', { href: 'https://osdr.nasa.gov/bio/repo/', target: '_blank', rel: 'noopener' }, 'osdr.nasa.gov')),
       h('div', { class: 'card' }, h('h3', null, LANG === 'es' ? 'Logros' : 'Achievements'), h('ul', null, Object.keys(DATA.ACH).map((k) => h('li', null, (ach[k] ? '🏅 ' : '⬜ ') + tr(DATA.ACH[k]))))))));
   }
@@ -5319,6 +6264,7 @@ const Game = (function () {
   /** Convierte entradas del registro del motor en llamadas de NPC (o devuelve false si no corresponde). */
   function logToRadio(e) {
     const k = e.k, p = e.p || {}, es = LANG === 'es';
+    if (k.startsWith('ex.')) return exLogToRadio(e);
     if (k.startsWith('ev.') || k === 'esc') {
       const ty = k === 'esc' ? p.type : k.slice(3), T = DATA.EVT[ty]; if (!T) return false;
       const inc = S.inc.find((i) => i.id === p.id) || {};
@@ -5855,7 +6801,7 @@ const Game = (function () {
   const FOODN = { romaine: { es: 'lechuga romana', en: 'romaine lettuce' }, mizuna: { es: 'mizuna', en: 'mizuna' }, radish: { es: 'rábano', en: 'radish' }, chili: { es: 'chile', en: 'chili' }, zinnia: { es: 'flor comestible', en: 'edible flower' } };
   const CATN = { regolith: { es: 'Regolito (polvo y suelo)', en: 'Regolith (dust and soil)' }, rock: { es: 'Roca', en: 'Rock' }, ice: { es: 'Hielo', en: 'Ice' } };
   const STN = { new: { es: 'Recibida', en: 'Received' }, stored: { es: 'Conservada', en: 'Preserved' }, degraded: { es: 'Deteriorada', en: 'Degraded' } };
-  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
+  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, field: { es: 'Expedición', en: 'Expedition' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
 
   function foodModel() {
     const df = Sim.DIFFS[S.diff], per = Sim.P.FOOD_PER_PERSON_DAY * df.cons * (Sim.RATION[S.pant.ration] || 1);
@@ -5922,12 +6868,12 @@ const Game = (function () {
   function samplePanel() {
     const es = LANG === 'es', adv = MODE === 'adv';
     livePanel(() => {
-      const L = S.sampleList, open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
+      const L = S.sampleList.filter(Ex.isBase), away = S.sampleList.filter((e) => !Ex.isBase(e)), open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
       const used = L.filter((e) => e.slot && e.an !== 'done').length, left = Sim.SAMPLE_SLOTS - used;
       const row = (e) => {
         const fresh = e.state === 'new' || e.state === 'degraded';
         return h('div', { class: 'card', style: e.state === 'degraded' ? { borderColor: 'var(--warning)' } : {} },
-          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
+          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), e.name ? h('span', null, tr(e.name)) : null, tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
             e.an === 'inlab' ? tag('🔬 ' + (es ? 'En el laboratorio' : 'In the lab'), 'ok') : null),
           h('p', { class: 'small' }, (es ? 'Origen: ' : 'Origin: ') + tr(ORIGN[e.origin] || ORIGN.rover) + ' · ' + (es ? 'recogida: ' : 'collected: ') + dayHour(e.t) + ' · ' + (es ? 'categoría: ' : 'category: ') + (e.label ? tr(CATN[e.label]) : (es ? 'sin clasificar' : 'not classified')) + ' · ' + (es ? 'ubicación: ' : 'location: ') + (e.slot ? (es ? 'estante ' : 'shelf ') + e.slot : '—')),
           fresh && e.an === 'pending' ? h('div', { class: 'row' }, h('span', { class: 'small' }, es ? 'Clasifica y guarda:' : 'Classify and store:'),
@@ -5937,6 +6883,7 @@ const Game = (function () {
       };
       return panel('🧪 ' + consoleName('sampler'), h('div', null,
         h('p', { class: 'small' }, (es ? 'Huecos libres: ' : 'Free slots: ') + left + '/' + Sim.SAMPLE_SLOTS + ' · ' + (es ? 'por analizar: ' : 'to analyze: ') + S.samples + ' · ' + (es ? 'análisis completados: ' : 'analyses done: ') + done.length),
+        away.length ? h('p', { class: 'tag info' }, '🧪 ' + away.length + (es ? ' muestras siguen en el exterior (mano o rover): descárgalas en la base.' : ' samples are still outside (hand or rover): unload them at the base.')) : null,
         open.length ? open.map(row) : h('p', { class: 'muted' }, es ? 'No hay muestras. Recógelas con el rover o saliendo al exterior.' : 'No samples yet. Collect them with the rover or by going outside.'),
         done.length ? h('div', null, h('h3', null, es ? 'Análisis registrados' : 'Recorded analyses'),
           h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'ID'), h('th', null, es ? 'Categoría' : 'Category'), h('th', null, es ? 'Conservación' : 'Condition'), h('th', null, es ? 'Ciencia' : 'Science'))),
@@ -6061,6 +7008,311 @@ const Game = (function () {
     const refreshAudio = () => { if (s.isConnected) refresh(s, build); };
     Voice.onChange(() => { if (s.isConnected && !s.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) refreshAudio(); });
   }
+  /* =====================================================================
+     EXPEDICIÓN EXTERIOR — interfaz: preparación y traje, HUD exterior,
+     herramientas, tarjetas de muestra, almacenamiento del rover,
+     misiones y avisos por radio. La lógica está en Ex; el movimiento en
+     World/Rover. Todo botón produce un resultado real en el juego.
+     ===================================================================== */
+  const XT = (es, en) => (LANG === 'es' ? es : en);
+  const xt = (o) => (o ? (LANG === 'es' ? o.es : o.en) : '');
+  const TOOLN = {
+    collector: { i: '🧺', n: { es: 'Recolector', en: 'Sampler' }, d: { es: 'Recoge la muestra que tienes delante (también con E).', en: 'Collects the sample in front of you (also with E).' } },
+    container: { i: '🧊', n: { es: 'Contenedor', en: 'Container' }, d: { es: 'Guarda 2 muestras selladas en la mano; se vacían en el rover.', en: 'Holds 2 sealed samples; empty it into the rover.' } },
+    scanner: { i: '🔍', n: { es: 'Escáner geológico', en: 'Geological scanner' }, d: { es: 'Revela muestras ocultas y puntos de interés cercanos (gasta energía).', en: 'Reveals hidden samples and nearby sites (uses power).' } },
+    camera: { i: '🎯', n: { es: 'Cámara', en: 'Camera' }, d: { es: 'Fotografía un punto de interés: da ciencia y completa informes.', en: 'Photographs a site: gives science and completes reports.' } },
+    sensor: { i: '🌡', n: { es: 'Sensor ambiental', en: 'Environment sensor' }, d: { es: 'Mide temperatura, radiación, viento, suelo y señal.', en: 'Measures temperature, radiation, wind, ground and signal.' } },
+    light: { i: '☀', n: { es: 'Linterna', en: 'Flashlight' }, d: { es: 'Ilumina de noche y con polvo (gasta energía).', en: 'Lights up night and dust (uses power).' } }
+  };
+  const ROLEB = {
+    commander: { es: 'Comandante: la señal de radio llega un 10 % más lejos.', en: 'Commander: radio signal reaches 10% farther.' },
+    engineer: { es: 'Ingeniera Ana: el rover gasta un 25 % menos de batería y repara el traje con menos material.', en: 'Engineer Ana: the rover uses 25% less battery and repairs the suit with less material.' },
+    scientist: { es: 'Científico Leo: el escáner llega más lejos (32 casillas) y recoge muestras más rápido.', en: 'Scientist Leo: the scanner reaches farther (32 tiles) and samples faster.' },
+    medic: { es: 'Médica Mei: recibe un 20 % menos de radiación y gasta un 10 % menos de oxígeno.', en: 'Medic Mei: takes 20% less radiation and uses 10% less oxygen.' },
+    agri: { es: 'Agrónomo Bruno: recoge muestras de suelo (regolito y sedimentos) más rápido.', en: 'Agronomist Bruno: collects soil samples (regolith and sediment) faster.' }
+  };
+  const ex = () => Ex.ensure(S);
+  const inBaseNow = () => World.zone() !== 'outside';
+  const nearPad = (d) => Math.hypot(World.player.x - Field.PAD[0], World.player.y - Field.PAD[1]) < d;
+  const colTime = (s) => (S.playerRole === 'scientist' ? 0.9 : S.playerRole === 'agri' && (s.kind === 'regolith' || s.kind === 'sediment') ? 0.9 : 1.5);
+  const starsOf = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const RAD_MSV = (v) => fmt(v, 2) + ' mSv';
+
+  /* ---------- Avisos y radio ---------- */
+  const AL = {
+    'o2.low': { sev: 'warn', who: 'medic', t: ['Oxígeno al 30 %', 'Oxygen at 30%'], d: ['Te queda poco aire. Planea el regreso.', 'You are running low on air. Plan your way back.'], rec: 1 },
+    'o2.crit': { sev: 'crit', who: 'medic', t: ['¡Oxígeno crítico!', 'Oxygen critical!'], d: ['Vuelve a la base ahora o usa el depósito de un refugio.', 'Head back now or use a shelter cache.'], rec: 1 },
+    'en.low': { sev: 'warn', who: 'engineer', t: ['Energía del traje baja', 'Suit power low'], d: ['Apaga la linterna y reduce el escáner. Regresa pronto.', 'Turn off the flashlight and limit the scanner. Return soon.'], rec: 1 },
+    'en.crit': { sev: 'crit', who: 'engineer', t: ['¡Energía crítica!', 'Power critical!'], d: ['Sin energía el traje no controla la temperatura. Vuelve ya.', 'Without power the suit cannot control temperature. Return now.'], rec: 1 },
+    'temp.hi': { sev: 'warn', who: 'medic', t: ['Temperatura alta en el traje', 'High suit temperature'], d: ['Busca sombra o un refugio para que el traje se enfríe.', 'Find shade or a shelter so the suit cools.'] },
+    'temp.lo': { sev: 'warn', who: 'medic', t: ['Temperatura baja en el traje', 'Low suit temperature'], d: ['El traje pierde calor: revisa su energía y regresa.', 'The suit is losing heat: check its power and return.'] },
+    'rad.hi': { sev: 'warn', who: 'medic', t: ['Radiación acumulada alta', 'High accumulated radiation'], d: ['Has recibido más del 60 % de la dosis de esta salida.', 'You have received over 60% of this outing’s dose.'], rec: 1 },
+    'rad.crit': { sev: 'crit', who: 'medic', t: ['¡Dosis casi en el límite!', 'Dose almost at the limit!'], d: ['Entra en un refugio o regresa: no sigas expuesto.', 'Get into a shelter or return: do not stay exposed.'], rec: 1 },
+    'int.low': { sev: 'warn', who: 'engineer', t: ['Traje dañado', 'Suit damaged'], d: ['La integridad bajó del 50 %: pierde aire y protege menos.', 'Integrity fell below 50%: it leaks air and shields less.'], rec: 1 },
+    'batt.low': { sev: 'warn', who: 'engineer', t: ['Batería del rover baja', 'Rover battery low'], d: ['Queda poca batería. El rover irá más despacio.', 'Little battery left. The rover will slow down.'], rec: 1 },
+    'sig.lost': { sev: 'warn', who: 'engineer', t: ['Sin señal con la base', 'No signal with the base'], d: ['Activa un repetidor o acércate a la base para hablar con ellos.', 'Activate a relay or move closer to the base to talk to them.'] },
+    'sig.low': { sev: 'info', who: 'engineer', t: ['Señal débil', 'Weak signal'], d: ['Los repetidores amplían la cobertura.', 'Relays extend coverage.'] },
+    burst: { sev: 'crit', who: 'medic', t: ['¡Ráfaga de radiación!', 'Radiation burst!'], d: ['Refúgiate en una cúpula blindada (R) hasta que pase.', 'Take cover in a shielded dome (R) until it passes.'] },
+    dust: { sev: 'warn', who: 'engineer', t: ['Tormenta de polvo', 'Dust storm'], d: ['Poca visibilidad y señal más débil. Sigue los postes-guía o usa el radar.', 'Low visibility and weaker signal. Follow the guide posts or use the radar.'] },
+    full: { sev: 'info', who: 'scientist', t: ['Contenedor de mano lleno', 'Hand container full'], d: ['Deposita las muestras en el compartimento del rover (junto a la parte trasera).', 'Put the samples in the rover compartment (behind the rover).'] },
+    return: { sev: 'warn', who: 'commander', t: ['Recomiendo regresar', 'I recommend returning'], d: ['Tus reservas bajan. Sigue la flecha hacia la base.', 'Your reserves are dropping. Follow the arrow to the base.'], rec: 1 },
+    'cond.start': { sev: 'warn', who: 'control', t: ['Ventana de condiciones adversas', 'Adverse-conditions window'], d: [S0cond(), S0cond(1)] },
+    'cond.end': { sev: 'ok', who: 'control', t: ['Las condiciones mejoran', 'Conditions are improving'], d: ['La alerta ha terminado.', 'The alert is over.'] },
+    mission: null
+  };
+  function S0cond(en) { return en ? 'Control confirms a window of bad conditions. Use shelters and relays and bring back the data.' : 'Control confirma una ventana de mal tiempo. Usa refugios y repetidores y trae los datos.'; }
+  function exAlert(k) {
+    const a = AL[k]; if (!a) return;
+    const cond = k === 'cond.start' ? (S.scen === 'mars' ? XT('Tormenta de polvo en Marte: baja la visibilidad y la señal.', 'Martian dust storm: visibility and signal drop.') : XT('Ráfagas de radiación solar en la Luna: refúgiate en las cúpulas.', 'Solar-radiation bursts on the Moon: take cover in the domes.')) : null;
+    call({ key: 'ex.' + k, sev: a.sev, who: a.who, title: LANG === 'es' ? a.t[0] : a.t[1], desc: cond || (LANG === 'es' ? a.d[0] : a.d[1]), act: a.rec ? XT('Sigue la flecha azul hacia la base.', 'Follow the blue arrow to the base.') : null });
+    if (a.sev === 'crit') Sfx.play('crit'); else if (a.sev === 'warn') Sfx.play('warn');
+  }
+  /** Registros del motor → llamadas de radio de la expedición (cada rol conserva su voz). */
+  function exLogToRadio(e) {
+    const k = e.k, p = e.p || {}, es = LANG === 'es';
+    if (k === 'ex.equip') { call({ key: 'ex.equip', sev: 'info', who: 'engineer', title: XT('Traje y rover listos', 'Suit and rover ready'), desc: XT('Comprobación completa. Sal por la esclusa cuando quieras.', 'Checks complete. Go through the airlock whenever you are ready.') }); return true; }
+    if (k === 'ex.collect') { if (p.int >= 3) call({ key: 'ex.earthq', sev: 'info', who: 'control', title: XT('Control de Misión pide datos', 'Mission Control requests data'), desc: XT('Han visto tu hallazgo. Describe la muestra y envía el informe cuando tengas señal (consola del registro de investigaciones).', 'They saw your find. Describe the sample and send the report when you have signal (research log console).') });
+      if (p.int >= 3) call({ key: 'ex.hit' + e.n, sev: 'ok', who: 'scientist', title: XT('¡Hallazgo importante!', 'Important find!'), desc: XT('Esa muestra tiene interés alto. Llévala a la base y analízala; y envía el informe a la Tierra.', 'That sample has high interest. Bring it back and analyze it, and send the report to Earth.') }); return true; }
+    if (k === 'ex.unload') { if (!p.q) call({ key: 'ex.unl' + e.n, sev: 'info', who: 'scientist', title: XT('Muestras recibidas', 'Samples received'), desc: p.n + XT(' muestras en el almacén. Clasifícalas y analízalas en el laboratorio.', ' samples in storage. Classify them and analyze them in the lab.'), console: 'sampler', target: World.consolePos('sampler') }); return true; }
+    if (k === 'ex.recall') { call({ key: 'ex.recall' + e.n, sev: 'crit', who: 'commander', title: XT('Evacuación de emergencia', 'Emergency recovery'), desc: XT('Te recogimos y remolcamos el rover. Estás a salvo. Revisa tus reservas antes de volver a salir.', 'We picked you up and towed the rover. You are safe. Check your reserves before going out again.') }); return true; }
+    if (k === 'ex.mission') { const m = Ex.EXM[p.n - 1]; call({ key: 'ex.m' + p.n, sev: 'ok', who: 'commander', title: XT('¡Misión de exploración completada! ', 'Exploration mission complete! ') + xt(m.t), desc: p.n < Ex.EXM.length ? XT('Siguiente: ', 'Next: ') + xt(Ex.EXM[p.n].t) + '. ' + xt(Ex.EXM[p.n].b) : XT('Has completado todas las misiones de exploración.', 'You completed all exploration missions.') }); return true; }
+    if (k === 'ex.repeater') { call({ key: 'ex.rep' + p.id, sev: 'ok', who: 'engineer', title: XT('Repetidor activo', 'Relay online'), desc: XT('La cobertura de radio se amplía alrededor del repetidor.', 'Radio coverage grows around the relay.') }); return true; }
+    if (k === 'ex.report') { call({ key: 'ex.rpt' + e.n, sev: 'ok', who: 'control', title: XT('Informe recibido', 'Report received'), desc: XT('Control de Misión lo estudia. Ciencia: +', 'Mission Control is studying it. Science: +') + fmt(p.add, 1) }); return true; }
+    if (k === 'ex.visit' || k === 'ex.unequip') return true;
+    return false;
+  }
+  function exLogText(e) {
+    const k = e.k, p = e.p || {};
+    const T = { 'ex.equip': [XT('Traje equipado', 'Suit equipped'), ''], 'ex.unequip': [XT('Traje guardado', 'Suit stowed'), p.n ? p.n + XT(' muestras al almacén', ' samples to storage') : ''], 'ex.collect': [XT('Muestra recogida', 'Sample collected'), ''], 'ex.unload': [XT('Muestras descargadas', 'Samples unloaded'), p.n + ''], 'ex.recall': [XT('Evacuación de emergencia', 'Emergency recovery'), ''], 'ex.mission': [XT('Misión de exploración', 'Exploration mission'), ''], 'ex.visit': [XT('Punto de interés investigado', 'Site investigated'), p.id], 'ex.repeater': [XT('Repetidor activado', 'Relay activated'), p.id], 'ex.report': [XT('Informe a la Tierra', 'Report to Earth'), ''] };
+    return T[k] || [k, ''];
+  }
+
+  /* ---------- HUD exterior ---------- */
+  let miniForced = false, miniWas = false, evaEl = null, toolsEl = null, cardEl = null, exT = 0, wasOut = false, geigerT = 0, lastCard = '';
+  let evaLang = '';
+  function buildEva() {
+    evaEl = $('#eva'); toolsEl = $('#xtools'); cardEl = $('#xcard'); evaEl.replaceChildren(); toolsEl.replaceChildren(); evaLang = LANG;
+    const row = (id, ic, nm) => h('div', { class: 'xr', id: 'xr_' + id }, h('b', null, ic + ' ' + nm), h('span', { class: 'xb' }, h('i', { id: 'xi_' + id })), h('span', { class: 'xv', id: 'xv_' + id }));
+    evaEl.append(row('o2', '🫁', 'O₂'), row('en', '⚡', XT('Energía', 'Power')), row('integ', '🛡', XT('Traje', 'Suit')), row('rad', '☢', XT('Rad.', 'Rad.')), row('batt', '🚙', XT('Rover', 'Rover')),
+      h('div', { class: 'xr', id: 'xr_temp' }, h('b', null, '🌡 ' + XT('Temp.', 'Temp.')), h('span', { class: 'xv', id: 'xv_temp', style: { flex: 1, textAlign: 'left' } })),
+      h('div', { class: 'xr', id: 'xr_sig' }, h('b', null, '📡 ' + XT('Señal', 'Signal')), h('span', { class: 'sig', id: 'xi_sig' }, h('i', { style: { height: '4px' } }), h('i', { style: { height: '6px' } }), h('i', { style: { height: '8px' } }), h('i', { style: { height: '10px' } }), h('i', { style: { height: '12px' } })), h('span', { class: 'xv', id: 'xv_sig' })),
+      h('div', { class: 'xr', id: 'xr_cargo' }, h('b', null, '🧪 ' + XT('Carga', 'Cargo')), h('span', { class: 'xv', id: 'xv_cargo', style: { flex: 1, textAlign: 'left' } })),
+      h('div', { class: 'xobj', id: 'xobj', title: XT('Ver misiones', 'See missions'), onclick: () => exMissionsPanel() }));
+    toolsEl.append(...Ex.TOOLS.map((k, i) => h('button', { class: 'btn', id: 'xt_' + k, title: (i + 1) + ' · ' + xt(TOOLN[k].n) + ' — ' + xt(TOOLN[k].d), 'aria-label': xt(TOOLN[k].n), onclick: () => { selectTool(k); useTool(k); } }, TOOLN[k].i)));
+  }
+  const barState = (v, lo, cr) => (v < cr ? 'crit' : v < lo ? 'warn' : 'ok');
+  function setBar(id, f, txt, st) {
+    const i = $('#xi_' + id), v = $('#xv_' + id), r = $('#xr_' + id); if (!i) return;
+    i.style.width = Math.round(clampN(f, 0, 1) * 100) + '%'; v.textContent = txt; r.className = 'xr ' + (st || '');
+  }
+  function exHud() {
+    if (!evaEl || evaLang !== LANG) buildEva();
+    const E = ex(), su = E.suit, show = su.on && running; evaEl.classList.toggle('hidden', !show); toolsEl.classList.toggle('hidden', !show);
+    $('#app').classList.toggle('eva', show); const bf = $('#btnF'); if (bf) bf.classList.toggle('hidden', !show);
+    if (!show) { cardEl.classList.add('hidden'); return; }
+    const adv = MODE === 'adv', R = E.rover, px = World.player.x, py = World.player.y, out = World.zone() === 'outside';
+    const mins = (v, rate) => fmt(v / rate / 60, 1) + ' min';
+    setBar('o2', su.o2 / 100, adv ? Math.round(su.o2) + '% · ≈' + mins(su.o2, 0.115) : Math.round(su.o2) + '%', barState(su.o2, 30, 12));
+    setBar('en', su.en / 100, Math.round(su.en) + '%', barState(su.en, 30, 12));
+    setBar('integ', su.integ / 100, Math.round(su.integ) + '%', barState(su.integ, 60, 40));
+    const rf = su.rad / Ex.EXLIM; setBar('rad', rf, adv ? RAD_MSV(su.rad) : Math.round(rf * 100) + '%', rf > 0.85 ? 'crit' : rf > 0.6 ? 'warn' : 'ok');
+    setBar('batt', S.sys.rover.batt / 100, Math.round(S.sys.rover.batt) + '%' + (R.occ && adv ? ' · ' + fmt(Math.abs(R.v) * 25 * 3.6 / 10, 0) + ' km/h' : ''), barState(S.sys.rover.batt, 35, 15));
+    const tp = $('#xv_temp'); tp.textContent = Math.round(su.temp) + ' °C' + (adv ? ' · ' + XT('exterior ', 'outside ') + Math.round(Ex.env(S, px, py).amb) + ' °C' : ''); $('#xr_temp').className = 'xr ' + (su.temp > 34 || su.temp < 8 ? 'crit' : su.temp > 30 || su.temp < 12 ? 'warn' : '');
+    const sg = out ? Ex.signal(S, px, py) : 1; [...$('#xi_sig').children].forEach((b, i) => b.classList.toggle('on', sg > i * 0.18 + 0.04)); $('#xv_sig').textContent = Math.round(sg * 100) + '%'; $('#xr_sig').className = 'xr ' + (sg < 0.1 ? 'crit' : sg < 0.3 ? 'warn' : '');
+    const stt = Ex.storage(S); $('#xv_cargo').textContent = XT('mano ', 'hand ') + stt.hand.length + '/' + Ex.CAP.hand + ' · rover ' + stt.list.length + '/' + Ex.CAP.slots + (adv ? ' · ' + fmt(stt.kg, 1) + '/' + Ex.CAP.kg + ' kg' : '');
+    const ob = Ex.objectives(S), g = Ex.goal(S), xo = $('#xobj');
+    if (ob) { const cur = ob.list.find((q) => !q.ok); xo.textContent = '🎯 ' + xt(ob.m.t) + (cur ? ': ' + xt(cur.t) : '') + (g && out ? ' · ' + Math.round(Math.hypot(g.x - px, g.y - py) * 25) + ' m' : ''); } else xo.textContent = '🎯 ' + XT('Todas las misiones completadas', 'All missions complete');
+    for (const k of Ex.TOOLS) { const b = $('#xt_' + k); if (b) { b.classList.toggle('primary', E.tool === k); b.classList.toggle('on', (k === 'light' && (E.flash || R.lights))); } }
+  }
+  function selectTool(k) { ex().tool = k; exHud(); }
+  function exPrompt(n) {
+    const E = ex(), T = { 'x:board': XT('Subir al rover', 'Board the rover'), 'x:exit': XT('Bajar del rover', 'Leave the rover'), 'x:store': XT('Abrir compartimento', 'Open compartment'), 'x:poi': XT('Investigar · ', 'Investigate · ') + (n.p ? xt(n.p.n) : ''), 'x:rep': (E.rep[n.q && n.q.id] ? XT('Repetidor activo', 'Relay online') : XT('Activar repetidor de radio', 'Activate radio relay')), 'x:shel': XT('Entrar al refugio', 'Enter the shelter'), 'x:shelx': XT('Salir del refugio', 'Leave the shelter') };
+    return n.id === 'x:site' ? XT('Recoger · ', 'Collect · ') + xt(n.s.name) : T[n.id];
+  }
+  function exCard(n) {
+    const key = n ? n.id + (n.s ? n.s.id : n.p ? n.p.id : n.q ? n.q.id : '') + LANG + (ex().suit.on ? 1 : 0) : '';
+    if (key === lastCard) return; lastCard = key;
+    if (!n || !n.id.startsWith('x:') || ['x:exit', 'x:shelx'].includes(n.id)) { cardEl.classList.add('hidden'); return; }
+    const E = ex(), adv = MODE === 'adv', pl = S.scen === 'mars' ? XT('Marte', 'Mars') : XT('Luna', 'Moon');
+    let body;
+    if (n.id === 'x:site') {
+      const s = n.s, inf = Field.info(s);
+      body = h('div', null, h('b', null, '🪨 ' + xt(s.name)), h('div', { class: 'small' }, XT('Tipo: ', 'Type: ') + xt(inf.kind) + ' · ' + pl + ' · ' + XT('ubicación ', 'location ') + Field.coord(s.x, s.y, LANG === 'es')), h('div', { class: 'small' }, xt(inf.desc)),
+        h('div', { class: 'small' }, XT('Interés científico: ', 'Scientific interest: ') + starsOf(s.int) + ' — ' + xt(inf.why)), adv ? h('div', { class: 'small muted' }, XT('Masa simulada ', 'Simulated mass ') + inf.kg + ' kg · ' + XT('contenedor ', 'container ') + E.hand.length + '/' + Ex.CAP.hand) : null,
+        h('div', { class: 'small' }, '👉 ' + (E.suit.on ? (E.hand.length >= Ex.CAP.hand ? XT('Contenedor lleno: deposítalas en el rover.', 'Container full: put them in the rover.') : XT('Pulsa E para recoger (' + colTime(s) + ' s).', 'Press E to collect (' + colTime(s) + ' s).')) : XT('Necesitas el traje puesto.', 'You need the suit on.'))));
+    } else if (n.id === 'x:poi') body = h('div', null, h('b', null, '🔭 ' + xt(n.p.n)), h('div', { class: 'small' }, xt(n.p.d)), h('div', { class: 'small' }, '👉 ' + (E.visited[n.p.id] ? XT('Ya investigado.', 'Already investigated.') : XT('Pulsa E para tomar medidas con el sensor.', 'Press E to take readings with the sensor.'))));
+    else if (n.id === 'x:rep') body = h('div', null, h('b', null, '📡 ' + XT('Repetidor de radio ', 'Radio relay ') + n.q.id.slice(1)), h('div', { class: 'small' }, E.rep[n.q.id] ? XT('Activo: amplía la señal en 60 casillas a su alrededor.', 'Online: extends the signal 60 tiles around it.') : XT('Apagado. Actívalo para ampliar la cobertura de radio.', 'Offline. Activate it to extend radio coverage.')));
+    else if (n.id === 'x:shel') body = h('div', null, h('b', null, '🛡️ ' + XT('Refugio blindado ', 'Shielded shelter ') + n.q.id.slice(1)), h('div', { class: 'small' }, XT('Dentro la radiación baja un 92 % y hay un depósito de emergencia (+40 % de O₂ y energía, 1 vez por salida).', 'Inside, radiation drops 92% and there is an emergency cache (+40% O₂ and power, once per outing).')));
+    else if (n.id === 'x:store') body = h('div', null, h('b', null, '📦 ' + XT('Compartimento del rover', 'Rover compartment')), h('div', { class: 'small' }, Ex.storage(S).list.length + '/' + Ex.CAP.slots + XT(' muestras guardadas. E para abrir.', ' samples stored. E to open.')));
+    else if (n.id === 'x:board') body = h('div', null, h('b', null, '🚙 ' + XT('Rover explorador R-1', 'Explorer rover R-1')), h('div', { class: 'small' }, XT('Batería ', 'Battery ') + Math.round(S.sys.rover.batt) + '% · ' + (E.suit.on ? XT('E para subir.', 'E to board.') : XT('Necesitas el traje puesto.', 'You need the suit on.'))));
+    else { cardEl.classList.add('hidden'); return; }
+    cardEl.replaceChildren(body); cardEl.classList.remove('hidden');
+  }
+
+  /* ---------- Interacciones ---------- */
+  function exInteract(n) {
+    const E = ex();
+    switch (n.id) {
+      case 'x:board': { const r = World.boardRover(); if (r === 'nosuit') toast(XT('Necesitas el traje', 'You need the suit'), XT('Equípalo en el vestuario de la bahía.', 'Put it on at the bay locker.'), 'warn'); break; }
+      case 'x:exit': { const r = World.exitRover(); if (r === 'fast') toast(XT('Frena antes de bajar', 'Stop before leaving'), XT('Usa S o suelta el acelerador.', 'Use S or release the throttle.'), 'warn'); else if (r === 'blocked') toast(XT('No hay sitio para bajar', 'No room to get out'), XT('Mueve el rover a un lugar libre.', 'Move the rover to a clear spot.'), 'warn'); else if (!r) Sfx.play('click'); break; }
+      case 'x:store': storagePanel(); break;
+      case 'x:site': {
+        if (!E.suit.on) return toast(XT('Necesitas el traje', 'You need the suit'), '', 'warn');
+        if (E.hand.length >= Ex.CAP.hand) { Sfx.play('bad'); return toast(XT('Contenedor lleno', 'Container full'), XT('Deposita las muestras en el rover (compartimento trasero).', 'Put the samples in the rover (rear compartment).'), 'warn'); }
+        World.beginCollect(n.s, colTime(n.s), () => { const r = Ex.collect(S, n.s.id); if (typeof r === 'string') { toast(XT('No se pudo recoger', 'Could not collect'), r, 'warn'); return; } Sfx.play('pick'); World.setAct('player', 'carry', 1.2); toast(XT('Muestra recogida', 'Sample collected'), r.id + ' · ' + xt(r.name), 'ok'); lastCard = ''; exHud(); });
+        break;
+      }
+      case 'x:poi': { const r = Ex.investigate(S, n.p.id, World.player.x, World.player.y); if (r.err) return toast(XT('Necesitas el traje', 'You need the suit'), '', 'warn'); Sfx.play(r.first ? 'ok' : 'click'); readoutPanel(r.read, n.p, r.first); break; }
+      case 'x:rep': { const r = Ex.activateRepeater(S, n.q.id); if (r === 'on') toast(XT('Ya está activo', 'Already online'), '', 'info'); else Sfx.play('ok'); lastCard = ''; break; }
+      case 'x:shel': { if (!E.suit.on) return; if (World.enterShelter(n.q.id)) shelterPanel(n.q); break; }
+      case 'x:shelx': World.leaveShelter(); lastCard = ''; break;
+    }
+  }
+  function shelterPanel(q) {
+    const E = ex();
+    const s = livePanel(() => panel('🛡️ ' + XT('Refugio blindado ', 'Shielded shelter ') + q.id.slice(1), h('div', null,
+      h('p', null, XT('Estás a cubierto: la radiación baja un 92 % y el traje descansa. Puedes quedarte hasta que pase la alerta.', 'You are under cover: radiation drops 92% and the suit rests. You can stay until the alert passes.')),
+      h('table', null, h('tbody', null, statRow('O₂', Math.round(E.suit.o2) + ' %'), statRow(XT('Energía', 'Power'), Math.round(E.suit.en) + ' %'), statRow(XT('Radiación acumulada', 'Accumulated radiation'), MODE === 'adv' ? RAD_MSV(E.suit.rad) : Math.round(E.suit.rad / Ex.EXLIM * 100) + ' %'))),
+      E.cache[q.id] ? h('p', { class: 'tag warn' }, XT('Depósito de emergencia ya usado en esta salida.', 'Emergency cache already used on this outing.')) : btn('🫁 ' + XT('Usar depósito de emergencia (+40 % O₂ y energía)', 'Use emergency cache (+40% O₂ and power)'), () => { const r = Ex.useCache(S, q.id); if (!r) { Sfx.play('ok'); toast(XT('Depósito usado', 'Cache used'), '+40 %', 'ok'); } s._refresh(); }, 'primary'),
+      btn('🚪 ' + XT('Salir del refugio', 'Leave shelter'), () => { World.leaveShelter(); pop(); }))));
+  }
+  function readoutPanel(r, p, first) {
+    const adv = MODE === 'adv', mars = S.scen === 'mars', gname = { plain: XT('suelo firme', 'firm ground'), deep: XT('regolito profundo (lento)', 'deep regolith (slow)'), sand: XT('arena (lenta)', 'sand (slow)'), slope: XT('pendiente', 'slope'), crater: XT('borde de cráter', 'crater rim') }[r.ground] || r.ground;
+    const dose = r.rad * 3600 / 1000;
+    push(panel('🔭 ' + xt(p.n), h('div', null, h('p', null, xt(p.d)), first ? h('p', { class: 'tag ok' }, XT('✔ Punto investigado: +2 de ciencia', '✔ Site investigated: +2 science')) : h('p', { class: 'tag info' }, XT('Ya lo habías investigado.', 'Already investigated.')),
+      h('table', null, h('tbody', null,
+        statRow(XT('Temperatura exterior', 'Outside temperature'), Math.round(r.amb) + ' °C'), statRow(XT('Temperatura del traje', 'Suit temperature'), Math.round(r.temp) + ' °C'),
+        statRow(XT('Radiación', 'Radiation'), adv ? fmt(r.rad * 60, 3) + ' mSv/min (' + XT('valor de juego', 'game value') + ')' : (r.burst > 0.5 ? XT('alta ⚠', 'high ⚠') : XT('normal', 'normal'))),
+        statRow(XT('Suelo', 'Ground'), gname), mars ? statRow(XT('Viento', 'Wind'), r.wind + (adv ? ' m/s' : XT(' (fuerte)', ' (strong)'))) : null, statRow(XT('Señal de radio', 'Radio signal'), Math.round(r.sig * 100) + ' %'), statRow(XT('Visibilidad', 'Visibility'), r.vis + XT(' casillas', ' tiles')))),
+      adv ? h('p', { class: 'small muted' }, XT('Real: la radiación en superficie ronda ~1,4 mSv/día en la Luna y ~0,7 mSv/día en Marte; el juego la acelera para que se note en minutos.', 'Real: surface radiation is about ~1.4 mSv/day on the Moon and ~0.7 mSv/day on Mars; the game speeds it up so it shows in minutes.')) : null)), { narrow: true });
+  }
+
+  /* ---------- Herramientas ---------- */
+  function useTool(k) {
+    const E = ex(); k = k || E.tool;
+    if (!E.suit.on) return toast(XT('Necesitas el traje', 'You need the suit'), '', 'warn');
+    const px = World.player.x, py = World.player.y, out = World.zone() === 'outside';
+    if (k === 'collector') { const n = World.exNear(); if (n && ['x:site', 'x:poi', 'x:rep', 'x:shel', 'x:store'].includes(n.id)) exInteract(n); else toast(XT('Recolector', 'Sampler'), XT('Acércate a una muestra (anillo verde) u otro objeto interactivo.', 'Move next to a sample (green ring) or another interactive object.'), 'info'); }
+    else if (k === 'container') containerPanel();
+    else if (k === 'scanner') {
+      if (!out) return toast(XT('Escáner', 'Scanner'), XT('Úsalo fuera de la base.', 'Use it outside the base.'), 'info');
+      const r = Ex.scan(S, px, py);
+      if (r.err === 'cd') return toast(XT('Escáner recargando', 'Scanner recharging'), Math.ceil(r.cd) + ' s', 'info');
+      if (r.err) return toast(XT('Escáner', 'Scanner'), XT('Sin energía suficiente.', 'Not enough power.'), 'warn');
+      World.scanFx(r.rad); Sfx.play('scan');
+      toast(XT('Escaneo completo', 'Scan complete'), (r.found.length ? r.found.length + XT(' muestras ocultas reveladas. ', ' hidden samples revealed. ') : XT('Sin muestras ocultas cerca. ', 'No hidden samples nearby. ')) + (r.pois.length ? r.pois.length + XT(' puntos de interés nuevos en el radar.', ' new sites on the radar.') : ''), r.found.length || r.pois.length ? 'ok' : 'info');
+    } else if (k === 'camera') {
+      const r = Ex.photo(S, px, py); if (r.err) return toast(XT('Cámara', 'Camera'), XT('Sin energía.', 'No power.'), 'warn');
+      World.photoFx(); Sfx.play('photo');
+      toast(XT('Foto tomada', 'Photo taken'), r.subject ? xt(r.subject.n) + XT(' (+1 ciencia la primera vez)', ' (+1 science the first time)') : XT('No hay nada de interés a la vista.', 'Nothing of interest in view.'), r.subject ? 'ok' : 'info');
+    } else if (k === 'sensor') { const r = Ex.measure(S, px, py, !!World.inShelter); Sfx.play('click'); readoutPanel(r, { n: { es: 'Lectura del sensor', en: 'Sensor reading' }, d: { es: 'Medidas de tu posición actual.', en: 'Measurements at your position.' } }, false); }
+    else if (k === 'light') { if (E.rover.occ) { E.rover.lights = !E.rover.lights; toast('🔦', E.rover.lights ? XT('Faros del rover encendidos', 'Rover lights on') : XT('Faros apagados', 'Rover lights off'), 'info'); } else { E.flash = !E.flash; toast('🔦', E.flash ? XT('Linterna encendida (gasta energía)', 'Flashlight on (uses power)') : XT('Linterna apagada', 'Flashlight off'), 'info'); } Sfx.play('click'); }
+    exHud();
+  }
+
+  /* ---------- Paneles ---------- */
+  function suitPanel() {
+    const E = ex(), adv = MODE === 'adv';
+    const s = livePanel(() => {
+      const su = E.suit, cl = Ex.checklist(S), ob = Ex.objectives(S), base = inBaseNow();
+      return panel('🧑‍🚀 ' + XT('Traje y preparación de expedición', 'Suit & expedition prep'), h('div', null,
+        su.on ? h('p', { class: 'tag ok' }, XT('✔ Traje puesto: ya puedes salir por la esclusa.', '✔ Suit on: you can go through the airlock.')) : h('p', null, XT('Antes de salir debes equiparte el traje y revisar tus equipos. Cualquier astronauta puede hacerlo; no necesitas cambiar de personaje.', 'Before going out you must put on the suit and check your gear. Any astronaut can do it; you do not need to switch characters.')),
+        h('div', { class: 'card' }, h('h3', null, XT('Revisión de equipos', 'Equipment check')), h('table', null, h('tbody', null, cl.map((c) => h('tr', null, h('th', null, (c.ok ? '✅ ' : '⚠️ ') + xt(c.t)), h('td', null, c.v)))))),
+        ob ? h('div', { class: 'card' }, h('h3', null, '🎯 ' + XT('Misión: ', 'Mission: ') + xt(ob.m.t)), h('p', { class: 'small' }, xt(ob.m.b)), h('ul', null, ob.list.map((o) => h('li', null, (o.ok ? '✔ ' : '▫ ') + xt(o.t))))) : h('p', { class: 'tag ok' }, XT('Todas las misiones de exploración completadas.', 'All exploration missions complete.')),
+        h('p', { class: 'small' }, '⭐ ' + xt(ROLEB[S.playerRole])),
+        adv ? h('p', { class: 'small muted' }, XT('Consumo de juego: O₂ ≈ 0,115 %/s (tanque ≈ 14 min de actividad), energía ≈ 0,07 %/s más el térmico y la linterna. El traje real tiene horas de autonomía; aquí se acorta para jugar en minutos.', 'Game rates: O₂ ≈ 0.115 %/s (tank ≈ 14 min of activity), power ≈ 0.07 %/s plus thermal and flashlight. A real suit lasts hours; here it is shortened to play in minutes.')) : h('p', { class: 'small muted' }, XT('El aire y la energía bajan mientras estás fuera. Si se acaban, la base te recoge, pero perderás tiempo.', 'Air and power drop while you are out. If they run out, the base picks you up, but you lose time.')),
+        h('div', { class: 'row' },
+          !su.on ? btn('🧑‍🚀 ' + XT('Equipar traje', 'Put on suit'), () => { const r = Ex.equip(S); if (r === 'nobase') toast(XT('Sin oxígeno de sobra', 'No spare oxygen'), XT('La base necesita su oxígeno primero.', 'The base needs its oxygen first.'), 'warn'); else Sfx.play('ok'); s._refresh(); exHud(); }, 'primary') : null,
+          su.on && base ? btn('♻ ' + XT('Recargar O₂ y energía', 'Recharge O₂ & power'), () => { const r = Ex.recharge(S); toast(r === 'full' ? XT('Ya está lleno', 'Already full') : r ? XT('Sin oxígeno de sobra', 'No spare oxygen') : XT('Traje recargado', 'Suit recharged'), '', r ? 'warn' : 'ok'); s._refresh(); exHud(); }) : null,
+          base ? btn('🔧 ' + XT('Reparar traje', 'Repair suit'), () => { const r = Ex.repairSuit(S); toast(r === 'full' ? XT('Traje intacto', 'Suit intact') : r ? XT('Faltan materiales', 'Not enough materials') : XT('Traje reparado', 'Suit repaired'), '', r && r !== 'full' ? 'warn' : 'ok'); s._refresh(); exHud(); }) : null,
+          su.on && base ? btn('📤 ' + XT('Quitar traje', 'Take off suit'), () => { Ex.unequip(S); Sfx.play('click'); s._refresh(); exHud(); }) : null,
+          btn('🎯 ' + XT('Misiones', 'Missions'), () => exMissionsPanel()))));
+    }, { narrow: true });
+  }
+  function containerPanel() {
+    const E = ex(), s = livePanel(() => panel('🧰 ' + xt(TOOLN.container.n), h('div', null,
+      h('p', { class: 'small' }, xt(TOOLN.container.d)),
+      Ex.storage(S).hand.length ? Ex.storage(S).hand.map(sampleRow) : h('p', { class: 'muted' }, XT('El contenedor está vacío.', 'The container is empty.')),
+      h('div', { class: 'row' },
+        btn('📦 ' + XT('Depositar en el rover', 'Put in the rover'), () => { const near = Math.hypot(World.player.x - E.rover.x, World.player.y - E.rover.y) < 4.2; if (!near) { toast(XT('El rover está lejos', 'The rover is far'), XT('Acércate a su parte trasera.', 'Go to its rear.'), 'warn'); return; } const r = Ex.deposit(S); if (r === 'full') toast(XT('Compartimento lleno', 'Compartment full'), XT('Regresa a la base y descarga.', 'Return to the base and unload.'), 'warn'); else if (r !== 'none') { Sfx.play('pick'); } s._refresh(); exHud(); }, 'primary'),
+        btn('🏠 ' + XT('Descargar en la base', 'Unload at the base'), () => unloadAction(s))))), { narrow: true });
+  }
+  function unloadAction(s) {
+    if (!nearPad(15) && inBaseNow() === false) { toast(XT('Estás lejos de la base', 'You are far from the base'), XT('Descarga junto a la plataforma o dentro de la base.', 'Unload next to the pad or inside the base.'), 'warn'); return; }
+    const R = ex().rover, roverNear = Math.hypot(R.x - Field.PAD[0], R.y - Field.PAD[1]) < 16;
+    if (!roverNear && ex().rover.load.length) { toast(XT('El rover está lejos de la base', 'The rover is far from the base'), XT('Llévalo cerca de la plataforma para descargarlo.', 'Drive it near the pad to unload.'), 'warn'); return; }
+    const n = Ex.unload(S); if (!n) toast(XT('No hay muestras que descargar', 'No samples to unload'), '', 'info'); else { Sfx.play('ok'); toast(XT('Descarga completa', 'Unload complete'), n + XT(' muestras al almacén de muestras', ' samples to sample storage'), 'ok'); }
+    if (s && s._refresh) s._refresh(); exHud();
+  }
+  function sampleRow(r, extra) {
+    const es = LANG === 'es';
+    return h('div', { class: 'card', style: { padding: '8px' } }, h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, r.id), h('span', null, xt(r.name)), tag(xt(Field.KIND_T[r.kind]), 'info'), tag(starsOf(r.int), 'ok'), h('span', { class: 'small muted' }, r.kg + ' kg'), extra || null),
+      h('div', { class: 'small muted' }, (r.planet === 'mars' ? 'Marte' : es ? 'Luna' : 'Moon') + ' · ' + Field.coord(r.xy[0], r.xy[1], es) + ' · ' + XT('día ', 'day ') + r.day + ' ' + String(r.hh).padStart(2, '0') + ':' + String(r.mm).padStart(2, '0') + ' · ' + XT('recogida por ', 'collected by ') + tr(DATA.ROLE_T[r.by]).split(' ').pop() + ' · ' + XT('estado ', 'state ') + r.state + ' · ' + XT('ubicación ', 'location ') + locName(r)));
+  }
+  const locName = (r) => ({ hand: XT('contenedor de mano', 'hand container'), rover: XT('compartimento del rover', 'rover compartment'), base: XT('almacén de la base', 'base storage') }[r.loc] || XT('exterior', 'outside'));
+  function storagePanel() {
+    const E = ex(); E.storeOpen = true;
+    const s = livePanel(() => {
+      const st = Ex.storage(S), adv = MODE === 'adv', near = Math.hypot(World.player.x - E.rover.x, World.player.y - E.rover.y) < 5;
+      return panel('📦 ' + XT('Compartimento del rover', 'Rover compartment'), h('div', null,
+        h('p', null, XT('Capacidad: ', 'Capacity: ') + st.list.length + '/' + st.slots + XT(' muestras', ' samples') + ' · ' + XT('peso simulado ', 'simulated weight ') + fmt(st.kg, 1) + '/' + st.maxKg + ' kg'),
+        h('div', { class: 'bar', style: { height: '10px', background: '#26345e', borderRadius: '6px', overflow: 'hidden' } }, h('i', { style: { display: 'block', height: '100%', width: Math.round(st.kg / st.maxKg * 100) + '%', background: st.kg / st.maxKg > 0.85 ? 'var(--warning)' : 'var(--success)' } })),
+        st.list.length ? st.list.map((r) => sampleRow(r, h('span', { class: 'row' }, btn('↩ ' + XT('Retirar', 'Take out'), () => { const e = Ex.withdraw(S, r.id); if (e) toast(XT('Contenedor de mano lleno', 'Hand container full'), XT('Máximo 2 muestras en la mano.', 'Maximum 2 samples in hand.'), 'warn'); else Sfx.play('pick'); s._refresh(); exHud(); }, 'sm')))) : h('p', { class: 'muted' }, XT('El compartimento está vacío.', 'The compartment is empty.')),
+        h('div', { class: 'row' }, h('span', { class: 'small' }, XT('Organizar:', 'Sort:')), btn(XT('Por ID', 'By ID'), () => { Ex.sortStorage(S, 'id'); s._refresh(); }, 'sm'), btn(XT('Por peso', 'By weight'), () => { Ex.sortStorage(S, 'kg'); s._refresh(); }, 'sm'), btn(XT('Por tipo', 'By type'), () => { Ex.sortStorage(S, 'kind'); s._refresh(); }, 'sm')),
+        h('h3', null, '🧰 ' + XT('En tu contenedor de mano', 'In your hand container') + ' (' + st.hand.length + '/' + Ex.CAP.hand + ')'),
+        st.hand.length ? st.hand.map(sampleRow) : h('p', { class: 'muted' }, XT('Vacío.', 'Empty.')),
+        h('div', { class: 'row' },
+          btn('📥 ' + XT('Depositar mi contenedor', 'Deposit my container'), () => { if (!near) { toast(XT('Acércate al rover', 'Move next to the rover'), '', 'warn'); return; } const r = Ex.deposit(S); if (r === 'full') toast(XT('Compartimento lleno', 'Compartment full'), '', 'warn'); else if (r !== 'none') Sfx.play('pick'); s._refresh(); exHud(); }, 'primary'),
+          btn('🏠 ' + XT('Descargar todo en la base', 'Unload all at the base'), () => unloadAction(s))),
+        adv ? h('p', { class: 'small muted' }, XT('Las muestras descargadas pasan al almacén de muestras de la base: allí se clasifican y se analizan en el laboratorio. Son las mismas muestras; no hay un inventario aparte.', 'Unloaded samples go to the base sample storage, where they are classified and analyzed in the lab. They are the same samples; there is no separate inventory.')) : h('p', { class: 'small muted' }, XT('Lleva las muestras a la base: allí las guardas y las analizas en el laboratorio.', 'Take the samples to the base: store them and analyze them in the lab.')),
+        ''), { narrow: false });
+    });
+    s._onclose = () => { E.storeOpen = false; };
+  }
+  function exMissionsPanel() {
+    const E = ex(), adv = MODE === 'adv';
+    push(panel('🎯 ' + XT('Misiones de exploración', 'Exploration missions'), h('div', null,
+      h('p', { class: 'small muted' }, XT('Son un camino guiado, pero puedes explorar libremente fuera de los objetivos.', 'They are a guided path, but you can explore freely beyond the goals.')),
+      Ex.EXM.map((m, i) => { const done = !!E.m.done[m.id], cur = i === E.m.i, ob = cur ? Ex.objectives(S) : null; return h('div', { class: 'card', style: cur ? { borderColor: 'var(--accent)' } : {} }, h('h3', null, (done ? '✅ ' : cur ? '▶ ' : '🔒 ') + (i + 1) + '. ' + xt(m.t)), h('p', { class: 'small' }, xt(m.b)), (cur || done) ? h('ul', null, m.obj.map((o) => h('li', null, ((ob ? ob.list.find((q) => q.k === o[0]).ok : true) ? '✔ ' : '▫ ') + xt(o[1])))) : null); }),
+      adv ? h('p', { class: 'small muted' }, XT('Dosis de esta salida: ', 'This outing dose: ') + RAD_MSV(E.suit.rad) + ' / ' + RAD_MSV(Ex.EXLIM) + ' · ' + XT('evacuaciones: ', 'recoveries: ') + E.recalls) : null)), { narrow: true });
+  }
+  /** Informe a la Tierra y registro de muestras analizadas (consola del registro de investigaciones). */
+  function exReportCard() {
+    const E = ex(), done = S.sampleList.filter((r) => r.site && r.an === 'done');
+    return h('div', { class: 'card' }, h('h3', null, '📡 ' + XT('Expedición exterior', 'Outside expedition')),
+      h('p', { class: 'small' }, XT('Salidas: ', 'Outings: ') + E.trips + ' · ' + XT('muestras de campo: ', 'field samples: ') + S.sampleList.filter((r) => r.site).length + ' · ' + XT('fotos: ', 'photos: ') + E.photos + ' · ' + XT('lecturas: ', 'readings: ') + E.readings),
+      btn('📡 ' + XT('Enviar informe a la Tierra', 'Send report to Earth'), () => { const r = Ex.report(S, World.player.x, World.player.y); if (r.err) toast(XT('Sin señal suficiente', 'Signal too weak'), XT('Acércate a la base o activa un repetidor.', 'Get closer to the base or activate a relay.'), 'warn'); else { Sfx.play('ok'); toast(XT('Informe enviado', 'Report sent'), r.ok ? XT('Objetivo de misión cumplido.', 'Mission goal met.') : '+' + fmt(r.add, 1) + XT(' de ciencia', ' science'), 'ok'); } }, 'primary'),
+      done.length ? h('div', null, h('h3', null, XT('Resultados registrados', 'Recorded results')), done.slice(-6).reverse().map((r) => h('div', { class: 'small', style: { margin: '6px 0' } }, h('b', null, r.id + ' · ' + xt(r.name)), h('div', null, xt(r.res || { es: '—', en: '—' }) + ' (+' + r.sci + ')')))) : h('p', { class: 'small muted' }, XT('Aún no hay análisis de muestras de campo.', 'No field-sample analyses yet.')));
+  }
+
+  /* ---------- Bucle de la expedición ---------- */
+  function exHint() {
+    const E = ex(); if (!E.suit.on) return null;
+    const out = World.zone() === 'outside', es = LANG === 'es', su = E.suit;
+    if (out && (su.o2 < 35 || su.en < 25 || su.rad > Ex.EXLIM * 0.7)) return { t: es ? 'Reservas bajas: regresa a la base (flecha azul).' : 'Low reserves: return to the base (blue arrow).', p: [Field.PAD[0], Field.PAD[1] - 2] };
+    if (!out) { if (!E.out && E.f.suit && !E.f.out) return { t: es ? 'Cicla la esclusa para salir (consola «Esclusa»).' : 'Cycle the airlock to go out ("Airlock" console).', p: World.consolePos('lock') }; return null; }
+    const g = Ex.goal(S); if (!g) return null;
+    const ob = Ex.objectives(S), cur = ob && ob.list.find((q) => !q.ok);
+    return { t: '🎯 ' + (cur ? xt(cur.t) : ''), p: [g.x, g.y] };
+  }
+  /** Se llama cada fotograma: consumo, avisos, transición base↔exterior, geiger y evacuación. */
+  function exFrame(dt) {
+    const c = World.exCtx(); if (!c) return;
+    const E = ex(), evs = Ex.tick(S, dt, c);
+    if (c.outside && !wasOut) { wasOut = true; if (E.suit.on) { Ex.left(S); toast(XT('Fuera de la base', 'Outside the base'), XT('Sigue las rutas marcadas y vigila O₂ y energía.', 'Follow the marked routes and watch O₂ and power.'), 'info'); } }
+    else if (!c.outside && wasOut) { wasOut = false; Ex.arrived(S); toast(XT('De vuelta en la base', 'Back in the base'), E.suit.on ? XT('Descarga las muestras y quita el traje en el vestuario.', 'Unload samples and take off the suit at the locker.') : '', 'ok'); const m = Ex.missionStep(S, 0, { x: 0, y: 0, outside: false }); if (m.indexOf('mission') >= 0) Sfx.play('ok'); }
+    for (const k of evs) {
+      if (k === 'recall') { Ex.recall(S, E.suit.o2 <= 0 ? 'o2' : E.suit.integ <= 0 ? 'int' : 'rad'); World.teleportHome(); lastCard = ''; Sfx.play('crit'); toast(XT('Evacuación de emergencia', 'Emergency recovery'), XT('La base te recogió. Pasaron unas horas.', 'The base picked you up. A few hours passed.'), 'crit'); }
+      else if (k === 'mission') { Sfx.play('ok'); }
+      else exAlert(k);
+    }
+    if (c.outside && E.suit.on && !Sfx.muted) { const ev = Ex.env(S, c.x, c.y); const rate = (ev.burst ? 5 : 1) * (c.inShel ? 0.1 : 1); geigerT -= dt; if (geigerT <= 0) { geigerT = (0.6 + Math.random() * 1.2) / rate; if (ev.burst > 0.5 && !c.inShel) Sfx.play('geiger'); } }
+    const outNow = c.outside && E.suit.on, mc0 = $('#mini'); if (outNow && !miniForced) { miniWas = mc0.classList.contains('hidden'); mc0.classList.remove('hidden'); miniForced = true; } else if (!outNow && miniForced) { if (miniWas) mc0.classList.add('hidden'); miniForced = false; }
+    if (World.needSuit) toast(XT('Necesitas el traje para salir', 'You need the suit to go out'), XT('Equípalo en el vestuario de la bahía.', 'Put it on at the bay locker.'), 'warn');
+    exT += dt; if (exT > 0.2) { exT = 0; exHud(); exCard(World.exNear()); }
+  }
+  function exAttach() { wasOut = false; lastCard = ''; if (evaEl) { evaEl.classList.add('hidden'); toolsEl.classList.add('hidden'); } }
+  const exDebug = { suitPanel, storagePanel, containerPanel, exMissionsPanel, useTool, exInteract, exFrame, exHud, exHint, exCard, exAlert, exLogToRadio, readoutPanel, shelterPanel, unloadAction, selectTool, exReportCard, get cardHidden() { return cardEl && cardEl.classList.contains('hidden'); } };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
@@ -6396,7 +7648,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { exp: exDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

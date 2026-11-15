@@ -116,6 +116,11 @@ El estudiante explica qué es un protocolo de emergencia, por qué la autonomía
 | Taller y residuos | ¿Qué se gana separando antes de reciclar o teniendo repuestos? | Economía circular y mantenimiento preventivo |
 | Mapa (tecla M) | ¿Cuál es la ruta más corta a la sala con una alerta y por qué pasa por esas puertas? | Orientación espacial y lectura de planos |
 
+| Expedición exterior | ¿Qué recursos limitan una salida y cómo se decide cuándo volver? | Planificación (oxígeno, energía, radiación y batería), lectura de indicadores y toma de decisiones con margen de seguridad |
+| Muestras de campo | ¿Qué información hay que anotar de una muestra para que otra persona la entienda? | Trazabilidad (ID, lugar, fecha, quién, estado) y diferencia entre datos medidos y valores simplificados |
+| Luna frente a Marte | ¿Por qué cambian los peligros (radiación, polvo, viento, hielo) y las rutas? | Comparar entornos: la Luna sin atmósfera y Marte con atmósfera fina y tormentas |
+| Repetidores de radio | ¿Cómo se amplía la cobertura y qué pasa sin señal? | Comunicaciones: distancia, antenas y redundancia |
+
 - **Voz y subtítulos:** el juego narra las llamadas y las instrucciones con la voz que ofrezca el dispositivo. Si hay una sola voz, todos los personajes la comparten con tono distinto; es normal. Todo se puede leer en los subtítulos y se puede repetir el último mensaje con la tecla V.
 - **Accesibilidad:** el panel de audio permite bajar la velocidad de narración, ajustar volúmenes por separado y desactivar la voz, la música o los sonidos.
 

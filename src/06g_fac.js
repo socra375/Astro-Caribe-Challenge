@@ -11,7 +11,7 @@
   const FOODN = { romaine: { es: 'lechuga romana', en: 'romaine lettuce' }, mizuna: { es: 'mizuna', en: 'mizuna' }, radish: { es: 'rábano', en: 'radish' }, chili: { es: 'chile', en: 'chili' }, zinnia: { es: 'flor comestible', en: 'edible flower' } };
   const CATN = { regolith: { es: 'Regolito (polvo y suelo)', en: 'Regolith (dust and soil)' }, rock: { es: 'Roca', en: 'Rock' }, ice: { es: 'Hielo', en: 'Ice' } };
   const STN = { new: { es: 'Recibida', en: 'Received' }, stored: { es: 'Conservada', en: 'Preserved' }, degraded: { es: 'Deteriorada', en: 'Degraded' } };
-  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
+  const ORIGN = { rover: { es: 'Rover', en: 'Rover' }, eva: { es: 'Salida exterior', en: 'Outside walk' }, field: { es: 'Expedición', en: 'Expedition' }, camp: { es: 'Entrenamiento', en: 'Training' }, legacy: { es: 'Partida anterior', en: 'Earlier game' } };
 
   function foodModel() {
     const df = Sim.DIFFS[S.diff], per = Sim.P.FOOD_PER_PERSON_DAY * df.cons * (Sim.RATION[S.pant.ration] || 1);
@@ -78,12 +78,12 @@
   function samplePanel() {
     const es = LANG === 'es', adv = MODE === 'adv';
     livePanel(() => {
-      const L = S.sampleList, open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
+      const L = S.sampleList.filter(Ex.isBase), away = S.sampleList.filter((e) => !Ex.isBase(e)), open = L.filter((e) => e.an !== 'done'), done = L.filter((e) => e.an === 'done');
       const used = L.filter((e) => e.slot && e.an !== 'done').length, left = Sim.SAMPLE_SLOTS - used;
       const row = (e) => {
         const fresh = e.state === 'new' || e.state === 'degraded';
         return h('div', { class: 'card', style: e.state === 'degraded' ? { borderColor: 'var(--warning)' } : {} },
-          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
+          h('div', { class: 'row', style: { alignItems: 'center' } }, h('b', null, e.id), e.name ? h('span', null, tr(e.name)) : null, tag(tr(STN[e.state]), e.state === 'degraded' ? 'warn' : 'ok'),
             e.an === 'inlab' ? tag('🔬 ' + (es ? 'En el laboratorio' : 'In the lab'), 'ok') : null),
           h('p', { class: 'small' }, (es ? 'Origen: ' : 'Origin: ') + tr(ORIGN[e.origin] || ORIGN.rover) + ' · ' + (es ? 'recogida: ' : 'collected: ') + dayHour(e.t) + ' · ' + (es ? 'categoría: ' : 'category: ') + (e.label ? tr(CATN[e.label]) : (es ? 'sin clasificar' : 'not classified')) + ' · ' + (es ? 'ubicación: ' : 'location: ') + (e.slot ? (es ? 'estante ' : 'shelf ') + e.slot : '—')),
           fresh && e.an === 'pending' ? h('div', { class: 'row' }, h('span', { class: 'small' }, es ? 'Clasifica y guarda:' : 'Classify and store:'),
@@ -93,6 +93,7 @@
       };
       return panel('🧪 ' + consoleName('sampler'), h('div', null,
         h('p', { class: 'small' }, (es ? 'Huecos libres: ' : 'Free slots: ') + left + '/' + Sim.SAMPLE_SLOTS + ' · ' + (es ? 'por analizar: ' : 'to analyze: ') + S.samples + ' · ' + (es ? 'análisis completados: ' : 'analyses done: ') + done.length),
+        away.length ? h('p', { class: 'tag info' }, '🧪 ' + away.length + (es ? ' muestras siguen en el exterior (mano o rover): descárgalas en la base.' : ' samples are still outside (hand or rover): unload them at the base.')) : null,
         open.length ? open.map(row) : h('p', { class: 'muted' }, es ? 'No hay muestras. Recógelas con el rover o saliendo al exterior.' : 'No samples yet. Collect them with the rover or by going outside.'),
         done.length ? h('div', null, h('h3', null, es ? 'Análisis registrados' : 'Recorded analyses'),
           h('div', { style: { overflowX: 'auto' } }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'ID'), h('th', null, es ? 'Categoría' : 'Category'), h('th', null, es ? 'Conservación' : 'Condition'), h('th', null, es ? 'Ciencia' : 'Science'))),
