@@ -39,7 +39,7 @@ const Game = (function () {
     Sfx.setVol(settings.vol); Sfx.setMuted(settings.muted);
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
-    document.documentElement.style.setProperty('--scale', settings.scale);
+    applyAgeUi();
     Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#zFit'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bRadio'), '📻'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     applyAudio();
     World.invalidate();
@@ -414,8 +414,8 @@ const Game = (function () {
     opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; rideAbort(); survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
-    settings.scen = scen; settings.mode = S.mode; settings.diff = opts.indep ? S.diff : S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = opts.age ? ageHints(opts.age) : S.mode === 'junior'; Store.set('settings', settings);
+    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep, focus: opts.focus, age: opts.age }); { const fm = Sim.FOCUS[S.focus]; if (fm && fm.mat) S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + fm.mat); } MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
+    settings.scen = scen; settings.mode = S.mode; settings.diff = opts.indep ? S.diff : S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = opts.age ? assistHints(opts.age, S.diff) : S.mode === 'junior'; settings.ageScale = opts.age ? ageBand(opts.age).scale : 1; settings.moreOpen = opts.age ? ageBand(opts.age).more : false; settings.age = opts.age || settings.age; applyAgeUi(); Store.set('settings', settings);
     // La llegada se juega una sola vez al empezar. Los atajos de prueba (skipCamp / skipLanding) saltan directo a la base ya desplegada.
     if (opts.skipCamp || opts.skipLanding || /[?&]quick\b/.test(location.search)) { Land.ensure(S); finishNewRun(scen); return; }
     popAll(); clearLayer(); startLanding(S);
@@ -425,7 +425,7 @@ const Game = (function () {
     stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
-    const fm = S && S.focus && MISSIONS.find((x) => x.id === S.focus); if (fm && (S.focus === 'station' || S.focus === 'science')) toast((LANG === 'es' ? fm.t[0] + ': ' : fm.t[1] + ': ') + (LANG === 'es' ? fm.g[0] : fm.g[1]), '', 'info');
+    const ft = focusToast(); if (ft) toast(ft, '', 'info');
   }
   function beginPlay() {
     clearLayer(); World.prewarm(); running = true; paused = false;
@@ -458,101 +458,6 @@ const Game = (function () {
   }
   /* ---------- Edad, misión y dificultad (asistente de inicio) ---------- */
   // La edad ajusta el lenguaje y las ayudas (modalidad + pistas); la dificultad ajusta recursos y eventos. Son independientes.
-  // Iconos propios del inicio (SVG en línea: no dependen de la fuente de emojis del dispositivo)
-  const WIZ_SVG = {
-    ship: '<svg viewBox="-14 0 78 32" width="64" height="26"><path d="M4 16 L-12 9 L-6 16 L-12 23 Z" fill="#ffb454"/><path d="M-2 16 L-8 12.5 L-5 16 L-8 19.5 Z" fill="#fff3c4"/><path d="M12 7 L2 1 L6 16 L2 31 L12 25 Z" fill="#6b7cff"/><path d="M4 16 L18 8 H40 Q58 10 62 16 Q58 22 40 24 H18 Z" fill="#e6edff"/><path d="M42 8.5 Q58 10 62 16 Q58 22 42 23.5 Z" fill="#a98bff"/><circle cx="33" cy="16" r="4.2" fill="#38d6ff" stroke="#0b1b3a" stroke-width="1.5"/></svg>',
-    earth: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="21" fill="#2f7bff"/><path d="M12 16 Q20 8 26 14 Q22 22 14 24 Q8 22 12 16Z M28 26 Q38 22 40 30 Q36 40 28 38 Q24 32 28 26Z" fill="#5fe39a"/><circle cx="24" cy="24" r="21" fill="none" stroke="#bcd7ff" stroke-width="2" opacity=".6"/></svg>',
-    dest: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="14" fill="#a98bff"/><circle cx="19" cy="19" r="5" fill="#d8c9ff" opacity=".7"/><ellipse cx="24" cy="26" rx="23" ry="6" fill="none" stroke="#d8c9ff" stroke-width="3" transform="rotate(-18 24 26)"/></svg>',
-    moon: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#cfd5e3"/><circle cx="16" cy="18" r="5" fill="#9aa2b8"/><circle cx="30" cy="30" r="6.5" fill="#9aa2b8"/><circle cx="31" cy="14" r="3" fill="#9aa2b8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/></svg>',
-    mars: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#d9623f"/><path d="M8 26 Q18 20 26 26 Q34 32 42 24 Q42 38 24 44 Q10 40 8 26Z" fill="#a8412a"/><ellipse cx="24" cy="6" rx="8" ry="3" fill="#fff" opacity=".8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#ffd0bd" stroke-width="2" opacity=".5"/></svg>',
-    station: '<svg viewBox="0 0 64 48" width="64" height="52"><rect x="2" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><rect x="46" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><path d="M18 24 H46" stroke="#cfd5e3" stroke-width="4"/><rect x="24" y="12" width="16" height="24" rx="4" fill="#e6edff"/><circle cx="32" cy="24" r="5" fill="#38d6ff"/><path d="M32 12 V4 M28 4 H36" stroke="#cfd5e3" stroke-width="2.5"/></svg>',
-    science: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M18 4 H30 M20 4 V18 L8 40 Q6 44 11 44 H37 Q42 44 40 40 L28 18 V4" fill="none" stroke="#e6edff" stroke-width="3" stroke-linejoin="round"/><path d="M13 32 H35 L40 41 Q41 44 37 44 H11 Q7 44 8 41Z" fill="#5fe39a"/><circle cx="22" cy="26" r="2.5" fill="#a98bff"/><circle cx="29" cy="22" r="2" fill="#38d6ff"/></svg>',
-    compass: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="20" fill="none" stroke="#38d6ff" stroke-width="3"/><path d="M24 8 L30 24 L24 40 L18 24Z" fill="#e6edff"/><path d="M24 8 L30 24 H18Z" fill="#ff6b6b"/><circle cx="24" cy="24" r="2.5" fill="#0b1b3a"/></svg>',
-    cadet: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 4 L42 10 V24 Q42 38 24 45 Q6 38 6 24 V10Z" fill="#3b82f6" stroke="#bcd7ff" stroke-width="2.5"/><path d="M24 14 L27 21 L35 22 L29 27 L31 35 L24 31 L17 35 L19 27 L13 22 L21 21Z" fill="#e6edff"/></svg>',
-    star: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 3 L30 17 L45 18 L33 28 L37 43 L24 35 L11 43 L15 28 L3 18 L18 17Z" fill="#ffd25e" stroke="#fff3c4" stroke-width="2" stroke-linejoin="round"/></svg>'
-  };
-  const logoImg = () => h('img', { class: 'logo-img', src: LOGO_SRC, alt: 'Space Explorer', width: 220, height: 232, draggable: 'false' });
-  const wizIco = (k, cls) => h('span', { class: cls || 'mico', html: WIZ_SVG[k], 'aria-hidden': 'true' });
-  const AGE_MIN = 5, AGE_MAX = 17;
-  const ageMode = (a) => (a <= 12 ? 'junior' : 'adv');
-  const ageHints = (a) => a <= 14;
-  const ageBand = (a) => (a <= 12
-    ? { es: ['Lenguaje sencillo y ejemplos cotidianos', 'Modo Junior: misiones guiadas y pistas siempre visibles'], en: ['Simple language and everyday examples', 'Junior mode: guided missions and hints always on'] }
-    : a <= 14
-      ? { es: ['Lenguaje técnico con explicaciones', 'Modo Avanzado: datos y unidades, con pistas'], en: ['Technical language with explanations', 'Advanced mode: data and units, with hints'] }
-      : { es: ['Lenguaje técnico completo', 'Modo Avanzado: datos y unidades, sin pistas automáticas'], en: ['Full technical language', 'Advanced mode: data and units, no automatic hints'] });
-  const MISSIONS = [
-    { id: 'moon', scen: 'moon', ico: 'moon', t: ['Luna', 'Moon'], d: ['Base en el polo sur lunar: noches de dos semanas, polvo y poca gravedad.', 'Base at the lunar south pole: two-week nights, dust and low gravity.'] },
-    { id: 'mars', scen: 'mars', ico: 'mars', t: ['Marte', 'Mars'], d: ['Tormentas de polvo, poca luz solar y mensajes con retraso desde la Tierra.', 'Dust storms, weak sunlight and delayed messages from Earth.'] },
-    { id: 'station', scen: 'moon', ico: 'station', t: ['Construcción de estación', 'Station construction'], d: ['Escenario Luna. Empiezas con +20 de materiales para construir y ampliar la base.', 'Moon scenario. You start with +20 materials to build and expand the base.'], g: ['construye y amplía la base; tienes +20 de materiales.', 'build and expand the base; you have +20 materials.'] },
-    { id: 'science', scen: 'mars', ico: 'science', t: ['Investigación científica', 'Scientific research'], d: ['Escenario Marte. Objetivo: expediciones, muestras y experimentos.', 'Mars scenario. Goal: expeditions, samples and experiments.'], g: ['sal en expediciones, recoge muestras y haz experimentos.', 'go on expeditions, collect samples and run experiments.'] }];
-  const LEVELS = [
-    { id: 'explorer', ico: 'compass', n: ['Explorador', 'Explorer'], tag: ['Fácil', 'Easy'], d: ['Más ayudas, recursos abundantes y mucho margen para equivocarte.', 'More help, plenty of resources and lots of room for mistakes.'] },
-    { id: 'engineer', ico: 'cadet', n: ['Cadete', 'Cadet'], tag: ['Normal', 'Normal'], d: ['Recursos equilibrados y eventos ambientales.', 'Balanced resources and environmental events.'] },
-    { id: 'commander', ico: 'star', n: ['Comandante', 'Commander'], tag: ['Difícil', 'Hard'], d: ['Recursos escasos, eventos complejos y poco margen.', 'Scarce resources, complex events and little margin.'] }];
-  const diffName = (d) => { const L = LEVELS.find((x) => x.id === d) || LEVELS[0]; return L.n[LANG === 'es' ? 0 : 1]; };
-  function setupScreen() {
-    const prevMode = MODE, pk = (a) => a[LANG === 'es' ? 0 : 1];
-    let step = 0, age = clampN(Math.round(+settings.age || 10), AGE_MIN, AGE_MAX), mi = MISSIONS.some((m) => m.id === settings.mission) ? settings.mission : 'moon', lv = LEVELS.some((l) => l.id === settings.diff) ? settings.diff : 'explorer';
-    const wrap = h('div', { class: 'wiz' });
-    const go = (n) => { step = n; render(); };
-    const stepsBar = () => h('ol', { class: 'wiz-steps' }, [['Edad', 'Age'], ['Misión', 'Mission'], ['Dificultad', 'Difficulty']].map((x, i) => h('li', { class: i === step ? 'on' : i < step ? 'done' : '', 'aria-current': i === step ? 'step' : null }, h('b', null, String(i + 1)), h('span', null, pk(x)))));
-    const ageStep = () => {
-      const num = h('div', { class: 'age-num', 'aria-live': 'polite', 'data-age': '1' }), b1 = h('p', null), b2 = h('p', { class: 'small muted' });
-      const rng = h('input', { type: 'range', min: AGE_MIN, max: AGE_MAX, step: 1, value: age, class: 'age-range', 'aria-label': LANG === 'es' ? 'Edad' : 'Age' });
-      const set = (v) => { age = clampN(Math.round(v), AGE_MIN, AGE_MAX); rng.value = age; num.textContent = age === AGE_MAX ? AGE_MAX + '+' : String(age); const b = ageBand(age)[LANG]; b1.textContent = '🗣️ ' + b[0]; b2.textContent = '💡 ' + b[1]; rng.style.setProperty('--p', ((age - AGE_MIN) / (AGE_MAX - AGE_MIN) * 100) + '%'); };
-      rng.addEventListener('input', () => set(+rng.value));
-      const mk = (txt, d, lab) => h('button', { class: 'age-btn', type: 'button', 'aria-label': lab, 'data-age-step': d, onclick: () => { Sfx.play('click'); set(age + d); } }, txt);
-      set(age);
-      return h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? '¿Cuántos años tienes?' : 'How old are you?'),
-        h('p', { class: 'muted' }, LANG === 'es' ? 'La edad ajusta el lenguaje y las ayudas. La dificultad se elige aparte.' : 'Age adjusts the language and the help. Difficulty is chosen separately.'),
-        h('div', { class: 'age-row' }, mk('−', -1, LANG === 'es' ? 'Bajar la edad' : 'Decrease age'), num, mk('+', 1, LANG === 'es' ? 'Subir la edad' : 'Increase age')), rng,
-        h('div', { class: 'age-ticks' }, h('span', null, '5'), h('span', null, '11'), h('span', null, '17+')), h('div', { class: 'age-info' }, b1, b2));
-    };
-    const cards = (list, cur, set, kind) => {
-      const grid = h('div', { class: kind === 'm' ? 'mgrid' : 'dgrid' });
-      for (const it of list) grid.append(h('button', { class: kind === 'm' ? 'mcard' : 'dcard', type: 'button', 'aria-pressed': cur() === it.id ? 'true' : 'false', ['data-' + (kind === 'm' ? 'mission' : 'level')]: it.id,
-        onclick: () => { Sfx.play('click'); set(it.id); for (const c of grid.children) c.setAttribute('aria-pressed', c === grid.children[list.indexOf(it)] ? 'true' : 'false'); } },
-      wizIco(it.ico), h('b', null, pk(it.t || it.n)), it.tag ? h('span', { class: 'dtag' }, pk(it.tag)) : null, h('span', { class: 'small muted' }, pk(it.d))));
-      return grid;
-    };
-    const missionStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige tu misión' : 'Choose your mission'), cards(MISSIONS, () => mi, (v) => (mi = v), 'm'));
-    const levelStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige la dificultad' : 'Choose the difficulty'),
-      h('p', { class: 'muted' }, LANG === 'es' ? 'Cambia los recursos y los eventos, no el lenguaje: puedes ser Comandante a cualquier edad.' : 'It changes resources and events, not the language: you can be a Commander at any age.'), cards(LEVELS, () => lv, (v) => (lv = v), 'd'));
-    const start = () => {
-      const m = MISSIONS.find((x) => x.id === mi); settings.age = age; settings.mission = mi; settings.diff = lv; Store.set('settings', settings);
-      MODE = prevMode; newRun(m.scen, lv, { mode: ageMode(age), indep: true, focus: mi, age });
-    };
-    const render = () => {
-      MODE = ageMode(age);
-      wrap.replaceChildren(stepsBar(), step === 0 ? ageStep() : step === 1 ? missionStep() : levelStep(),
-        h('div', { class: 'row wiz-nav' }, btn(_('back'), () => { if (step === 0) { MODE = prevMode; mainMenu(); } else go(step - 1); }),
-          step < 2 ? btn((LANG === 'es' ? 'Siguiente' : 'Next') + ' ▶', () => go(step + 1), 'primary wiz-big', { 'data-act': 'wiz-next' }) : btn(_('go') + ' ▶', start, 'primary wiz-big', { 'data-act': 'launch' })));
-      const f = wrap.querySelector(step === 0 ? '.age-range' : '.wiz-big'); if (f && f.isConnected) f.focus({ preventScroll: true });
-    };
-    render();
-    showScreen(h('div', { class: 'panel cine-panel wiz-panel' }, wrap), 'cine');
-    const f = wrap.querySelector('.age-range'); if (f) f.focus({ preventScroll: true });
-  }
-
-  /* ---------- Carga espacial ---------- */
-  function bootLoad() {
-    const es = LANG === 'es', rm = document.documentElement.classList.contains('rm');
-    const MS = [[0, 'Encendiendo motores…', 'Starting engines…'], [20, 'Calibrando sensores…', 'Calibrating sensors…'], [42, 'Trazando la ruta hacia la Luna y Marte…', 'Plotting the route to the Moon and Mars…'], [64, 'Sincronizando con la Tierra…', 'Syncing with Earth…'], [84, 'Revisando el soporte vital…', 'Checking life support…'], [97, '¡Listo para el despegue!', 'Ready for launch!']];
-    const pct = h('div', { class: 'ld-pct' }, '0 %'), msg = h('p', { class: 'ld-msg', 'aria-live': 'polite' }), fill = h('i'), ship = h('div', { class: 'ld-ship', 'aria-hidden': 'true', html: WIZ_SVG.ship });
-    const rail = h('div', { class: 'ld-rail', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0, 'aria-label': es ? 'Carga' : 'Loading' }, fill, ship);
-    let done = false, t0 = null;
-    const set = (p) => { pct.textContent = p + ' %'; fill.style.width = p + '%'; ship.style.left = p + '%'; rail.setAttribute('aria-valuenow', p); let m = MS[0]; for (const x of MS) if (p >= x[0]) m = x; msg.textContent = es ? m[1] : m[2]; };
-    const body = h('div', { class: 'panel cine-panel ld-panel', 'data-boot': '1' },
-      h('p', { class: 'muted ld-sub' }, 'Astro Caribe Challenge · STEM'), h('h1', { class: 'title-big has-logo' }, logoImg()),
-      h('div', { class: 'ld-track' }, wizIco('earth', 'ld-pl'), rail, wizIco('dest', 'ld-pl')),
-      pct, msg, btn(es ? 'Saltar ▶' : 'Skip ▶', () => finish(), 'sm'));
-    const finish = () => { if (done) return; done = true; set(100); setTimeout(() => { if (layer.contains(body)) mainMenu(); }, rm ? 80 : 450); };
-    const D = rm ? 800 : 3800;
-    const tick = (ts) => { if (done || !layer.contains(body)) return; if (t0 == null) t0 = ts; const x = Math.min(1, (ts - t0) / D), e = x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; set(Math.round(e * 100)); if (x >= 1) finish(); else requestAnimationFrame(tick); };
-    set(0); showScreen(body, 'cine'); requestAnimationFrame(tick); setTimeout(finish, D + 4000);
-  }
-
   function tutorial(i) {
     i = i || 0;
     const T = DATA.TUT[i];
