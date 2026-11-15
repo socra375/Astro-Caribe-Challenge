@@ -21,7 +21,7 @@
 
   /* ---------- Almacén de alimentos ---------- */
   function storePanel() {
-    const es = LANG === 'es', adv = MODE === 'adv';
+    const es = LANG === 'es', adv = MODE === 'adv'; Sim.campFlag(S, 'store_open');
     livePanel(() => {
       const m = foodModel(), P = S.pant, lvl = lvlOf(m.total, S.r.food.max, 0.3, 0.12);
       const crops = Object.keys(S.st.crops || {});

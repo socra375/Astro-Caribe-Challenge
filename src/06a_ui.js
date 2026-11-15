@@ -227,6 +227,14 @@ const Game = (function () {
       }
     }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
+    const xs = !act && Sim.expStatus(S);
+    if (xs) {
+      const k = xs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '', p = tg.startsWith('room:') ? World.roomCenter(tg.slice(5)) : World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[xs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
     const T = {

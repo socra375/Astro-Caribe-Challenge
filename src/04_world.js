@@ -24,7 +24,7 @@ const World = (function () {
   let staticCv = null, scen = 'moon';
   const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
-  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1 };
+  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
@@ -117,7 +117,7 @@ const World = (function () {
     ['he', 'sa_t'], ['sa_t', 'sa_c'], ['sa_c', 'sa_b'], ['sa_b', 'v5n'], ['v5n', 'wk_d'], ['wk_d', 'wk_c'],
     ['bay_c', 'bay_e'], ['bay_e', 'cor6'], ['cor6', 'ws_c'], ['ws_c', 'cor7'], ['cor7', 'wk_c']];
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
-  const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
+  const HOME = { engineer: ['re_c', 're_m', 'wa_c', 'wk_c'], scientist: ['lab_c', 'lab_d', 'sa_c'], medic: ['med_c', 'life_c', 'med_d'], agri: ['gh_c', 'gh_t', 'fd_c'] };
   const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2', kitchen: 'kit_c', med: 'med_c', food: 'fd_c', samples: 'sa_c', waste: 'ws_c', workshop: 'wk_c' };
   const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
@@ -249,7 +249,7 @@ const World = (function () {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role].filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
+        if (b.wait <= 0) { const night = S.t >= 24 && (S.t % 24 >= 23 || S.t % 24 < 5); const h = (night ? ['life_c', 'life_d'] : HOME[b.role]).filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -455,7 +455,7 @@ const World = (function () {
     ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     // Secciones bloqueadas
-    if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
+    if (S && S.camp) for (const k in MAIN) if (locked(k)) {
       const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
       ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; { const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4); }
     }

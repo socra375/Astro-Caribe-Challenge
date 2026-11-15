@@ -12,10 +12,43 @@ const NPCDATA = (function () {
     agri: { name: { es: 'Teo', en: 'Teo' }, spec: { es: 'Agrónomo · invernadero y cultivos', en: 'Agronomist · greenhouse and crops' } }
   };
   // Guía de cada sección (si el jugador lleva ese traje, habla Control de Misión)
-  const GUIDE = { bridge: 'commander', life: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer' };
+  const GUIDE = { bridge: 'commander', life: 'medic', med: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer', food: 'agri', kitchen: 'medic', samples: 'scientist', workshop: 'engineer', waste: 'engineer' };
 
   // 5 pasos: presentarse · para qué sirve · sistemas · misión · cómo interactuar
   const TALK = {
+    med: [
+      { es: 'Soy Sofía. Esta es la enfermería: aquí revisamos cómo está la tripulación.', en: 'I am Sofía. This is the sick bay: here we check how the crew is doing.' },
+      { es: 'Miramos el ánimo, el descanso y la radiación recibida. Si alguien está mal, lo vemos aquí primero.', en: 'We look at morale, rest and the radiation received. If someone is struggling, we see it here first.' },
+      { es: 'La consola 🩺 muestra el estado de cada persona. Son datos del juego, no diagnósticos médicos reales.', en: 'The 🩺 console shows each person\'s status. These are game data, not real medical diagnoses.' }
+    ],
+    food: [
+      { es: '¡Hola! Soy Teo. Este es el almacén de alimentos, separado del invernadero.', en: 'Hi! I am Teo. This is the food storage, separate from the greenhouse.' },
+      { es: 'Aquí entran las cosechas y las raciones de reserva. Lo fresco se estropea antes que lo envasado, sobre todo sin frío.', en: 'Harvests and reserve rations come in here. Fresh food spoils sooner than packed food, especially without cold.' },
+      { es: 'En la consola 🧺 ves cuánta comida queda, para cuántos días, y puedes encender o apagar el frío. Es un modelo simplificado.', en: 'At the 🧺 console you see how much food is left, for how many days, and you can turn the cold on or off. It is a simplified model.' },
+      { es: 'Tu misión: abre la consola del almacén y mira las reservas. Después te abro la cocina.', en: 'Your mission: open the storage console and check the supplies. Then I will open the kitchen for you.' }
+    ],
+    kitchen: [
+      { es: 'Soy Sofía otra vez. Esta es la cocina y el comedor.', en: 'Sofía again. This is the kitchen and mess.' },
+      { es: 'Comer bien mantiene el ánimo. Aquí eliges el tamaño de las raciones y preparas comidas con recetas sencillas.', en: 'Eating well keeps morale up. Here you choose ration size and prepare meals with simple recipes.' },
+      { es: 'Planificar es clave: raciones pequeñas ahorran comida pero cansan; las grandes animan pero gastan más.', en: 'Planning is key: small rations save food but tire people; large ones cheer them up but use more.' },
+      { es: 'Tu misión: prepara una comida en la consola 🥗. Una ensalada fresca o una ración caliente valen.', en: 'Your mission: prepare a meal at the 🥗 console. A fresh salad or a hot ration both work.' }
+    ],
+    samples: [
+      { es: 'Soy Leo. Este es el almacén de muestras: aquí llegan las muestras que trae el rover.', en: 'I am Leo. This is the sample storage: samples brought by the rover arrive here.' },
+      { es: 'Cada muestra tiene un identificador, su origen, la fecha y su estado. Si no se guarda a tiempo, se deteriora.', en: 'Every sample has an ID, an origin, a date and a condition. If it is not stored in time, it degrades.' },
+      { es: 'Son muestras ficticias del juego, no muestras reales de la NASA. Se clasifican, se guardan y se mandan al laboratorio.', en: 'These are fictional game samples, not real NASA samples. They are classified, stored and sent to the lab.' },
+      { es: 'Tu misión: clasifica y guarda una muestra en la consola 🧪.', en: 'Your mission: classify and store one sample at the 🧪 console.' }
+    ],
+    workshop: [
+      { es: 'Soy Ana. Este es el taller de mantenimiento.', en: 'I am Ana. This is the maintenance workshop.' },
+      { es: 'Aquí se fabrican repuestos con los materiales de la base. Con un repuesto a mano, el mantenimiento es más rápido y no gasta materiales.', en: 'Spare parts are made here from the base materials. With a part at hand, maintenance is faster and uses no materials.' },
+      { es: 'Tu misión: fabrica un repuesto en la consola 🛠. Cuesta 6 kg de materiales y unas horas.', en: 'Your mission: make a spare part at the 🛠 console. It costs 6 kg of materials and a few hours.' }
+    ],
+    waste: [
+      { es: 'Ana de nuevo. Esto es la gestión de residuos.', en: 'Ana again. This is waste management.' },
+      { es: 'Nada se tira: separamos, clasificamos y reciclamos los residuos para recuperar materiales. Es economía circular.', en: 'Nothing is thrown away: we sort, classify and recycle waste to recover materials. That is circular economy.' },
+      { es: 'Tu misión: en la consola ♻️ separa un lote de residuos y luego recíclalo. Separar antes rinde más.', en: 'Your mission: at the ♻️ console sort a batch of waste and then recycle it. Sorting first gives more.' }
+    ],
     bridge: [
       { es: '¡Bienvenida, bienvenido a bordo! Te hablo desde el puente de mando: aquí se toman las decisiones de la base.', en: 'Welcome aboard! I am speaking from the command bridge: this is where base decisions are made.' },
       { es: 'Arriba tienes el HUD: oxígeno, agua, energía, protección, alimentos y bienestar. Verde es bien, ámbar ⚠ es atención y rojo ⛔ es urgente.', en: 'At the top is the HUD: oxygen, water, energy, protection, food and wellbeing. Green is fine, amber ⚠ needs attention, red ⛔ is urgent.' },
@@ -71,6 +104,11 @@ const NPCDATA = (function () {
     c1: { t: { es: 'Activación de la colonia', en: 'Colony activation' }, b: { es: 'Conoce el puente, el módulo de vida y el reactor, y pon en marcha la energía.', en: 'Get to know the bridge, habitation module and reactor, and get power going.' } },
     c2: { t: { es: 'Recuperación del ciclo de agua', en: 'Water cycle recovery' }, b: { es: 'Repara el reciclador, calibra el oxígeno y estabiliza el agua.', en: 'Repair the recycler, calibrate oxygen and stabilize water.' } },
     c3: { t: { es: 'Primer cultivo', en: 'First crop' }, b: { es: 'Aprende a sembrar, cuidar y cosechar plantas.', en: 'Learn to plant, tend and harvest crops.' } },
+    x1: { t: { es: 'Almacén de alimentos', en: 'Food storage' }, b: { es: 'Conoce el almacén y consulta las reservas de comida.', en: 'Get to know the storage and check the food supplies.' } },
+    x2: { t: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, b: { es: 'Planifica las raciones y prepara una comida.', en: 'Plan the rations and prepare a meal.' } },
+    x3: { t: { es: 'Almacén de muestras', en: 'Sample storage' }, b: { es: 'Clasifica y guarda una muestra.', en: 'Classify and store a sample.' } },
+    x4: { t: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, b: { es: 'Fabrica un repuesto.', en: 'Make a spare part.' } },
+    x5: { t: { es: 'Gestión de residuos', en: 'Waste management' }, b: { es: 'Separa y recicla residuos.', en: 'Sort and recycle waste.' } },
     c4: { t: { es: 'Exploración científica', en: 'Science exploration' }, b: { es: 'Analiza muestras y comprende las condiciones del entorno.', en: 'Analyze samples and understand the environment.' } }
   };
   const KEY = {
@@ -92,12 +130,24 @@ const NPCDATA = (function () {
     talk_lab: { es: 'Visita el laboratorio', en: 'Visit the lab' },
     analyze1: { es: 'Analiza una muestra', en: 'Analyze a sample' },
     spec_open: { es: 'Usa el espectrómetro', en: 'Use the spectrometer' },
-    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' }
+    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' },
+    talk_food: { es: 'Visita el almacén de alimentos', en: 'Visit the food storage' },
+    store_open: { es: 'Abre la consola del almacén y mira las reservas', en: 'Open the storage console and check the supplies' },
+    talk_kitchen: { es: 'Visita la cocina y comedor', en: 'Visit the kitchen and mess' },
+    cook1: { es: 'Prepara una comida', en: 'Prepare a meal' },
+    talk_samples: { es: 'Visita el almacén de muestras', en: 'Visit the sample storage' },
+    sstore1: { es: 'Clasifica y guarda una muestra', en: 'Classify and store a sample' },
+    talk_workshop: { es: 'Visita el taller de mantenimiento', en: 'Visit the maintenance workshop' },
+    craft1: { es: 'Fabrica un repuesto', en: 'Make a spare part' },
+    talk_waste: { es: 'Visita la gestión de residuos', en: 'Visit waste management' },
+    sort1: { es: 'Separa un lote de residuos', en: 'Sort a batch of waste' },
+    recycle1: { es: 'Recicla residuos en materiales', en: 'Recycle waste into materials' }
   };
   // Dónde guiar al jugador para cada objetivo (consola o sala)
   const KEYTARGET = { talk_bridge: 'room:bridge', cmd_resources: 'cmd', talk_life: 'room:life', med_open: 'med', talk_reactor: 'room:reactor', power_action: 'reactor',
     talk_water: 'room:water', rec_fixed: 'water', o2_cal: 'o2', water_hold: 'water', talk_gh: 'room:gh', plant3: 'plant', water1: 'plant', feed1: 'plant', harvest1: 'plant:0:0',
-    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log' };
+    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log',
+    talk_food: 'room:food', store_open: 'store', talk_kitchen: 'room:kitchen', cook1: 'kitchen', talk_samples: 'room:samples', sstore1: 'sampler', talk_workshop: 'room:workshop', craft1: 'work', talk_waste: 'room:waste', sort1: 'wastec', recycle1: 'wastec' };
 
   // Quién informa de cada incidente
   const INC_NPC = { solar_storm: 'scientist', power_drop: 'engineer', dust_storm: 'engineer', water_fail: 'engineer', pressure_leak: 'medic', comms_blackout: 'commander',

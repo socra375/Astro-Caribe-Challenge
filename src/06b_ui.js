@@ -139,6 +139,16 @@
     });
   }
   function campaignCard() {
+    const es = LANG === 'es', C = S.camp, xs = Sim.expStatus(S);
+    if (!C) return null;
+    const exp = C.basicDone ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🏗 ' + (es ? 'Ampliación de la base' : 'Base expansion')),
+      h('div', { class: 'row' }, Sim.EXP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.xi ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t), C.done[d.id] ? 'ok' : i === C.xi ? 'info' : ''))),
+      xs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[xs.id].t) + ': '), tr(NPCDATA.CAMP[xs.id].b)), h('ul', null, xs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k]))))) :
+        h('p', { class: 'small' }, es ? '✔ Completada. Las trece instalaciones están abiertas. Opcional: no bloquea las misiones.' : '✔ Complete. All thirteen facilities are open. Optional: it never blocks missions.')) : null;
+    return h('div', null, campaignCardBasic(), exp);
+  }
+  function campaignCardBasic() {
     const es = LANG === 'es', C = S.camp;
     if (!C) return null;
     const cs = Sim.campStatus(S);
@@ -146,7 +156,7 @@
       h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
       h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
       cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
-        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones principales están abiertas.' : '✔ Complete. The seven main sections are open.'));
   }
   function missionsTab() {
     const campLock = S.camp && !S.camp.basicDone;

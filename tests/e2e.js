@@ -185,7 +185,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const skipTalk = async () => { for (let i = 0; i < 6; i++) { const b = pg.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pg.waitForTimeout(60); } else break; } };
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
-  ok('Al empezar solo hay 3 secciones abiertas', un0 === 'bridge,life,reactor', un0);
+  ok('Al empezar están abiertos puente, dormitorios, enfermería, reactor y soporte vital', un0 === 'bridge,life,med,reactor,water', un0);
   await pg.evaluate(() => { World.player.x = 10; World.player.y = 14.6; });
   await pg.keyboard.down('s'); await pg.waitForTimeout(900); await pg.keyboard.up('s');
   const yb = await pg.evaluate(() => World.player.y);
@@ -247,7 +247,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.evaluate(() => { const S = Game.S; Sim.decide(S, 'analyze', {}); Sim.step(S, 4); });
   await pg.waitForTimeout(400);
   const fin = await pg.evaluate(() => [Game.S.camp.basicDone, Object.keys(Game.S.camp.unlocked).length]);
-  ok('Familiarización completa: las 7 secciones abiertas', fin[0] && fin[1] === 7, JSON.stringify(fin));
+  ok('Familiarización completa: las 7 secciones principales, la enfermería y el almacén de alimentos abiertos', fin[0] && fin[1] === 9, JSON.stringify(fin));
   await pg.evaluate(() => { World.player.x = 30; World.player.y = 36; }); await pg.waitForTimeout(500);
   ok('La guía de la bahía del rover se presenta', await pg.getByText(/bahía del rover/).first().isVisible()); await skipTalk();
   // Permisos después de la familiarización y vestuario
@@ -302,11 +302,13 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const inDoor = (x, y) => T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2);
     for (const k in T.N) if (!T.canStand(T.N[k][0], T.N[k][1], 0.25) && !inDoor(T.N[k][0], T.N[k][1])) out.nodesOk = false, out.bad.push(k);
     World.player.x = 30; World.player.y = 9.5;
+    const savedUn = Game.S.camp.unlocked; Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
     for (const k of need) {
       const r = World.route(k);
       if (!r || r.length < 2) { out.unreachable.push(k); continue; }
       for (let i = 1; i < r.length; i++) for (let t = 0; t <= 1; t += 0.1) { const x = r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, y = r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t; if (!T.canStand(x, y, 0.25) && !T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2)) out.bad.push(k + '@' + x.toFixed(1) + ',' + y.toFixed(1)); }
     }
+    Game.S.camp.unlocked = savedUn;
     return out;
   });
   ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
@@ -367,6 +369,41 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     ok('La consola «' + id + '» abre su panel', await pg.locator('.panel h2').filter({ hasText: re }).first().isVisible());
     await closeAll(pg);
   }
+  // ---- Ampliación progresiva: cada zona nueva se abre al completar la anterior ----
+  const expn = await pg.evaluate(() => {
+    const X = Sim.create({ seed: 3, noEv: true, mode: 'adv', skipCamp: true }), C = X.camp, out = {};
+    C.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1 }; C.xi = 0; C.done = { c1: 1, c2: 1, c3: 1, c4: 1 }; C.f = {}; C.cnt = {};
+    const room = () => Object.keys(C.unlocked).sort().join(',');
+    out.start = !C.unlocked.kitchen && !C.unlocked.samples && !C.unlocked.workshop && !C.unlocked.waste;
+    Sim.campFlag(X, 'talk_food'); Sim.step(X, 0.2); out.noKit = !C.unlocked.kitchen;      // falta la misión introductoria
+    Sim.campFlag(X, 'store_open'); Sim.step(X, 0.2); out.kit = !!C.unlocked.kitchen && C.xi === 1;
+    Sim.campFlag(X, 'talk_kitchen'); X.pant.fresh = 5; X.r.food.v = 40; Sim.decide(X, 'cook', { r: 'salad' }); Sim.step(X, 0.2); out.sam = !!C.unlocked.samples && C.xi === 2;
+    Sim.campFlag(X, 'talk_samples'); const e = X.sampleList.find((q) => q.state === 'new'); out.gaveSample = !!e;
+    Sim.decide(X, 'sstore', { id: e.id, label: e.cat }); Sim.step(X, 0.2); out.wk = !!C.unlocked.workshop && C.xi === 3;
+    Sim.campFlag(X, 'talk_workshop'); Sim.decide(X, 'craft', {}); Sim.step(X, 0.2); out.ws = !!C.unlocked.waste && C.xi === 4;
+    Sim.campFlag(X, 'talk_waste'); Sim.decide(X, 'sort', {}); Sim.decide(X, 'recycle', {}); Sim.step(X, 0.2); out.end = C.xi === 5 && Sim.expStatus(X) === null && C.done.x5 === 1;
+    out.pts = X.pts > 0;
+    return out;
+  });
+  ok('Las zonas nuevas empiezan bloqueadas y no se abren sin completar la misión introductoria', expn.start && expn.noKit, JSON.stringify(expn));
+  ok('Cada zona nueva se abre al completar la anterior (almacén → cocina → muestras → taller → residuos)', expn.kit && expn.sam && expn.wk && expn.ws && expn.end, JSON.stringify(expn));
+  ok('La ampliación es opcional: no bloquea las misiones', await pg.evaluate(() => { const X = Sim.create({ seed: 4, noEv: true, mode: 'adv', skipCamp: true }); X.camp.xi = 0; X.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1 }; return Sim.startMission(X, 1).ok === true; }));
+  // ---- Rutinas de los NPC (día y noche) ----
+  const rout = await pg.evaluate(() => {
+    const X = Sim.create({ seed: 8, noEv: true, mode: 'adv', skipCamp: true }); X.t = 24 + 12; // día 2, 12:00
+    World.init(X.scen); World.update(0.01, X, { x: 0, y: 0 });
+    const B = World._test.bots, rooms = () => B.map((b) => World.roomName(b.x, b.y));
+    const run = (sec) => { for (let i = 0; i < sec * 20; i++) { B.forEach((b) => { if (b.wait > 0.2) b.wait = 0.1; }); World.update(0.05, X, { x: 0, y: 0 }); } };
+    const homes = {}; const seen = { engineer: new Set(), scientist: new Set(), medic: new Set(), agri: new Set() };
+    for (let k = 0; k < 40; k++) { run(2); B.forEach((b) => seen[b.role] && seen[b.role].add(World.roomName(b.x, b.y))); }
+    const day = Object.fromEntries(Object.entries(seen).map(([r, v]) => [r, [...v]]));
+    X.t = 24 * 2 + 1; // noche (01:00)
+    run(60);
+    const night = rooms();
+    return { day, night, inDorm: night.every((r) => r === 'life' || r === 'hall' || r === 'med') };
+  });
+  ok('Las rutinas diurnas llevan a cada NPC a su zona de trabajo', rout.day.medic.includes('med') && rout.day.scientist.some((r) => r === 'lab' || r === 'samples') && rout.day.agri.some((r) => r === 'gh' || r === 'food') && rout.day.engineer.some((r) => ['reactor', 'water', 'workshop'].includes(r)), JSON.stringify(rout.day));
+  ok('De noche los NPC se retiran a los dormitorios', rout.night.filter((r) => r === 'life').length >= 3, JSON.stringify(rout.night));
   // Alertas por NPC
   const rad = await pg.evaluate(() => {
     const G = Game._debug, S = Game.S, out = {};

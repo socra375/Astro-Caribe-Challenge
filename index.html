@@ -643,10 +643,43 @@ const NPCDATA = (function () {
     agri: { name: { es: 'Teo', en: 'Teo' }, spec: { es: 'Agrónomo · invernadero y cultivos', en: 'Agronomist · greenhouse and crops' } }
   };
   // Guía de cada sección (si el jugador lleva ese traje, habla Control de Misión)
-  const GUIDE = { bridge: 'commander', life: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer' };
+  const GUIDE = { bridge: 'commander', life: 'medic', med: 'medic', reactor: 'engineer', water: 'medic', gh: 'agri', lab: 'scientist', rad: 'engineer', food: 'agri', kitchen: 'medic', samples: 'scientist', workshop: 'engineer', waste: 'engineer' };
 
   // 5 pasos: presentarse · para qué sirve · sistemas · misión · cómo interactuar
   const TALK = {
+    med: [
+      { es: 'Soy Sofía. Esta es la enfermería: aquí revisamos cómo está la tripulación.', en: 'I am Sofía. This is the sick bay: here we check how the crew is doing.' },
+      { es: 'Miramos el ánimo, el descanso y la radiación recibida. Si alguien está mal, lo vemos aquí primero.', en: 'We look at morale, rest and the radiation received. If someone is struggling, we see it here first.' },
+      { es: 'La consola 🩺 muestra el estado de cada persona. Son datos del juego, no diagnósticos médicos reales.', en: 'The 🩺 console shows each person\'s status. These are game data, not real medical diagnoses.' }
+    ],
+    food: [
+      { es: '¡Hola! Soy Teo. Este es el almacén de alimentos, separado del invernadero.', en: 'Hi! I am Teo. This is the food storage, separate from the greenhouse.' },
+      { es: 'Aquí entran las cosechas y las raciones de reserva. Lo fresco se estropea antes que lo envasado, sobre todo sin frío.', en: 'Harvests and reserve rations come in here. Fresh food spoils sooner than packed food, especially without cold.' },
+      { es: 'En la consola 🧺 ves cuánta comida queda, para cuántos días, y puedes encender o apagar el frío. Es un modelo simplificado.', en: 'At the 🧺 console you see how much food is left, for how many days, and you can turn the cold on or off. It is a simplified model.' },
+      { es: 'Tu misión: abre la consola del almacén y mira las reservas. Después te abro la cocina.', en: 'Your mission: open the storage console and check the supplies. Then I will open the kitchen for you.' }
+    ],
+    kitchen: [
+      { es: 'Soy Sofía otra vez. Esta es la cocina y el comedor.', en: 'Sofía again. This is the kitchen and mess.' },
+      { es: 'Comer bien mantiene el ánimo. Aquí eliges el tamaño de las raciones y preparas comidas con recetas sencillas.', en: 'Eating well keeps morale up. Here you choose ration size and prepare meals with simple recipes.' },
+      { es: 'Planificar es clave: raciones pequeñas ahorran comida pero cansan; las grandes animan pero gastan más.', en: 'Planning is key: small rations save food but tire people; large ones cheer them up but use more.' },
+      { es: 'Tu misión: prepara una comida en la consola 🥗. Una ensalada fresca o una ración caliente valen.', en: 'Your mission: prepare a meal at the 🥗 console. A fresh salad or a hot ration both work.' }
+    ],
+    samples: [
+      { es: 'Soy Leo. Este es el almacén de muestras: aquí llegan las muestras que trae el rover.', en: 'I am Leo. This is the sample storage: samples brought by the rover arrive here.' },
+      { es: 'Cada muestra tiene un identificador, su origen, la fecha y su estado. Si no se guarda a tiempo, se deteriora.', en: 'Every sample has an ID, an origin, a date and a condition. If it is not stored in time, it degrades.' },
+      { es: 'Son muestras ficticias del juego, no muestras reales de la NASA. Se clasifican, se guardan y se mandan al laboratorio.', en: 'These are fictional game samples, not real NASA samples. They are classified, stored and sent to the lab.' },
+      { es: 'Tu misión: clasifica y guarda una muestra en la consola 🧪.', en: 'Your mission: classify and store one sample at the 🧪 console.' }
+    ],
+    workshop: [
+      { es: 'Soy Ana. Este es el taller de mantenimiento.', en: 'I am Ana. This is the maintenance workshop.' },
+      { es: 'Aquí se fabrican repuestos con los materiales de la base. Con un repuesto a mano, el mantenimiento es más rápido y no gasta materiales.', en: 'Spare parts are made here from the base materials. With a part at hand, maintenance is faster and uses no materials.' },
+      { es: 'Tu misión: fabrica un repuesto en la consola 🛠. Cuesta 6 kg de materiales y unas horas.', en: 'Your mission: make a spare part at the 🛠 console. It costs 6 kg of materials and a few hours.' }
+    ],
+    waste: [
+      { es: 'Ana de nuevo. Esto es la gestión de residuos.', en: 'Ana again. This is waste management.' },
+      { es: 'Nada se tira: separamos, clasificamos y reciclamos los residuos para recuperar materiales. Es economía circular.', en: 'Nothing is thrown away: we sort, classify and recycle waste to recover materials. That is circular economy.' },
+      { es: 'Tu misión: en la consola ♻️ separa un lote de residuos y luego recíclalo. Separar antes rinde más.', en: 'Your mission: at the ♻️ console sort a batch of waste and then recycle it. Sorting first gives more.' }
+    ],
     bridge: [
       { es: '¡Bienvenida, bienvenido a bordo! Te hablo desde el puente de mando: aquí se toman las decisiones de la base.', en: 'Welcome aboard! I am speaking from the command bridge: this is where base decisions are made.' },
       { es: 'Arriba tienes el HUD: oxígeno, agua, energía, protección, alimentos y bienestar. Verde es bien, ámbar ⚠ es atención y rojo ⛔ es urgente.', en: 'At the top is the HUD: oxygen, water, energy, protection, food and wellbeing. Green is fine, amber ⚠ needs attention, red ⛔ is urgent.' },
@@ -702,6 +735,11 @@ const NPCDATA = (function () {
     c1: { t: { es: 'Activación de la colonia', en: 'Colony activation' }, b: { es: 'Conoce el puente, el módulo de vida y el reactor, y pon en marcha la energía.', en: 'Get to know the bridge, habitation module and reactor, and get power going.' } },
     c2: { t: { es: 'Recuperación del ciclo de agua', en: 'Water cycle recovery' }, b: { es: 'Repara el reciclador, calibra el oxígeno y estabiliza el agua.', en: 'Repair the recycler, calibrate oxygen and stabilize water.' } },
     c3: { t: { es: 'Primer cultivo', en: 'First crop' }, b: { es: 'Aprende a sembrar, cuidar y cosechar plantas.', en: 'Learn to plant, tend and harvest crops.' } },
+    x1: { t: { es: 'Almacén de alimentos', en: 'Food storage' }, b: { es: 'Conoce el almacén y consulta las reservas de comida.', en: 'Get to know the storage and check the food supplies.' } },
+    x2: { t: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, b: { es: 'Planifica las raciones y prepara una comida.', en: 'Plan the rations and prepare a meal.' } },
+    x3: { t: { es: 'Almacén de muestras', en: 'Sample storage' }, b: { es: 'Clasifica y guarda una muestra.', en: 'Classify and store a sample.' } },
+    x4: { t: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, b: { es: 'Fabrica un repuesto.', en: 'Make a spare part.' } },
+    x5: { t: { es: 'Gestión de residuos', en: 'Waste management' }, b: { es: 'Separa y recicla residuos.', en: 'Sort and recycle waste.' } },
     c4: { t: { es: 'Exploración científica', en: 'Science exploration' }, b: { es: 'Analiza muestras y comprende las condiciones del entorno.', en: 'Analyze samples and understand the environment.' } }
   };
   const KEY = {
@@ -723,12 +761,24 @@ const NPCDATA = (function () {
     talk_lab: { es: 'Visita el laboratorio', en: 'Visit the lab' },
     analyze1: { es: 'Analiza una muestra', en: 'Analyze a sample' },
     spec_open: { es: 'Usa el espectrómetro', en: 'Use the spectrometer' },
-    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' }
+    log_open: { es: 'Consulta el registro de investigaciones', en: 'Check the research log' },
+    talk_food: { es: 'Visita el almacén de alimentos', en: 'Visit the food storage' },
+    store_open: { es: 'Abre la consola del almacén y mira las reservas', en: 'Open the storage console and check the supplies' },
+    talk_kitchen: { es: 'Visita la cocina y comedor', en: 'Visit the kitchen and mess' },
+    cook1: { es: 'Prepara una comida', en: 'Prepare a meal' },
+    talk_samples: { es: 'Visita el almacén de muestras', en: 'Visit the sample storage' },
+    sstore1: { es: 'Clasifica y guarda una muestra', en: 'Classify and store a sample' },
+    talk_workshop: { es: 'Visita el taller de mantenimiento', en: 'Visit the maintenance workshop' },
+    craft1: { es: 'Fabrica un repuesto', en: 'Make a spare part' },
+    talk_waste: { es: 'Visita la gestión de residuos', en: 'Visit waste management' },
+    sort1: { es: 'Separa un lote de residuos', en: 'Sort a batch of waste' },
+    recycle1: { es: 'Recicla residuos en materiales', en: 'Recycle waste into materials' }
   };
   // Dónde guiar al jugador para cada objetivo (consola o sala)
   const KEYTARGET = { talk_bridge: 'room:bridge', cmd_resources: 'cmd', talk_life: 'room:life', med_open: 'med', talk_reactor: 'room:reactor', power_action: 'reactor',
     talk_water: 'room:water', rec_fixed: 'water', o2_cal: 'o2', water_hold: 'water', talk_gh: 'room:gh', plant3: 'plant', water1: 'plant', feed1: 'plant', harvest1: 'plant:0:0',
-    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log' };
+    talk_lab: 'room:lab', analyze1: 'lab', spec_open: 'spec', log_open: 'log',
+    talk_food: 'room:food', store_open: 'store', talk_kitchen: 'room:kitchen', cook1: 'kitchen', talk_samples: 'room:samples', sstore1: 'sampler', talk_workshop: 'room:workshop', craft1: 'work', talk_waste: 'room:waste', sort1: 'wastec', recycle1: 'wastec' };
 
   // Quién informa de cada incidente
   const INC_NPC = { solar_storm: 'scientist', power_drop: 'engineer', dust_storm: 'engineer', water_fail: 'engineer', pressure_leak: 'medic', comms_blackout: 'commander',
@@ -1147,6 +1197,15 @@ const Sim = (function () {
     { id: 'c3', unlock: 'lab', keys: ['talk_gh', 'plant3', 'water1', 'feed1', 'harvest1'] },
     { id: 'c4', unlock: 'rad', keys: ['talk_lab', 'analyze1', 'spec_open', 'log_open'] }
   ];
+  // Ampliación de la base: cada zona nueva se abre al completar la anterior. No bloquea misiones ni emergencias.
+  const EXP = [
+    { id: 'x1', unlock: 'kitchen', keys: ['talk_food', 'store_open'] },
+    { id: 'x2', unlock: 'samples', keys: ['talk_kitchen', 'cook1'] },
+    { id: 'x3', unlock: 'workshop', keys: ['talk_samples', 'sstore1'] },
+    { id: 'x4', unlock: 'waste', keys: ['talk_workshop', 'craft1'] },
+    { id: 'x5', unlock: null, keys: ['talk_waste', 'sort1', 'recycle1'] }
+  ];
+  const ALLROOMS = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const ROLES = ['commander', 'engineer', 'scientist', 'medic', 'agri'];
 
   /* ---------- Incidentes (plantillas) ---------- */
@@ -1231,7 +1290,7 @@ const Sim = (function () {
     ['romaine', 'mizuna', 'romaine'].forEach((sp, k) => { S.beds[0].plants[k] = newPlant(S, sp, 0.35 + 0.05 * k); });
     S.seeds = { romaine: 6, mizuna: 6, radish: 6, chili: 3, zinnia: 3 };
     S.playerRole = 'commander';
-    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, reactor: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0 };
+    S.camp = o.skipCamp ? campDone() : { i: 0, unlocked: { bridge: 1, life: 1, med: 1, reactor: 1, water: 1 }, f: {}, cnt: {}, visited: {}, done: {}, basicDone: false, hold: 0, inc: 0, xi: 0 };
     for (let i = 0; i < 5; i++) S.crew.push({ role: ROLES[i], zone: 'hab', dose: 0 });
     for (let i = 1; i <= 7; i++) S.m[i] = { st: 'idle', var: 0, stars: 0, hold: 0, t0: 0, att: 0, prog: 0, data: {} };
     derive(S);
@@ -1244,10 +1303,11 @@ const Sim = (function () {
     S.log.push({ n: S.logN, t: Math.round(S.t * 100) / 100, sev, k, p: p || {} });
     if (S.log.length > 250) S.log.splice(0, S.log.length - 250);
   }
-  function campDone() { return { i: CAMP.length, unlocked: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1 }, basicDone: true, hold: 0, inc: 0 }; }
+  function campDone() { return { i: CAMP.length, unlocked: Object.assign({}, ALLROOMS), f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1, x1: 1, x2: 1, x3: 1, x4: 1, x5: 1 }, basicDone: true, hold: 0, inc: 0, xi: EXP.length }; }
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
     if (!S.camp) S.camp = campDone();
+    { const C = S.camp; C.unlocked.med = 1; if (C.xi == null) { C.xi = 0; if (C.basicDone) { C.unlocked.food = 1; } } }
     if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
     if (!S.sampleList) { S.sampleList = []; S.sampleSeq = 1; const n = Math.max(0, Math.round(S.samples || 0)); S.samples = 0; if (n) addSamples(S, n, 'legacy'); }
     if (S.parts == null) S.parts = 0; if (S.sorted == null) S.sorted = false;
@@ -1261,8 +1321,8 @@ const Sim = (function () {
     S.beds = S.beds.map((b) => (b.plants ? b : { light: (S.sys.gh && S.sys.gh.lights) || 0.7, plants: [null, null, null] }));
     return S;
   }
-  function campFlag(S, key) { if (S.camp && !S.camp.basicDone) S.camp.f[key] = 1; }
-  function campCnt(S, key) { if (S.camp && !S.camp.basicDone) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
+  function campFlag(S, key) { if (S.camp) S.camp.f[key] = 1; }
+  function campCnt(S, key) { if (S.camp) S.camp.cnt[key] = (S.camp.cnt[key] || 0) + 1; }
   function plantsList(S) { const out = []; S.beds.forEach((b, bi) => b.plants.forEach((p, k) => { if (p) out.push({ p, bi, k }); })); return out; }
   const pct = (r) => (r.max > 0 ? r.v / r.max : 0);
   function status(S, key) {
@@ -1711,12 +1771,12 @@ const Sim = (function () {
     craft: (S) => {
       if (S.jobs.some((j) => j.kind === 'craft')) return 'busy';
       if (S.r.mat.v < 6) return 'nomat';
-      S.r.mat.v -= 6; S.jobs.push({ kind: 'craft', h: S.playerRole === 'engineer' ? 2 : 3, kw: 0.8 });
+      S.r.mat.v -= 6; S.jobs.push({ kind: 'craft', h: S.playerRole === 'engineer' ? 2 : 3, kw: 0.8 }); campCnt(S, 'craft');
     },
     sort: (S) => {
       if (S.sorted) return 'sorted';
       if (S.r.waste.v < 6) return 'nowaste';
-      S.sorted = true; step(S, 1);
+      S.sorted = true; campCnt(S, 'sort'); step(S, 1);
     },
     cold: (S, p) => { S.pant.cold = !!p.v; },
     ration: (S, p) => { if (!RATION[p.v]) return 'err'; S.pant.ration = p.v; },
@@ -1726,18 +1786,18 @@ const Sim = (function () {
       const salad = p.r !== 'ration', kg = salad ? 1.5 : 1;
       if (salad ? S.pant.fresh < kg : S.r.food.v - S.pant.fresh < kg) return salad ? 'nofresh' : 'nopacked';
       if (salad) S.pant.fresh -= kg; S.r.food.v -= kg; S.pant.mealT = S.t; pantryLog(S, 'out', kg, salad ? 'salad' : 'ration');
-      S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 });
+      S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 }); campCnt(S, 'cook');
     },
     sstore: (S, p) => {
       const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
       if (!SAMPLE_CATS.includes(p.label)) return 'err';
       const sl = freeSlot(S); if (!sl) return 'noslot';
-      e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded';
+      e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded'; campCnt(S, 'sstore');
     },
     recycle: (S) => {
       if (S.jobs.some((j) => j.kind === 'recycle')) return 'busy';
       if (S.r.waste.v < 6) return 'nowaste';
-      S.r.waste.v -= 6; const so = S.sorted; S.sorted = false; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8, sorted: so });
+      S.r.waste.v -= 6; const so = S.sorted; S.sorted = false; S.jobs.push({ kind: 'recycle', h: 3, kw: 0.8, sorted: so }); campCnt(S, 'recycle');
     },
     analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
@@ -1929,6 +1989,11 @@ const Sim = (function () {
       case 'feed1': return (n.feed || 0) >= 1;
       case 'harvest1': return (n.harvest || 0) >= 1;
       case 'analyze1': return (n.analyze || 0) >= 1;
+      case 'cook1': return (n.cook || 0) >= 1;
+      case 'sstore1': return (n.sstore || 0) >= 1;
+      case 'craft1': return (n.craft || 0) >= 1;
+      case 'sort1': return (n.sort || 0) >= 1;
+      case 'recycle1': return (n.recycle || 0) >= 1;
       default: return !!C.f[key];
     }
   }
@@ -1936,15 +2001,36 @@ const Sim = (function () {
     const C = S.camp; if (!C || C.basicDone) return null;
     const D = CAMP[C.i]; return { id: D.id, unlock: D.unlock, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
   }
+  function expStart(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    C.cnt = {};
+    if (D.id === 'x3' && !S.sampleList.some((e) => e.an === 'pending' && (e.state === 'new' || e.state === 'degraded'))) addSamples(S, 1, 'camp');
+    if (D.id === 'x4') S.r.mat.v = Math.max(S.r.mat.v, 10);
+    if (D.id === 'x5') S.r.waste.v = Math.max(S.r.waste.v, 8);
+    log(S, 'info', 'camp.exp.start', { id: D.id });
+  }
+  function expStatus(S) {
+    const C = S.camp; if (!C || !C.basicDone || C.xi == null || C.xi >= EXP.length) return null;
+    const D = EXP[C.xi]; return { id: D.id, unlock: D.unlock, i: C.xi, n: EXP.length, keys: D.keys.map((k) => ({ k, done: campKeyDone(S, k) })) };
+  }
+  function expStep(S) {
+    const C = S.camp, D = EXP[C.xi]; if (!D) return;
+    if (D.keys.every((k) => campKeyDone(S, k))) {
+      C.done[D.id] = 1; if (D.unlock) C.unlocked[D.unlock] = 1; S.pts += 60; S.morale = clamp(S.morale + 4, 0, 100);
+      log(S, 'ok', 'camp.exp', { id: D.id, room: D.unlock });
+      C.xi++; if (C.xi < EXP.length) expStart(S);
+    }
+  }
   function campStep(S, h) {
-    const C = S.camp; if (!C || C.basicDone) return;
+    const C = S.camp; if (!C) return;
+    if (C.basicDone) { if (C.xi != null && C.xi < EXP.length) expStep(S); return; }
     const D = CAMP[C.i];
     if (D.id === 'c2') { C.hold = S.d.rec >= 0.78 && S.d.water >= 0.3 && !S.inc.some((i) => i.id === C.inc && !i.res) ? C.hold + h : 0; if (C.hold >= 6) C.f.water_hold = 1; }
     if (D.keys.every((k) => campKeyDone(S, k))) {
       C.done[D.id] = 1; C.unlocked[D.unlock] = 1; S.pts += 80; S.morale = clamp(S.morale + 5, 0, 100);
       log(S, 'ok', 'camp.done', { id: D.id, room: D.unlock });
       C.i++;
-      if (C.i >= CAMP.length) { C.basicDone = true; log(S, 'ok', 'camp.basic', {}); }
+      if (C.i >= CAMP.length) { C.basicDone = true; C.unlocked.food = 1; C.xi = 0; expStart(S); log(S, 'ok', 'camp.basic', {}); }
       else campStart(S);
     }
   }
@@ -2075,7 +2161,7 @@ const Sim = (function () {
     };
   }
 
-  return { SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
@@ -2857,7 +2943,7 @@ const World = (function () {
   let staticCv = null, scen = 'moon';
   const player = { x: 30, y: 8, dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
-  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1 };
+  const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false;
 
@@ -2950,7 +3036,7 @@ const World = (function () {
     ['he', 'sa_t'], ['sa_t', 'sa_c'], ['sa_c', 'sa_b'], ['sa_b', 'v5n'], ['v5n', 'wk_d'], ['wk_d', 'wk_c'],
     ['bay_c', 'bay_e'], ['bay_e', 'cor6'], ['cor6', 'ws_c'], ['ws_c', 'cor7'], ['cor7', 'wk_c']];
   const ADJ = {}; for (const k in N) ADJ[k] = []; for (const [a, b] of E) { ADJ[a].push(b); ADJ[b].push(a); }
-  const HOME = { engineer: ['re_c', 're_m', 'wa_c'], scientist: ['lab_c', 'lab_d'], medic: ['life_c', 'life_d'], agri: ['gh_c', 'gh_t'] };
+  const HOME = { engineer: ['re_c', 're_m', 'wa_c', 'wk_c'], scientist: ['lab_c', 'lab_d', 'sa_c'], medic: ['med_c', 'life_c', 'med_d'], agri: ['gh_c', 'gh_t', 'fd_c'] };
   const ROOMNODE = { bridge: 'bridge_c', life: 'life_c', lab: 'lab_c', gh: 'gh_c', water: 'wa_c', reactor: 're_c', rad: 'bay_r2', kitchen: 'kit_c', med: 'med_c', food: 'fd_c', samples: 'sa_c', waste: 'ws_c', workshop: 'wk_c' };
   const nodeRoom = (k) => { const r = roomName(N[k][0], N[k][1]); return r === 'lock' || r === 'pad' ? 'rad' : r; };
   function bfs(a, b) {
@@ -3082,7 +3168,7 @@ const World = (function () {
       if (goal && b.node !== goal) b.path = bfs(b.node, goal).slice(1);
       else if (!goal) {
         b.wait -= dt;
-        if (b.wait <= 0) { const h = HOME[b.role].filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
+        if (b.wait <= 0) { const night = S.t >= 24 && (S.t % 24 >= 23 || S.t % 24 < 5); const h = (night ? ['life_c', 'life_d'] : HOME[b.role]).filter((k) => !locked(nodeRoom(k)) || nodeRoom(k) === nodeRoom(b.node)); const tgt = h.length ? h[Math.floor(Math.random() * h.length)] : b.node; b.path = bfs(b.node, tgt).slice(1); b.wait = 3 + Math.random() * 5; b.carry = (b.role === 'scientist' || b.role === 'agri') && Math.random() < 0.45; b.work = Math.random() < 0.6; }
       }
       if (goal && b.node === goal) { b.moving = false; return; }
     }
@@ -3288,7 +3374,7 @@ const World = (function () {
     ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? 'walk' : pPose, player.moving, o.youLabel || '') });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     // Secciones bloqueadas
-    if (S && S.camp && !S.camp.basicDone) for (const k of ['life', 'bridge', 'lab', 'gh', 'water', 'reactor', 'rad']) if (locked(k)) {
+    if (S && S.camp) for (const k in MAIN) if (locked(k)) {
       const Rr = RECTS[k]; ctx.fillStyle = 'rgba(2,4,12,.62)'; ctx.fillRect(Rr[0] * TS, Rr[1] * TS, (Rr[2] - Rr[0] + 1) * TS, (Rr[3] - Rr[1] + 1) * TS);
       ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffc24a'; { const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4); }
     }
@@ -3904,6 +3990,14 @@ const Game = (function () {
       }
     }
     const act = [1, 2, 3, 4, 5, 7, 6].find((i) => S.m[i].st === 'active');
+    const xs = !act && Sim.expStatus(S);
+    if (xs) {
+      const k = xs.keys.find((x) => !x.done);
+      if (k) {
+        const tg = NPCDATA.KEYTARGET[k.k] || '', p = tg.startsWith('room:') ? World.roomCenter(tg.slice(5)) : World.consolePos(tg);
+        return { t: tr(NPCDATA.CAMP[xs.id].t) + ': ' + tr(NPCDATA.KEY[k.k]), p };
+      }
+    }
     if (!act) return { t: es ? 'Ve al Puente de mando y elige una misión en la consola de mando.' : 'Go to the Command bridge and pick a mission at the command console.', p: World.consolePos('cmd') };
     const M = { 1: 'water', 2: 'reactor', 3: 'shield', 4: 'cmd', 5: 'shield', 6: 'gh', 7: 'rover' };
     const T = {
@@ -4284,6 +4378,16 @@ const Game = (function () {
     });
   }
   function campaignCard() {
+    const es = LANG === 'es', C = S.camp, xs = Sim.expStatus(S);
+    if (!C) return null;
+    const exp = C.basicDone ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginBottom: '10px' } },
+      h('h3', null, '🏗 ' + (es ? 'Ampliación de la base' : 'Base expansion')),
+      h('div', { class: 'row' }, Sim.EXP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.xi ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t), C.done[d.id] ? 'ok' : i === C.xi ? 'info' : ''))),
+      xs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[xs.id].t) + ': '), tr(NPCDATA.CAMP[xs.id].b)), h('ul', null, xs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k]))))) :
+        h('p', { class: 'small' }, es ? '✔ Completada. Las trece instalaciones están abiertas. Opcional: no bloquea las misiones.' : '✔ Complete. All thirteen facilities are open. Optional: it never blocks missions.')) : null;
+    return h('div', null, campaignCardBasic(), exp);
+  }
+  function campaignCardBasic() {
     const es = LANG === 'es', C = S.camp;
     if (!C) return null;
     const cs = Sim.campStatus(S);
@@ -4291,7 +4395,7 @@ const Game = (function () {
       h('h3', null, '🧭 ' + (es ? 'Familiarización con la base' : 'Base familiarization')),
       h('div', { class: 'row' }, Sim.CAMP.map((d, i) => tag((C.done[d.id] ? '✔ ' : i === C.i ? '▶ ' : '🔒 ') + tr(NPCDATA.CAMP[d.id].t) + ' → ' + tr(DATA.ROOMS[d.unlock]), C.done[d.id] ? 'ok' : i === C.i ? 'info' : ''))),
       cs ? h('div', null, h('p', null, h('b', null, tr(NPCDATA.CAMP[cs.id].t) + ': '), tr(NPCDATA.CAMP[cs.id].b)), h('ul', null, cs.keys.map((k) => h('li', { class: k.done ? 'delta-up' : '' }, (k.done ? '✔ ' : '⬜ ') + tr(NPCDATA.KEY[k.k])))),
-        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones están abiertas.' : '✔ Complete. All seven sections are open.'));
+        bar(cs.keys.filter((k) => k.done).length / cs.keys.length)) : h('p', { class: 'small' }, es ? '✔ Completada. Las siete secciones principales están abiertas.' : '✔ Complete. The seven main sections are open.'));
   }
   function missionsTab() {
     const campLock = S.camp && !S.camp.basicDone;
@@ -5161,7 +5265,7 @@ const Game = (function () {
 
   /* ---------- Almacén de alimentos ---------- */
   function storePanel() {
-    const es = LANG === 'es', adv = MODE === 'adv';
+    const es = LANG === 'es', adv = MODE === 'adv'; Sim.campFlag(S, 'store_open');
     livePanel(() => {
       const m = foodModel(), P = S.pant, lvl = lvlOf(m.total, S.r.food.max, 0.3, 0.12);
       const crops = Object.keys(S.st.crops || {});
