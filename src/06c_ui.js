@@ -1,6 +1,6 @@
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
-    const D = MG.defs[kind];
+    const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
     let lvl = { explorer: 1, engineer: 2, commander: 3 }[S ? S.diff : 'explorer'] || 1;
     const effTxt = {
       wiring: opts.inc ? (LANG === 'es' ? 'Repara el incidente seleccionado.' : 'Repairs the selected incident.') : (LANG === 'es' ? 'Mejora la salud de ' : 'Improves health of ') + tr(DATA.SYS_T[opts.sys || 'reactor']) + '.',
@@ -326,6 +326,6 @@
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

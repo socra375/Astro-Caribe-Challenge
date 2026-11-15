@@ -174,7 +174,7 @@
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
           campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
-          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); else narrate(tr(DATA.MIS[id].t) + '. ' + tr(DATA.MIS[id].vars[S.m[id].var]), { silent: true }); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));

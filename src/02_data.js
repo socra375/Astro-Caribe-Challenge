@@ -421,18 +421,30 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
+  const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
+  function startMusic() {
+    if (!ctx || mus || !musicOn) return;
+    try {
+      const bus = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; bus.gain.value = musicVol * 0.5; lp.connect(bus); bus.connect(master);
+      const os = CH[0].map((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.value = 0.18; o.connect(g); g.connect(lp); o.start(); return o; });
+      let k = 0; const iv = setInterval(() => { k = (k + 1) % CH.length; os.forEach((o, i) => o.frequency.setTargetAtTime(CH[k][i], ctx.currentTime, 1.6)); }, 8000);
+      mus = { os, bus, iv };
+    } catch (e) { mus = null; }
+  }
+  function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
       const t = ctx.currentTime + (when || 0), o = ctx.createOscillator(), a = ctx.createGain();
       o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(g || 0.3, t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, (g || 0.3) * curMul), t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(a); a.connect(master); o.start(t); o.stop(t + d + 0.02);
     } catch (e) { /* ignore */ }
   }
@@ -447,6 +459,8 @@ const Sfx = (function () {
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
     step: () => tone(90, 0.04, 'triangle', 0, 0.04)
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); (P[k] || P.click)(); },
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();

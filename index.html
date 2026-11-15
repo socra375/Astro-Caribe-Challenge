@@ -150,6 +150,8 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
 .mapcv{width:100%;max-width:760px;height:auto;background:#070b18;border-radius:10px;touch-action:none;cursor:grab;display:block;margin:0 auto}
 .mapinfo{min-height:96px}
+#subs{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;max-width:min(720px,92vw);background:rgba(8,12,28,.94);border:1px solid var(--border);border-radius:12px;padding:8px 12px;z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:15px;pointer-events:auto}
+#subs.hidden{display:none}
 </style>
 </head>
 <body>
@@ -600,18 +602,30 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
+  const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
+  function startMusic() {
+    if (!ctx || mus || !musicOn) return;
+    try {
+      const bus = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; bus.gain.value = musicVol * 0.5; lp.connect(bus); bus.connect(master);
+      const os = CH[0].map((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = f; g.gain.value = 0.18; o.connect(g); g.connect(lp); o.start(); return o; });
+      let k = 0; const iv = setInterval(() => { k = (k + 1) % CH.length; os.forEach((o, i) => o.frequency.setTargetAtTime(CH[k][i], ctx.currentTime, 1.6)); }, 8000);
+      mus = { os, bus, iv };
+    } catch (e) { mus = null; }
+  }
+  function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
       const t = ctx.currentTime + (when || 0), o = ctx.createOscillator(), a = ctx.createGain();
       o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(g || 0.3, t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, (g || 0.3) * curMul), t + 0.01); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(a); a.connect(master); o.start(t); o.stop(t + d + 0.02);
     } catch (e) { /* ignore */ }
   }
@@ -626,7 +640,9 @@ const Sfx = (function () {
     pick: () => { tone(990, 0.08, 'sine'); tone(1480, 0.1, 'sine', 0.07); },
     step: () => tone(90, 0.04, 'triangle', 0, 0.04)
   };
-  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); (P[k] || P.click)(); },
+  return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
+    setSfx: (v) => { sfxOn = !!v; }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();
 /* =====================================================================
@@ -958,6 +974,98 @@ const Icons = (function () {
   }
   function setText(node, str) { node.textContent = ''; for (const n of decor(str)) node.append(n.nodeType ? n : document.createTextNode(n)); }
   return { names: Object.keys(I), el, draw, decor, setText, byEmoji, I };
+})();
+
+/* =====================================================================
+   VOICE — texto a voz con la Web Speech API.
+   Los identificadores npc_<rol>_<idioma> son internos del videojuego (no de
+   ningún proveedor). Las voces reales se detectan en el dispositivo con
+   speechSynthesis.getVoices() y se actualizan con el evento voiceschanged.
+   Si no hay síntesis de voz, el juego sigue funcionando con subtítulos.
+   ===================================================================== */
+const Voice = (function () {
+  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator'];
+  const LANGS = ['es', 'en'];
+  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0] };
+  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator' };
+  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance !== 'undefined';
+  const profiles = {};
+  for (const role of ROLES) for (const lang of LANGS) {
+    const id = 'npc_' + role + '_' + lang;
+    profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
+  }
+  // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
+  function persist() { Store.set('audio', cfg); }
+
+  let list = [], armed = false, cur = null, pend = [], last = null;
+  const listeners = [];
+  function refresh() {
+    if (!supported) { list = []; return; }
+    try { list = (window.speechSynthesis.getVoices() || []).map((v) => ({ uri: v.voiceURI, name: v.name, lang: v.lang, def: !!v.default, v })); } catch (e) { list = []; }
+    listeners.forEach((f) => { try { f(); } catch (e) { /* ignore */ } });
+  }
+  if (supported) {
+    refresh();
+    try { window.speechSynthesis.addEventListener('voiceschanged', refresh); } catch (e) { window.speechSynthesis.onvoiceschanged = refresh; }
+  }
+  const langOf = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
+  const voicesFor = (lang) => list.filter((v) => langOf(v).split('-')[0] === lang);
+
+  /** Prioridad: 1 voiceURI guardada y disponible · 2 nombre exacto · 3 voz del idioma · 4 voz por defecto del navegador · 5 sin voz (solo texto). */
+  function resolve(profileId) {
+    const p = profiles[profileId]; if (!p || !supported || !list.length) return { voice: null, how: 'none' };
+    let v = p.preferredVoiceURI && list.find((x) => x.uri === p.preferredVoiceURI); if (v) return { voice: v, how: 'uri' };
+    v = p.preferredVoiceName && list.find((x) => x.name === p.preferredVoiceName); if (v) return { voice: v, how: 'name' };
+    const L = voicesFor(p.language); if (L.length) return { voice: L.find((x) => x.def) || L[0], how: 'lang' };
+    v = list.find((x) => x.def) || null; if (v) return { voice: v, how: 'default' };
+    return { voice: null, how: 'none' };
+  }
+  const clean = (t) => String(t == null ? '' : t).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}]/gu, ' ').replace(/\s+/g, ' ').trim();
+  function profileFor(role, lang) { return 'npc_' + (GAME2ROLE[role] || role || 'narrator') + '_' + (lang === 'en' ? 'en' : 'es'); }
+
+  let onSub = null;
+  function emitSub(p, text, level) { if (onSub && cfg.subs) onSub({ who: p.characterRole, profileId: p.profileId, text, level }); }
+  function startNext() {
+    if (cur || !pend.length) return;
+    const it = pend.shift(), p = profiles[it.profileId], r = resolve(it.profileId);
+    if (!it.silent) emitSub(p, it.text, it.level);
+    if (!supported || !cfg.tts || !armed || !r.voice) { pend = []; return; } // solo texto (subtítulos)
+    try {
+      const u = new window.SpeechSynthesisUtterance(it.text);
+      u.voice = r.voice.v; u.lang = r.voice.lang || p.language; u.rate = Math.max(0.5, Math.min(2, p.rate * cfg.rate)); u.pitch = p.pitch;
+      u.volume = Math.max(0, Math.min(1, p.volume * cfg.vVoice * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
+      cur = it; u.onend = u.onerror = () => { if (cur === it) { cur = null; startNext(); } };
+      window.speechSynthesis.speak(u);
+    } catch (e) { cur = null; }
+  }
+  /** Narra un texto con el perfil indicado. level: 'crit' | 'warn' | 'info'. Sin solapes: lo crítico interrumpe; lo informativo espera y solo se guarda el último. */
+  function speak(profileId, text, o) {
+    o = o || {}; text = clean(text); if (!text || !profiles[profileId]) return false;
+    const level = o.level || 'info';
+    last = { profileId, text, level };
+    const it = { profileId, text, level, silent: !!o.silent };
+    if (level === 'crit') { stop(true); pend = [it]; } else { pend = pend.filter((x) => x.level !== 'info' || level !== 'info'); pend.push(it); if (pend.length > 3) pend.shift(); }
+    startNext(); return true;
+  }
+  function stop(keepLast) { pend = []; cur = null; if (supported) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } } }
+  function repeat() { if (last) { const l = last; speak(l.profileId, l.text, { level: l.level }); return true; } return false; }
+  function say(role, lang, text, o) { return speak(profileFor(role, lang), text, o); }
+  function setPreferred(profileId, uri) {
+    const p = profiles[profileId]; if (!p) return;
+    const v = uri ? list.find((x) => x.uri === uri) : null;
+    p.preferredVoiceURI = v ? v.uri : null; p.preferredVoiceName = v ? v.name : null;
+    if (v) cfg.saved[profileId] = { uri: v.uri, name: v.name }; else delete cfg.saved[profileId];
+    persist();
+  }
+  /** Cuántas voces distintas usan realmente los seis perfiles de un idioma. */
+  function distinct(lang) { const u = new Set(); for (const r of ROLES) { const x = resolve('npc_' + r + '_' + lang); if (x.voice) u.add(x.voice.uri); } return u.size; }
+  function test(profileId, text) { const was = armed; armed = true; speak(profileId, text, { level: 'info', silent: false }); armed = was || armed; }
+  const arm = () => { armed = true; };
+  if (typeof document !== 'undefined') { document.addEventListener('pointerdown', arm, { once: true }); document.addEventListener('keydown', arm, { once: true }); }
+  return { supported, ROLES, LANGS, profiles, cfg, persist, get voices() { return list; }, voicesFor, resolve, speak, say, stop, repeat, setPreferred, distinct, test, arm, profileFor, clean, refresh,
+    get speaking() { return !!cur; }, get last() { return last; }, set onSubtitle(f) { onSub = f; }, onChange: (f) => listeners.push(f), get armed() { return armed; } };
 })();
 /* =====================================================================
    LEVELS — Dos niveles de lenguaje sobre el mismo contenido científico.
@@ -3804,6 +3912,7 @@ const Game = (function () {
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
     Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    applyAudio();
     World.invalidate();
     Store.set('settings', settings);
   }
@@ -3875,7 +3984,7 @@ const Game = (function () {
         toast(t, b, e.sev, ty && DATA.EVT[ty] ? () => whyPanel(ty) : null);
         Sfx.play(e.sev === 'crit' ? 'crit' : e.sev === 'warn' ? 'warn' : e.sev === 'ok' ? 'ok' : 'info');
       }
-      if (e.k === 'm.done') { stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
+      if (e.k === 'm.done') { { const [t, b] = logText(e); narrate(t + (b ? '. ' + b : ''), { level: 'info' }); } stats.missions++; unlock('first'); World.setAct('all', 'celebrate', 3.5); }
       if (e.k.startsWith('res.') && e.p.how === 'engineer') World.setAct('engineer', 'celebrate', 2);
       if (e.k.startsWith('res.') && e.p.how === 'player') { stats.repairs++; if (stats.repairs >= 5) unlock('fixer'); }
       if (e.k === 'res.solar_storm') unlock('shelter');
@@ -4036,6 +4145,7 @@ const Game = (function () {
     if (e.key === 'p' || e.key === 'P') togglePause();
     if (e.key === 'n' || e.key === 'N') toggleMute();
     if (e.key === 'c' || e.key === 'C') openCrew();
+    if (e.key === 'v' || e.key === 'V') repeatVoice();
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -4157,7 +4267,7 @@ const Game = (function () {
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
-        btn('⚙️ ' + _('settings'), settingsPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
+        btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
     );
@@ -4216,7 +4326,7 @@ const Game = (function () {
     const chk = (k) => { const c = h('input', { type: 'checkbox', onchange: (e) => { s[k] = e.target.checked; applySettings(); updateHud(); } }); c.checked = !!s[k]; c.style.width = '24px'; c.style.height = '24px'; return c; };
     const size = h('select', { 'aria-label': _('textSize'), onchange: (e) => { s.scale = +e.target.value; applySettings(); } }, [1, 1.15, 1.3].map((v) => { const o = h('option', { value: v }, Math.round(v * 100) + '%'); if (v === s.scale) o.selected = true; return o; }));
     push(panel('⚙️ ' + _('settings'), h('div', null,
-      row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
+      btn('🔊 ' + (LANG === 'es' ? 'Audio y voces…' : 'Audio & voices…'), audioPanel), row('🔊 ' + _('volume'), vol), row('🔇 ' + _('mute'), chk('muted')), row('🎞️ ' + _('motion'), chk('rm')), row('🧭 ' + _('hints'), chk('hints')), row('🔠 ' + _('textSize'), size),
       row('🌐 Idioma / Language', btn(_('lang'), () => { s.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); pop(); if (running) { buildHud(); updateHud(); } else mainMenu(); })),
       h('hr'), h('p', { class: 'small muted' }, LANG === 'es' ? 'Pruebas del motor: 100 simulaciones con semillas distintas. No cambian tu partida ni tu progreso.' : 'Engine tests: 100 simulations with different seeds. They do not change your game or progress.'),
       btn('🧪 ' + _('selftest'), () => selfTestPanel()),
@@ -4413,7 +4523,7 @@ const Game = (function () {
         h('p', { class: 'small muted' }, _('learn') + ': ' + tr(D.learn)),
         h('div', { class: 'row' },
           campLock ? h('span', { class: 'small muted' }, '🔒 ' + _('locked')) : null,
-          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
+          !campLock && m.st !== 'active' && m.st !== 'done' ? btn('▶ ' + (m.st === 'failed' ? _('retry') : _('startM')), () => { const r = Sim.startMission(S, id); if (!r.ok) toast(_('err'), _(r.err === 'busy' ? 'busy' : 'err'), 'warn'); else narrate(tr(DATA.MIS[id].t) + '. ' + tr(DATA.MIS[id].vars[S.m[id].var]), { silent: true }); processLogs(); if (r.ok && id === 4) { pop(); sitePanel(); } else stack.forEach((x) => x._refresh && x._refresh()); }, 'primary sm') : null,
           m.st === 'active' && id === 4 ? btn('🗺️ ' + (LANG === 'es' ? 'Elegir sitio' : 'Choose site'), () => sitePanel(), 'primary sm') : null,
           m.st === 'active' ? btn(_('abandon'), () => { Sim.abortMission(S, id); processLogs(); stack.forEach((x) => x._refresh && x._refresh()); }, 'sm danger') : null,
           m.st === 'done' ? btn('🌎 ' + _('earthConn'), () => earthCard(id), 'sm') : null));
@@ -4687,7 +4797,7 @@ const Game = (function () {
   }
   function nextCall() {
     radio.cur = radio.q.shift() || null; radio.t = 0;
-    if (radio.cur) Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info');
+    if (radio.cur) { Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info'); narrateCall(radio.cur); }
     renderRadio();
   }
   function dismissCall() { nextCall(); }
@@ -4715,6 +4825,7 @@ const Game = (function () {
         c.cons ? h('div', { class: 'small muted r-cons' }, '⚠ ' + (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons) : null,
         h('div', { class: 'row', style: { gap: '6px', marginTop: '2px' } },
           btn('✔ ' + (es ? 'Entendido' : 'Got it'), dismissCall, 'sm primary'),
+          btn('🔁 ' + (es ? 'Repetir mensaje' : 'Repeat message'), () => { Voice.stop(); narrateCall(c); }, 'sm'),
           c.target ? btn('📍 ' + (es ? 'Marcar ubicación' : 'Mark location'), () => { World.setMarker(c.target, c.loc); toast(es ? 'Ubicación marcada en el minimapa' : 'Location marked on the minimap', c.loc, 'info'); }, 'sm') : null,
           c.console ? btn('🖥️ ' + (es ? 'Consultar sistema' : 'Check system'), () => { openConsole({ id: c.console }); }, 'sm') : null,
           c.why ? btn('❓ ' + (es ? 'Ver explicación' : 'See explanation'), () => (DATA.EVT[c.why] ? whyPanel(c.why) : null), 'sm') : null)));
@@ -4748,6 +4859,8 @@ const Game = (function () {
       return true;
     }
     if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'camp.exp') { const g = ND.GUIDE[p.room] || 'commander'; call({ key: 'cx' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: p.room ? (es ? 'Se ha abierto: ' : 'Now open: ') + tr(DATA.ROOMS[p.room]) + '. ' + (es ? 'Ve a conocerla: te espero allí.' : 'Go and see it: I will meet you there.') : (es ? 'Las trece instalaciones ya están abiertas.' : 'All thirteen facilities are now open.'), loc: p.room ? tr(DATA.ROOMS[p.room]) : '', target: p.room ? World.roomCenter(p.room) : null }); World.setAct('all', 'celebrate', 3); return true; }
+    if (k === 'camp.exp.start') { const C = ND.CAMP[p.id]; call({ key: 'csx' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva ampliación: ' : 'New expansion: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'crop.dead') { call({ key: 'dead' + e.n, sev: 'warn', who: 'agri', title: es ? 'Se perdió una planta' : 'A plant died', desc: (p.sp ? tr(Flora.SPECIES[p.sp].name) + ' · ' : '') + (es ? 'jardinera ' : 'planter ') + p.bed, loc: tr(DATA.ROOMS.gh), act: es ? 'Revisa humedad, luz y nutrientes de las otras plantas.' : 'Check moisture, light and nutrients of the other plants.', target: World.plantPos(p.bed - 1, 1), console: 'gh' }); return true; }
     if (k === 'job.analyze') { call({ key: 'an' + e.n, sev: 'ok', who: 'scientist', title: es ? 'Análisis terminado' : 'Analysis done', desc: es ? 'La muestra contiene minerales típicos del regolito. +12 puntos de ciencia.' : 'The sample has typical regolith minerals. +12 science points.' }); return true; }
@@ -4784,9 +4897,10 @@ const Game = (function () {
         h('div', { class: 'row', style: { justifyContent: 'space-between' } },
           h('span', { class: 'small muted' }, (i + 1) + ' / ' + lines.length),
           h('div', { class: 'row' }, i < lines.length - 1 ? btn(_('skip'), finish, 'sm') : null, btn(i < lines.length - 1 ? _('next') + ' ▶' : (LANG === 'es' ? '¡Entendido!' : 'Got it!'), () => { if (i < lines.length - 1) { i++; s.replaceChild(draw(), s.firstChild); focusFirst(s); } else finish(); }, 'primary', { autofocus: true }))));
+      Voice.speak(Voice.profileFor(ND.GUIDE[room], LANG), tr(lines[i]), { level: 'info', silent: true });
       return box;
     };
-    function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
+    function finish() { Voice.stop(); pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
   }
   function talkData(room) {
@@ -5378,9 +5492,92 @@ const Game = (function () {
           S.jobs.filter((j) => j.kind === 'recycle').map((j) => h('p', { class: 'small' }, '⏳ ' + (es ? 'Reciclando: ' : 'Recycling: ') + fmt(j.h, 1) + ' h')))),
       h('p', { class: 'small muted' }, es ? 'Economía circular: lo que sobra se convierte en materiales para reparar y construir. El reciclado gasta energía.' : 'Circular economy: leftovers become materials for repairs and building. Recycling uses energy.'))));
   }
+
+  /* =====================================================================
+     AUDIO Y VOCES: subtítulos, panel de configuración y narración de los NPC.
+     Si no hay síntesis de voz, todo sigue funcionando con texto.
+     ===================================================================== */
+  function applyAudio() {
+    const c = Voice.cfg;
+    Sfx.setSfx(c.sfx); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+  }
+  let subEl = null, subT = 0;
+  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' } };
+  function ensureSubs() {
+    if (subEl) return subEl;
+    subEl = h('div', { id: 'subs', class: 'hidden', role: 'status', 'aria-live': 'polite' });
+    document.body.append(subEl); return subEl;
+  }
+  function showSub(s) {
+    const el = ensureSubs(), es = LANG === 'es';
+    el.innerHTML = '';
+    el.append(h('b', null, tr(ROLEN[s.who] || ROLEN.narrator) + ': '), h('span', null, s.text),
+      btn('🔁', () => Voice.repeat(), 'sm ghost', { 'aria-label': es ? 'Repetir mensaje' : 'Repeat message', title: es ? 'Repetir (V)' : 'Repeat (V)' }),
+      btn('⏹', () => { Voice.stop(); el.classList.add('hidden'); }, 'sm ghost', { 'aria-label': es ? 'Detener' : 'Stop' }));
+    el.classList.remove('hidden');
+    clearTimeout(subT); subT = setTimeout(() => el.classList.add('hidden'), Math.max(4000, s.text.split(/\s+/).length * 420));
+  }
+  Voice.onSubtitle = showSub;
+  const lvlOfSev = (s) => (s === 'crit' ? 'crit' : s === 'warn' ? 'warn' : 'info');
+  /** Narrador general (instrucciones, resúmenes). silent: el texto ya está visible en pantalla, no hace falta subtítulo extra. */
+  function narrate(text, o) { return Voice.say('control', LANG, text, Object.assign({ level: 'info' }, o || {})); }
+  /** Narración de una llamada de radio: nombre y datos ya salen en la tarjeta de radio, que hace de subtítulo. */
+  function narrateCall(c) {
+    if (!c) return;
+    const es = LANG === 'es';
+    const txt = [c.title, c.desc, c.loc, c.act, (c.sev === 'crit' || isAdv()) && c.cons ? (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons : ''].filter(Boolean).join('. ');
+    Voice.speak(Voice.profileFor(c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
+  }
+  function repeatVoice() { if (radio.cur) { Voice.stop(); narrateCall(radio.cur); } else if (!Voice.repeat()) toast(LANG === 'es' ? 'No hay ningún mensaje que repetir' : 'No message to repeat', '', 'info'); }
+
+  function audioPanel() {
+    const es = LANG === 'es', c = Voice.cfg;
+    const build = () => {
+      const lang = LANG, vs = Voice.voices, mine = Voice.voicesFor(lang);
+      const chk = (k, after) => { const i = h('input', { type: 'checkbox', onchange: (e) => { c[k] = e.target.checked; Voice.persist(); applyAudio(); if (after) after(); } }); i.checked = !!c[k]; i.style.width = '24px'; i.style.height = '24px'; return i; };
+      const sld = (label, get, set, min, max, step, fmtf) => { const out = h('b', null, fmtf(get())); const r = h('input', { type: 'range', min, max, step, value: get(), 'aria-label': label, oninput: (e) => { set(+e.target.value); out.textContent = fmtf(+e.target.value); } }); return h('label', { class: 'col', style: { margin: '6px 0' } }, h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('span', null, label), out), r); };
+      const pc = (v) => Math.round(v * 100) + ' %';
+      const row = (label, ctrl) => h('label', { class: 'row', style: { justifyContent: 'space-between', margin: '6px 0' } }, h('span', null, label), ctrl);
+      const dist = Voice.distinct(lang);
+      const status = !Voice.supported ? (es ? 'Este navegador no ofrece síntesis de voz: el juego funciona igual con subtítulos y texto.' : 'This browser has no speech synthesis: the game works the same with subtitles and text.')
+        : !vs.length ? (es ? 'No se detectó ninguna voz en este dispositivo (a veces tardan en cargar). El juego usa subtítulos.' : 'No voice detected on this device (they can take a while to load). The game uses subtitles.')
+        : (es ? 'Voces detectadas: ' + vs.length + ' · en este idioma: ' + mine.length + ' · voces distintas en uso: ' + dist + '.' : 'Voices detected: ' + vs.length + ' · in this language: ' + mine.length + ' · distinct voices in use: ' + dist + '.');
+      const honest = Voice.supported && vs.length && dist <= 1 ? h('p', { class: 'small tag warn' }, es ? 'Solo hay una voz disponible para este idioma: todos los personajes usan esa misma voz, con tono y velocidad distintos. No son voces diferentes.' : 'Only one voice is available for this language: every character uses that same voice with different pitch and speed. They are not different voices.') : null;
+      const sample = es ? 'Hola, soy tu compañero de la base. Esta es mi voz.' : 'Hi, I am your crewmate on the base. This is my voice.';
+      const rows = Voice.ROLES.map((role) => {
+        const id = 'npc_' + role + '_' + lang, p = Voice.profiles[id], r = Voice.resolve(id);
+        const sel = h('select', { 'aria-label': tr(ROLEN[role]), disabled: !vs.length ? true : null, onchange: (e) => { Voice.setPreferred(id, e.target.value || null); refreshAudio(); } },
+          h('option', { value: '' }, es ? 'Automática (por idioma)' : 'Automatic (by language)'),
+          (mine.length ? mine : vs).map((v) => { const o = h('option', { value: v.uri }, v.name + ' (' + v.lang + ')'); if (p.preferredVoiceURI === v.uri) o.selected = true; return o; }));
+        const how = { uri: es ? 'guardada' : 'saved', name: es ? 'por nombre' : 'by name', lang: es ? 'por idioma' : 'by language', default: es ? 'voz por defecto del navegador' : 'browser default voice', none: es ? 'solo texto' : 'text only' }[r.how];
+        return h('div', { class: 'card' }, h('div', { class: 'row', style: { justifyContent: 'space-between', alignItems: 'center' } }, h('b', null, tr(ROLEN[role])), btn('🔊 ' + (es ? 'Probar' : 'Test'), () => Voice.test(id, sample), 'sm', { disabled: !r.voice ? true : null })),
+          sel, h('div', { class: 'small muted' }, (es ? 'Se usa: ' : 'Using: ') + (r.voice ? r.voice.name + ' · ' : '') + how));
+      });
+      return panel('🔊 ' + (es ? 'Audio y voces' : 'Audio & voices'), h('div', null,
+        h('p', { class: 'small' }, status), honest,
+        h('h3', null, es ? 'Volúmenes' : 'Volumes'),
+        sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Velocidad de narración' : 'Narration speed', () => c.rate, (v) => { c.rate = v; Voice.persist(); }, 0.6, 1.5, 0.05, (v) => '×' + (+v).toFixed(2)),
+        h('h3', null, es ? 'Activar o desactivar' : 'Switches'),
+        row('🗣 ' + (es ? 'Voz de los personajes (TTS)' : 'Character voices (TTS)'), chk('tts', () => { if (!c.tts) Voice.stop(); })),
+        row('🎵 ' + (es ? 'Música' : 'Music'), chk('music')), row('🔔 ' + (es ? 'Sonidos y alertas' : 'Sounds and alerts'), chk('sfx')), row('💬 ' + (es ? 'Subtítulos' : 'Subtitles'), chk('subs')),
+        row('🌐 ' + (es ? 'Idioma' : 'Language'), btn(_('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); if (running) { buildHud(); updateHud(); } refreshAudio(); })),
+        h('div', { class: 'row' }, btn('🔁 ' + (es ? 'Repetir último mensaje' : 'Repeat last message'), () => repeatVoice(), 'sm'), btn('⏹ ' + (es ? 'Detener voz' : 'Stop voice'), () => Voice.stop(), 'sm')),
+        h('h3', null, es ? 'Voz de cada personaje' : 'Voice of each character'),
+        h('p', { class: 'small muted' }, es ? 'Elige una voz de las que ofrece tu dispositivo y pulsa Probar. La elección se guarda sola. Los identificadores npc_* son internos del juego.' : 'Pick one of the voices your device offers and press Test. Your choice is saved automatically. The npc_* IDs are internal to the game.'),
+        h('div', { class: 'grid2' }, rows),
+        h('p', { class: 'small muted' }, Store.ok ? (es ? 'Las preferencias se guardan en este navegador.' : 'Preferences are saved in this browser.') : (es ? 'El almacenamiento está bloqueado: las preferencias valen solo durante esta sesión.' : 'Storage is blocked: preferences only last for this session.'))));
+    };
+    const s = push(build());
+    const refreshAudio = () => { if (s.isConnected) refresh(s, build); };
+    Voice.onChange(() => { if (s.isConnected && !s.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) refreshAudio(); });
+  }
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
-    const D = MG.defs[kind];
+    const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
     let lvl = { explorer: 1, engineer: 2, commander: 3 }[S ? S.diff : 'explorer'] || 1;
     const effTxt = {
       wiring: opts.inc ? (LANG === 'es' ? 'Repara el incidente seleccionado.' : 'Repairs the selected incident.') : (LANG === 'es' ? 'Mejora la salud de ' : 'Improves health of ') + tr(DATA.SYS_T[opts.sys || 'reactor']) + '.',
@@ -5706,7 +5903,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

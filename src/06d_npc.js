@@ -39,7 +39,7 @@
   }
   function nextCall() {
     radio.cur = radio.q.shift() || null; radio.t = 0;
-    if (radio.cur) Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info');
+    if (radio.cur) { Sfx.play(radio.cur.sev === 'crit' ? 'crit' : radio.cur.sev === 'warn' ? 'warn' : 'info'); narrateCall(radio.cur); }
     renderRadio();
   }
   function dismissCall() { nextCall(); }
@@ -67,6 +67,7 @@
         c.cons ? h('div', { class: 'small muted r-cons' }, '⚠ ' + (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons) : null,
         h('div', { class: 'row', style: { gap: '6px', marginTop: '2px' } },
           btn('✔ ' + (es ? 'Entendido' : 'Got it'), dismissCall, 'sm primary'),
+          btn('🔁 ' + (es ? 'Repetir mensaje' : 'Repeat message'), () => { Voice.stop(); narrateCall(c); }, 'sm'),
           c.target ? btn('📍 ' + (es ? 'Marcar ubicación' : 'Mark location'), () => { World.setMarker(c.target, c.loc); toast(es ? 'Ubicación marcada en el minimapa' : 'Location marked on the minimap', c.loc, 'info'); }, 'sm') : null,
           c.console ? btn('🖥️ ' + (es ? 'Consultar sistema' : 'Check system'), () => { openConsole({ id: c.console }); }, 'sm') : null,
           c.why ? btn('❓ ' + (es ? 'Ver explicación' : 'See explanation'), () => (DATA.EVT[c.why] ? whyPanel(c.why) : null), 'sm') : null)));
@@ -100,6 +101,8 @@
       return true;
     }
     if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'camp.exp') { const g = ND.GUIDE[p.room] || 'commander'; call({ key: 'cx' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: p.room ? (es ? 'Se ha abierto: ' : 'Now open: ') + tr(DATA.ROOMS[p.room]) + '. ' + (es ? 'Ve a conocerla: te espero allí.' : 'Go and see it: I will meet you there.') : (es ? 'Las trece instalaciones ya están abiertas.' : 'All thirteen facilities are now open.'), loc: p.room ? tr(DATA.ROOMS[p.room]) : '', target: p.room ? World.roomCenter(p.room) : null }); World.setAct('all', 'celebrate', 3); return true; }
+    if (k === 'camp.exp.start') { const C = ND.CAMP[p.id]; call({ key: 'csx' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva ampliación: ' : 'New expansion: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'crop.dead') { call({ key: 'dead' + e.n, sev: 'warn', who: 'agri', title: es ? 'Se perdió una planta' : 'A plant died', desc: (p.sp ? tr(Flora.SPECIES[p.sp].name) + ' · ' : '') + (es ? 'jardinera ' : 'planter ') + p.bed, loc: tr(DATA.ROOMS.gh), act: es ? 'Revisa humedad, luz y nutrientes de las otras plantas.' : 'Check moisture, light and nutrients of the other plants.', target: World.plantPos(p.bed - 1, 1), console: 'gh' }); return true; }
     if (k === 'job.analyze') { call({ key: 'an' + e.n, sev: 'ok', who: 'scientist', title: es ? 'Análisis terminado' : 'Analysis done', desc: es ? 'La muestra contiene minerales típicos del regolito. +12 puntos de ciencia.' : 'The sample has typical regolith minerals. +12 science points.' }); return true; }
@@ -136,9 +139,10 @@
         h('div', { class: 'row', style: { justifyContent: 'space-between' } },
           h('span', { class: 'small muted' }, (i + 1) + ' / ' + lines.length),
           h('div', { class: 'row' }, i < lines.length - 1 ? btn(_('skip'), finish, 'sm') : null, btn(i < lines.length - 1 ? _('next') + ' ▶' : (LANG === 'es' ? '¡Entendido!' : 'Got it!'), () => { if (i < lines.length - 1) { i++; s.replaceChild(draw(), s.firstChild); focusFirst(s); } else finish(); }, 'primary', { autofocus: true }))));
+      Voice.speak(Voice.profileFor(ND.GUIDE[room], LANG), tr(lines[i]), { level: 'info', silent: true });
       return box;
     };
-    function finish() { pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
+    function finish() { Voice.stop(); pop(); if (!replay && S) { S.camp.visited[room] = 1; Sim.campFlag(S, 'talk_' + room); saveRun(); } }
     s.replaceChild(draw(), s.firstChild); focusFirst(s);
   }
   function talkData(room) {

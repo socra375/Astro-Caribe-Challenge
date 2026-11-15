@@ -395,7 +395,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const B = World._test.bots, rooms = () => B.map((b) => World.roomName(b.x, b.y));
     const run = (sec) => { for (let i = 0; i < sec * 20; i++) { B.forEach((b) => { if (b.wait > 0.2) b.wait = 0.1; }); World.update(0.05, X, { x: 0, y: 0 }); } };
     const homes = {}; const seen = { engineer: new Set(), scientist: new Set(), medic: new Set(), agri: new Set() };
-    for (let k = 0; k < 40; k++) { run(2); B.forEach((b) => seen[b.role] && seen[b.role].add(World.roomName(b.x, b.y))); }
+    for (let k = 0; k < 400; k++) { run(0.5); B.forEach((b) => seen[b.role] && seen[b.role].add(World.roomName(b.x, b.y))); }
     const day = Object.fromEntries(Object.entries(seen).map(([r, v]) => [r, [...v]]));
     X.t = 24 * 2 + 1; // noche (01:00)
     run(60);
@@ -619,6 +619,136 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Siluetas distintas de perfil (IoU < 0.9)', chk.maxS < 0.9, 'max IoU perfil ' + chk.maxS);
   ok('Piernas separadas (hueco entre piernas)', chk.gap);
   await ctx4.close();
+
+  // ---- Audio y voces (Web Speech API simulada: Chromium sin voces reales) ----
+  const FAKE_TTS = () => {
+    window.__spk = []; window.__cancel = 0; window.__conc = 0; window.__maxConc = 0; window.__voicesList = [];
+    const L = {};
+    window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.voice = null; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = ''; } };
+    const ss = {
+      getVoices() { return window.__voicesList; },
+      speak(u) { window.__conc++; window.__maxConc = Math.max(window.__maxConc, window.__conc); window.__spk.push({ text: u.text, voice: u.voice && u.voice.voiceURI, rate: u.rate, pitch: u.pitch, volume: u.volume }); setTimeout(() => { window.__conc--; if (u.onend) u.onend(); }, 150); },
+      cancel() { window.__cancel++; window.__conc = 0; },
+      addEventListener(n, f) { (L[n] = L[n] || []).push(f); },
+      dispatch(n) { (L[n] || []).forEach((f) => f()); }
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: ss, configurable: true });
+  };
+  const ctxV = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxV.addInitScript(FAKE_TTS);
+  const pv = await ctxV.newPage(); const errV = [];
+  pv.on('pageerror', (e) => errV.push(e.message));
+  await pv.goto(FILE); await pv.waitForTimeout(300);
+  await pv.evaluate(() => Game._debug.newRun('moon', 'x', { skipCamp: true, mode: 'adv' })); await pv.waitForTimeout(300);
+  const ids = await pv.evaluate(() => Object.keys(Voice.profiles));
+  const want = []; for (const l of ['es', 'en']) for (const r of ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator']) want.push('npc_' + r + '_' + l);
+  ok('Existen los 12 perfiles internos npc_*_es y npc_*_en', want.every((w) => ids.includes(w)) && ids.length === 12, ids.join(','));
+  ok('Cada perfil guarda los campos pedidos', await pv.evaluate(() => Object.values(Voice.profiles).every((p) => ['profileId', 'characterRole', 'language', 'preferredVoiceURI', 'preferredVoiceName', 'fallbackLanguage', 'rate', 'pitch', 'volume'].every((k) => k in p))));
+  // Sin interacción previa no se reproduce nada (pero sí hay subtítulo)
+  await pv.evaluate(() => Voice.say('control', 'es', 'Mensaje antes de interactuar', { level: 'info' }));
+  ok('No se reproduce voz antes de la primera interacción, pero el subtítulo aparece', (await pv.evaluate(() => window.__spk.length)) === 0 && await pv.locator('#subs').getByText('Mensaje antes de interactuar').isVisible());
+  // Detección dinámica de voces y evento voiceschanged
+  ok('Sin voces detectadas al inicio', (await pv.evaluate(() => Voice.voices.length)) === 0);
+  await pv.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }, { voiceURI: 'uB', name: 'Voz B', lang: 'es-MX', default: false }, { voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: false }]; speechSynthesis.dispatch('voiceschanged'); });
+  ok('voiceschanged actualiza la lista de voces', (await pv.evaluate(() => Voice.voices.length)) === 3);
+  await pv.mouse.click(5, 5); // primera interacción
+  const vpri = await pv.evaluate(() => {
+    const out = [], P = Voice.profiles.npc_engineer_es;
+    Voice.setPreferred('npc_engineer_es', 'uB'); out.push(Voice.resolve('npc_engineer_es').how + ':' + Voice.resolve('npc_engineer_es').voice.uri);
+    P.preferredVoiceURI = 'inexistente'; P.preferredVoiceName = 'Voz A'; out.push(Voice.resolve('npc_engineer_es').how + ':' + Voice.resolve('npc_engineer_es').voice.uri);
+    P.preferredVoiceName = 'nadie'; out.push(Voice.resolve('npc_engineer_es').how);
+    const keep = window.__voicesList; window.__voicesList = [{ voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: true }]; Voice.refresh(); out.push(Voice.resolve('npc_engineer_es').how);
+    window.__voicesList = []; Voice.refresh(); out.push(Voice.resolve('npc_engineer_es').how);
+    window.__voicesList = keep; P.preferredVoiceURI = null; P.preferredVoiceName = null; Voice.refresh();
+    return out;
+  });
+  ok('Prioridad: voiceURI → nombre → idioma → predeterminada → solo texto', JSON.stringify(vpri) === JSON.stringify(['uri:uB', 'name:uA', 'lang', 'default', 'none']), JSON.stringify(vpri));
+  // Narración con el NPC adecuado
+  await pv.evaluate(() => { window.__spk.length = 0; Game._debug.call({ key: 'tA', sev: 'warn', who: 'engineer', title: 'Fallo eléctrico', desc: 'Cae la tensión.', loc: 'Reactor', act: 'Ve al reactor.' }); });
+  await pv.waitForTimeout(200);
+  const e1 = await pv.evaluate(() => ({ spk: window.__spk.slice(), P: Voice.profiles.npc_engineer_es }));
+  ok('La avería eléctrica la narra el perfil del ingeniero (tono propio)', e1.spk.length === 1 && Math.abs(e1.spk[0].pitch - e1.P.pitch) < 1e-6 && /Fallo eléctrico/.test(e1.spk[0].text) && /Reactor/.test(e1.spk[0].text), JSON.stringify(e1.spk));
+  await pv.evaluate(() => { Game._debug.radio.cur = null; Game._debug.radio.q = []; });
+  await pv.evaluate(() => { window.__spk.length = 0; Game._debug.call({ key: 'tB', sev: 'warn', who: 'agri', title: 'Riego', desc: 'Baja presión.', loc: 'Invernadero', act: 'Revisa la válvula.' }); });
+  await pv.waitForTimeout(300);
+  const e2 = await pv.evaluate(() => ({ spk: window.__spk.slice(), P: Voice.profiles.npc_agronomist_es }));
+  ok('Los cultivos los narra el perfil del agrónomo', e2.spk.length >= 1 && e2.spk.some((q) => Math.abs(q.pitch - e2.P.pitch) < 1e-6 && /Riego/.test(q.text)), JSON.stringify(e2.spk));
+  // Sin solapes y las críticas interrumpen
+  const ov = await pv.evaluate(async () => {
+    Voice.stop(); window.__spk.length = 0; window.__maxConc = 0; window.__cancel = 0;
+    Voice.say('control', 'es', 'Uno', { level: 'info' }); Voice.say('control', 'es', 'Dos', { level: 'info' }); Voice.say('control', 'es', 'Tres', { level: 'info' });
+    await new Promise((r) => setTimeout(r, 700));
+    const maxConc = window.__maxConc, texts = window.__spk.map((q) => q.text);
+    window.__spk.length = 0; const c0 = window.__cancel;
+    Voice.say('control', 'es', 'Informativo largo', { level: 'info' }); Voice.say('commander', 'es', 'Alerta crítica', { level: 'crit' });
+    await new Promise((r) => setTimeout(r, 400));
+    return { maxConc, texts, cancelled: window.__cancel > c0, crit: window.__spk.map((q) => q.text) };
+  });
+  ok('Los mensajes no se solapan (cola con un solo mensaje a la vez)', ov.maxConc <= 1 && ov.texts[0] === 'Uno', JSON.stringify(ov));
+  ok('Una alerta crítica interrumpe la narración informativa', ov.cancelled && ov.crit.includes('Alerta crítica'), JSON.stringify(ov));
+  // Volúmenes, velocidad, TTS y subtítulos
+  const vol = await pv.evaluate(async () => {
+    Voice.stop(); window.__spk.length = 0; const c = Voice.cfg; c.vVoice = 0.3; c.vAlert = 0.5; c.rate = 1.5;
+    Voice.say('control', 'es', 'Volumen informativo', { level: 'info' }); await new Promise((r) => setTimeout(r, 300));
+    Voice.say('control', 'es', 'Volumen alerta', { level: 'crit' }); await new Promise((r) => setTimeout(r, 300));
+    const a = window.__spk.find((q) => /informativo/.test(q.text)), b = window.__spk.find((q) => /alerta/.test(q.text)), P = Voice.profiles.npc_narrator_es;
+    c.vVoice = 1; c.vAlert = 1; c.rate = 1; return { a, b, rate: P.rate };
+  });
+  ok('El volumen de voces y el de alertas se aplican por separado', vol.a && vol.b && Math.abs(vol.a.volume - 0.3) < 0.01 && Math.abs(vol.b.volume - 0.15) < 0.01, JSON.stringify(vol));
+  ok('La velocidad de narración se aplica', vol.a && Math.abs(vol.a.rate - vol.rate * 1.5) < 0.01, JSON.stringify(vol));
+  const tt = await pv.evaluate(async () => { Voice.stop(); window.__spk.length = 0; Voice.cfg.tts = false; Voice.say('control', 'es', 'Con TTS apagado', { level: 'info' }); await new Promise((r) => setTimeout(r, 200)); const n = window.__spk.length; Voice.cfg.tts = true; return n; });
+  ok('Con TTS desactivado no se emite voz y el subtítulo sigue', tt === 0 && await pv.locator('#subs').getByText('Con TTS apagado').isVisible());
+  await pv.evaluate(() => { Voice.cfg.subs = false; Voice.say('control', 'es', 'Subtítulo oculto', { level: 'info' }); });
+  await pv.waitForTimeout(150);
+  ok('Los subtítulos se pueden ocultar', !(await pv.locator('#subs:not(.hidden)').getByText('Subtítulo oculto').count()));
+  await pv.evaluate(() => { Voice.cfg.subs = true; Voice.say('control', 'es', 'Texto exacto del diálogo', { level: 'info' }); });
+  await pv.waitForTimeout(150);
+  ok('El subtítulo es igual al texto narrado', await pv.evaluate(() => document.querySelector('#subs').textContent.includes(window.__spk[window.__spk.length - 1].text)));
+  const rp = await pv.evaluate(async () => { window.__spk.length = 0; Voice.repeat(); await new Promise((r) => setTimeout(r, 300)); return window.__spk.length && window.__spk[0].text; });
+  ok('Repetir el último mensaje', rp === 'Texto exacto del diálogo', String(rp));
+  // Panel de audio: una sola voz española → no se afirma que sean voces distintas
+  await pv.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }, { voiceURI: 'uC', name: 'Voice C', lang: 'en-US', default: false }]; Voice.refresh(); Object.values(Voice.profiles).forEach((p) => { p.preferredVoiceURI = null; p.preferredVoiceName = null; }); });
+  await pv.keyboard.press('Escape'); await pv.evaluate(() => Game._debug.audioPanel()); await pv.waitForTimeout(200);
+  ok('El panel de audio avisa de que solo hay una voz española (no son voces distintas)', await pv.getByText(/Solo hay una voz disponible/).isVisible());
+  ok('El panel de audio ofrece volúmenes, interruptores, idioma y una voz por personaje', (await pv.locator('input[type=range]').count()) >= 5 && (await pv.locator('input[type=checkbox]').count()) >= 4 && (await pv.locator('select').count()) === 6);
+  await pv.locator('select').first().selectOption('uA');
+  ok('Elegir una voz la guarda en el perfil', await pv.evaluate(() => Voice.profiles.npc_commander_es.preferredVoiceURI === 'uA' && Voice.cfg.saved.npc_commander_es.name === 'Voz A'));
+  // La música no arranca sola: solo al activarla y tras interactuar
+  const mus0 = await pv.evaluate(() => Sfx.musicPlaying);
+  await pv.locator('label', { hasText: /Música/ }).locator('input[type=checkbox]').first().check(); await pv.waitForTimeout(300);
+  ok('La música está apagada por defecto y arranca al activarla', mus0 === false && (await pv.evaluate(() => Sfx.musicPlaying)) === true);
+  await pv.locator('label', { hasText: /Música/ }).locator('input[type=checkbox]').first().uncheck(); await pv.waitForTimeout(100);
+  ok('Se puede desactivar la música', (await pv.evaluate(() => Sfx.musicPlaying)) === false);
+  await closeAll(pv);
+  ok('Sin errores de página con voz simulada', errV.length === 0, errV.join(' | '));
+  await ctxV.close();
+  // Sin Web Speech API: el juego sigue funcionando con texto y subtítulos
+  const ctxN = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxN.addInitScript(() => { try { delete window.SpeechSynthesisUtterance; Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true }); } catch (e) { /* ignore */ } });
+  const pn = await ctxN.newPage(); const errN = [];
+  pn.on('pageerror', (e) => errN.push(e.message));
+  await pn.goto(FILE); await pn.waitForTimeout(300);
+  await pn.evaluate(() => Game._debug.newRun('moon', 'x', { skipCamp: true, mode: 'junior' })); await pn.waitForTimeout(300);
+  await pn.mouse.click(5, 5);
+  await pn.evaluate(() => Game._debug.call({ key: 'nn', sev: 'crit', who: 'medic', title: 'Aire bajo', desc: 'Falta oxígeno.', loc: 'Soporte vital', act: 'Ve a soporte vital.', cons: 'Falta aire.' }));
+  ok('Sin TTS la alerta se ve en la tarjeta de radio', await pn.locator('#radio').getByText('Aire bajo').isVisible());
+  await pn.evaluate(() => Voice.say('control', 'es', 'Aviso solo con texto', { level: 'info' })); await pn.waitForTimeout(150);
+  ok('Sin TTS el subtítulo muestra el mensaje', !(await pn.evaluate(() => Voice.supported)) && await pn.locator('#subs').getByText('Aviso solo con texto').isVisible());
+  await pn.evaluate(() => Game._debug.audioPanel()); await pn.waitForTimeout(150);
+  ok('Sin TTS el panel de audio lo explica y sigue siendo usable', await pn.getByText(/no ofrece síntesis de voz/).isVisible());
+  await closeAll(pn); await pn.keyboard.press('m'); await pn.waitForTimeout(150);
+  ok('Sin TTS el resto del juego funciona (mapa)', await pn.locator('.mapcv').isVisible());
+  ok('Sin errores de página sin TTS', errN.length === 0, errN.join(' | '));
+  await ctxN.close();
+  // localStorage bloqueado: las preferencias de voz funcionan durante la sesión
+  const ctxB = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctxB.addInitScript(FAKE_TTS); await ctxB.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
+  const pb = await ctxB.newPage(); const errB = [];
+  pb.on('pageerror', (e) => errB.push(e.message));
+  await pb.goto(FILE); await pb.waitForTimeout(300);
+  const bl = await pb.evaluate(() => { window.__voicesList = [{ voiceURI: 'uA', name: 'Voz A', lang: 'es-ES', default: true }]; Voice.refresh(); Voice.setPreferred('npc_medic_es', 'uA'); Voice.cfg.music = true; Voice.persist(); return [Voice.resolve('npc_medic_es').how, Voice.cfg.music]; });
+  ok('Con localStorage bloqueado la configuración de voz funciona en memoria', bl[0] === 'uri' && bl[1] === true && errB.length === 0, JSON.stringify(bl) + errB.join('|'));
+  await ctxB.close();
 
   // ---- SelfTest en el navegador ----
   const ctx3 = await browser.newContext(); const px = await ctx3.newPage();
