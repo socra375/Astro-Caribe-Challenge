@@ -354,6 +354,7 @@ const Game = (function () {
       Icons.setText($('#actBtn'), '🔒 ' + tr(DATA.ROOMS[lockRoom]) + (cs ? (es ? ' · se abre al completar «' : ' · opens after "') + tr(NPCDATA.CAMP[cs.id].t) + (es ? '»' : '"') : ''));
       p.classList.remove('hidden'); return;
     }
+    if (!near && running && !modalOpen() && World.secureNear()) { Icons.setText($('#actBtn'), '🔒 ' + lt('Núcleo restringido por seguridad · usa el panel del elevador', 'Core restricted for safety · use the elevator panel')); p.classList.remove('hidden'); return; }
     if (near && near.id.startsWith('x:')) { Icons.setText($('#actBtn'), (isTouch ? '' : '[E] ') + near.icon + ' ' + exPrompt(near)); p.classList.remove('hidden'); return; }
     if (near) {
       const np = near.id === 'plant' ? S.beds[near.bed].plants[near.slot] : null;

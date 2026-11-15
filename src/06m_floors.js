@@ -24,6 +24,15 @@
   }
   /** Llegada al piso de destino (elevador o escalera): cambia de piso y deja al jugador junto al elevador. */
   function arriveFloor(n) { World.arrive(n); lastRoom = null; }
+  /** Estado de seguridad del núcleo energético (se muestra en el panel del elevador del piso 3). */
+  function coreBlock() {
+    const c = Station.coreStatus(S), es = LANG === 'es', why = c.reasons.map((k) => tr(Station.CORE_WHY[k]));
+    if (!c.reasons.length) return h('div', { class: 'small tag ok', 'data-core': 'ok' }, '🟢 ' + lt('Núcleo energético: acceso normal.', 'Energy core: normal access.'));
+    if (c.auth) return h('div', { class: 'small tag warn', 'data-core': 'auth' }, '🟡 ' + lt('Protocolo de seguridad aplicado: acceso autorizado unos segundos más. ', 'Safety protocol applied: access authorized for a few more seconds. ') + why.join(' '));
+    return h('div', { 'data-core': 'restricted' }, h('p', { class: 'small tag crit' }, '🔴 ' + lt('Acceso al núcleo restringido: ', 'Core access restricted: ') + why.join(' ')),
+      h('p', { class: 'small muted' }, lt('Con el traje de protección puesto puedes aplicar el protocolo de seguridad y entrar un rato. El ingeniero puede entrar a reparar.', 'With the protective suit on you can apply the safety protocol and enter for a while. The engineer may enter to repair.')),
+      btn('🛡 ' + lt('Aplicar protocolo de seguridad', 'Apply safety protocol'), () => { const r = Station.authorizeCore(S, !!(S.ex && S.ex.suit.on)); if (!r.ok) { Sfx.play('bad'); toast(tr(Station.CORE_WHY[r.why]), '', 'warn'); } else { Sfx.play('ok'); toast('🛡 ' + lt('Protocolo aplicado', 'Protocol applied'), lt('Puedes entrar al núcleo.', 'You may enter the core.'), 'ok'); } }, 'primary', { 'data-act': 'core-auth' }));
+  }
   function elevatorPanel(f) {
     const st = Station.ensure(S), e = st.elev.crew, es = LANG === 'es';
     let timer = 0, stairsT = 0, dest = 0, mode = null;
@@ -34,6 +43,7 @@
       const here = World.floor, d = Station.door(S, 'crew'), lvl = Station.level(S, 'crew');
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
       body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-lvl': Math.round(lvl) }, Math.round(lvl)), h('div', null, h('div', null, mode === 'stairs' ? lt('Escalera de emergencia', 'Emergency stairs') : stN), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round((d) * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
+        World.floor === 3 ? coreBlock() : null,
         e.broken && mode !== 'stairs' ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null].filter(Boolean));
       if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Subiendo por la escalera… ', 'Taking the stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
       if (e.st !== 'idle') return body.append(h('p', { class: 'small muted' }, lt('Espera a que el elevador termine el trayecto.', 'Wait for the elevator to finish the trip.')));

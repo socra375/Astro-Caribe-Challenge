@@ -141,6 +141,52 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   ok('El estado del elevador del rover y el rover guardado en el garaje se guardan con la partida', sv3.at === 2 && sv3.ra === 'garage', JSON.stringify(sv3));
   await pg.evaluate(() => { Station.call(Game.S, 'rover', 0, { roverOn: true }); for (let i = 0; i < 300; i++) Station.step(Game.S, 0.05); World.arrive(1); });
 
+  /* ---- Núcleo energético: escala, equipamiento y acceso restringido ---- */
+  const core = await pg.evaluate(() => World.withFloor(3, () => {
+    const R = World.RECTS.reactor, F = Layout.FLOORS[2].FURN, T = World._test, cnt = (k) => F.filter((f) => f[0] === k).length, e = Layout.FLOORS[2].elev;
+    const unreachable = Layout.FLOORS[2].CONSOLES.filter((c) => { const p = [c[2] + 0.5, c[3] + 1.4]; return c[0] !== 'elev3' && !T.findPath(e[0], e[1], p[0], p[1]); }).map((c) => c[0]);
+    const rc = F.find((f) => f[0] === 'reactor');
+    return { w: R[2] - R[0] + 1, h: R[3] - R[1] + 1, reactor: rc && rc[3], catwalk: cnt('catwalk'), coolant: cnt('coolant'), transformer: cnt('transformer'), turbine: cnt('turbine'), warn: cnt('warn'), unreachable, solidBig: T.solid.flat().filter(Boolean).length > 400 };
+  }));
+  ok('El núcleo energético es una cámara enorme (≥ 36×45 casillas, más de 2,5 veces la sala anterior) con un reactor de 14×14 como elemento dominante', core.w >= 36 && core.h >= 45 && core.reactor === 14, JSON.stringify([core.w, core.h, core.reactor]));
+  ok('Tiene pasarelas, torres de refrigeración, turbinas, transformadores y una zona restringida señalizada', core.catwalk >= 4 && core.coolant >= 4 && core.turbine >= 4 && core.transformer >= 6 && core.warn >= 1, JSON.stringify(core));
+  ok('Todas las consolas del núcleo son alcanzables a pie desde el elevador', core.unreachable.length === 0, JSON.stringify(core.unreachable));
+  const cs = await pg.evaluate(() => {
+    const S = Sim.create({ scen: 'moon', diff: 'engineer', mode: 'junior', seed: 6 }); S.inc = []; S.mods = {}; Station.ensure(S);
+    const o = { calm: Station.coreStatus(S) };
+    S.inc.push({ type: 'wear', sev: 'crit', room: 'reactor', from: 0, res: false }); o.inc = Station.coreStatus(S);
+    o.noSuit = Station.authorizeCore(S, false); o.suit = Station.authorizeCore(S, true); o.auth = Station.coreStatus(S);
+    S.t = 25; o.expired = Station.coreStatus(S);
+    S.inc = []; S.mods.spe = 1; o.rad = Station.coreStatus(S);
+    return o;
+  });
+  ok('Seguridad del núcleo: restringido con una avería crítica o una ráfaga de radiación; se autoriza solo con el traje; la autorización caduca', !cs.calm.restricted && cs.inc.restricted && cs.inc.reasons[0] === 'incident' && cs.noSuit.ok === false && cs.noSuit.why === 'ppe' && cs.suit.ok && cs.auth.auth && !cs.auth.restricted && cs.expired.restricted && cs.rad.restricted && cs.rad.reasons[0] === 'radiation', JSON.stringify(cs));
+  const sd = await pg.evaluate(() => {
+    const S = Game.S; S.inc = [{ type: 'wear', sev: 'crit', room: 'reactor', from: 0, res: false }]; Station.ensure(S).core.authUntil = -1; Ex.equip(S); S.ex.suit.on = false;
+    World.arrive(3); const d = World.withFloor(3, () => World._test.doors.find((q) => q.secure)); World.player.x = d.x - 1.6; World.player.y = d.y + 0.5; return { d: { x: d.x, y: d.y }, has: !!d };
+  });
+  await pg.evaluate(() => { for (let i = 0; i < 30; i++) World.update(0.05, Game.S, { x: 0, y: 0 }); });
+  const lk = await pg.evaluate((d) => { for (let i = 0; i < 60; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); const dd = World._test.doors.find((q) => q.secure); return { px: World.player.x, open: dd.open, sec: dd.sec, near: World.secureNear() }; }, sd.d);
+  ok('Con una avería crítica en el reactor la puerta del núcleo se cierra por seguridad y el jugador no puede pasar', sd.has && lk.sec === true && lk.open === 0 && lk.px < sd.d.x + 0.5 && lk.near === true, JSON.stringify([lk, sd.d]));
+  await sleep(pg, 400);
+  const pr2 = await pg.evaluate(() => document.getElementById('actBtn').textContent);
+  ok('Junto a la puerta cerrada se explica el motivo y qué hacer', /restringido/.test(pr2) && /elevador/.test(pr2), pr2);
+  await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev3'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
+  await pg.keyboard.press('e'); await sleep(pg, 400);
+  const cp = await pg.evaluate(() => ({ restricted: !!document.querySelector('[data-core="restricted"]'), btn: !!document.querySelector('[data-act="core-auth"]') }));
+  ok('El panel del elevador del piso 3 muestra el estado de seguridad del núcleo y el protocolo', cp.restricted && cp.btn, JSON.stringify(cp));
+  await pg.click('[data-act="core-auth"]'); await sleep(pg, 300);
+  const noPpe = await pg.evaluate(() => ({ still: !!document.querySelector('[data-core="restricted"]'), auth: Station.coreStatus(Game.S).auth }));
+  ok('Sin traje de protección el protocolo no se aplica y avisa', noPpe.still && noPpe.auth === false, JSON.stringify(noPpe));
+  await pg.evaluate(() => { Game.S.ex.suit.on = true; }); await sleep(pg, 200);
+  await pg.click('[data-act="core-auth"]'); await sleep(pg, 400);
+  const ok2 = await pg.evaluate(() => ({ auth: Station.coreStatus(Game.S).auth, shown: !!document.querySelector('[data-core="auth"]') }));
+  ok('Con el traje puesto el protocolo autoriza la entrada', ok2.auth === true && ok2.shown, JSON.stringify(ok2));
+  await pg.keyboard.press('Escape'); await sleep(pg, 200);
+  const pass = await pg.evaluate((d) => { const dd = World._test.doors.find((q) => q.secure); World.player.x = d.x - 1.6; World.player.y = d.y + 0.5; for (let i = 0; i < 90; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); return { px: World.player.x, sec: dd.sec }; }, sd.d);
+  ok('Autorizado, el jugador atraviesa la puerta y recorre el núcleo', pass.sec === false && pass.px > sd.d.x + 1, JSON.stringify([pass, sd.d]));
+  await pg.evaluate(() => { const S = Game.S; S.inc = []; S.ex.suit.on = false; World.arrive(1); });
+
   /* ---- Alertas con piso y sala ---- */
   const al = await pg.evaluate(() => { const f = Game._debug.floors.floorOfRoom; return { r: f('reactor'), b: f('rad'), c: f('bridge'), p: f('pad') }; });
   ok('Las alertas indican el piso de cada sala (reactor → piso 3, garaje → piso 2, puente → piso 1, exterior)', /Piso 3/.test(al.r) && /Piso 2/.test(al.b) && /Piso 1/.test(al.c) && /Exterior/.test(al.p), JSON.stringify(al));
