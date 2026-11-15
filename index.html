@@ -3429,7 +3429,7 @@ const Station = (function () {
   const FLOOR_T = { 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
   const KINDS = {
     crew: { stops: [1, 2, 3], at: 1, name: T('Elevador de tripulación', 'Crew elevator'), secPerFloor: 2.2 },
-    rover: { stops: [0, 2], at: 2, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
+    rover: { stops: [0, 2], at: 0, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
   };
   const DOOR_S = 0.9, STAIRS_S = 7; // segundos de puertas y de la alternativa por escalera de emergencia (por piso)
   const WHY = {
@@ -3440,10 +3440,11 @@ const Station = (function () {
     notrover: T('El rover no puede usar el elevador de tripulación.', 'The rover cannot use the crew elevator.'),
     closed: T('Las puertas no están abiertas.', 'The doors are not open.'),
     full: T('Plataforma ocupada.', 'Platform occupied.'),
+    align: T('Coloca el rover en el centro de la plataforma, alineado y parado, y sin nadie dentro.', 'Place the rover in the middle of the platform, aligned and stopped, with nobody inside.'),
     cap: T('El elevador de tripulación no admite el rover.', 'The crew elevator does not take the rover.')
   };
   const mk = (kind) => ({ at: KINDS[kind].at, to: KINDS[kind].at, st: 'idle', t: 0, p: 0, occ: [], broken: false, trips: 0 });
-  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'bay', log: [] }; }
+  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'surface', log: [] }; }
   /** Partidas anteriores: la estación se crea con los elevadores en reposo. */
   function ensure(S) {
     if (S.station && S.station.v === 1) { const s = S.station; for (const k in KINDS) if (!s.elev[k]) s.elev[k] = mk(k); return s; }
@@ -3491,7 +3492,7 @@ const Station = (function () {
       if (e.st === 'closing' && e.t >= DOOR_S) { e.st = 'moving'; e.t = 0; e.p = 0; }
       else if (e.st === 'moving') {
         const dur = Math.max(0.01, travelS(kind, e.at, e.to)); e.p = Math.min(1, e.t / dur);
-        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; }
+        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; }
       } else if (e.st === 'opening' && e.t >= DOOR_S) { e.st = 'idle'; e.t = 0; arrived = true; }
     }
     return arrived;
@@ -3500,8 +3501,18 @@ const Station = (function () {
   function setBroken(S, kind, on) { E(S, kind).broken = !!on; }
   /** Alternativa cuando el elevador de tripulación no funciona: escalera de emergencia, más lenta. Nunca bloquea la campaña. */
   function stairs(S, from, to) { if (!FLOORS.includes(from) || !FLOORS.includes(to)) return { ok: false, why: 'floor' }; return { ok: true, s: Math.abs(to - from) * STAIRS_S }; }
+  /** ¿Se ve el rover en la superficie? No si está guardado en el garaje ni mientras la plataforma baja con él. */
+  const roverVisible = (S) => { const st = ensure(S); return st.roverAt !== 'garage' && st.elev.rover.st !== 'moving'; };
+  const roverStored = (S) => ensure(S).roverAt === 'garage';
+  /** Plataforma del rover (coordenadas del mundo exterior): el rover aparca en su centro. */
+  const PLAT = { x: 70.5, y: 86.4, w: 7, h: 6.4, c: [74, 89.6], panel: [74, 93.4] };
+  /** ¿Está el rover bien colocado sobre la plataforma? (centrado, alineado, quieto y sin conductor) */
+  function roverOnPlatform(R) {
+    const d = Math.hypot(R.x - PLAT.c[0], R.y - PLAT.c[1]), ang = Math.abs(((R.a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
+    return d < 1.6 && ang < 0.5 && Math.abs(R.v) < 0.3 && !R.occ;
+  }
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
@@ -4754,7 +4765,29 @@ const Rover = (function () {
     const lv = S.sys.rover.batt / 100; for (let k = 0; k < 4; k++) { c.fillStyle = lv > (k + 0.4) / 4 ? (lv < 0.25 ? '#ff5a5a' : '#6fffa0') : '#2b3550'; c.fillRect(-28 + k * 6, 11, 4.5, 4); }
     c.restore();
   }
-  return { bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
+  /** Plataforma-elevador del rover (exterior): foso, placa con franjas, luces de estado, panel con el nivel y dos hojas de puerta que cubren el foso. */
+  function drawPlatform(c, S, t) {
+    const P = Station.PLAT, TS = 32, e = S.station && S.station.elev.rover, d = e ? Station.door(S, 'rover') : 1, lvl = e ? Station.level(S, 'rover') : 0;
+    const x = P.x * TS, y = P.y * TS, w = P.w * TS, h = P.h * TS, moving = e && e.st !== 'idle', down = lvl > 0.5;
+    c.save();
+    c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(x - 5, y - 5, w + 10, h + 10);
+    c.fillStyle = '#1a1d27'; c.fillRect(x - 3, y - 3, w + 6, h + 6); // foso
+    // placa (sube y baja: se ve más pequeña y oscura cuanto más profunda)
+    const k = 1 - Math.min(1, lvl / 2) * 0.35, pw = w * k, ph = h * k, px = x + (w - pw) / 2, py = y + (h - ph) / 2;
+    const g = c.createLinearGradient(px, py, px, py + ph); g.addColorStop(0, '#6e7488'); g.addColorStop(1, '#3f4455'); c.fillStyle = g; c.fillRect(px, py, pw, ph);
+    c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([12, 9]); c.strokeRect(px + 4, py + 4, pw - 8, ph - 8); c.setLineDash([]);
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.moveTo(px + pw / 2, py + 14); c.lineTo(px + pw / 2, py + ph - 14); c.moveTo(px + 14, py + ph / 2); c.lineTo(px + pw - 14, py + ph / 2); c.stroke();
+    // hojas de puerta: se cierran sobre el foso según el estado del elevador
+    const cover = 1 - d; if (cover > 0.01) { c.fillStyle = '#2a2f40'; c.strokeStyle = '#8b92a4'; c.lineWidth = 2; const lw = (w / 2) * cover; c.fillRect(x, y, lw, h); c.strokeRect(x, y, lw, h); c.fillRect(x + w - lw, y, lw, h); c.strokeRect(x + w - lw, y, lw, h); if (cover > 0.95) { c.fillStyle = 'rgba(255,194,74,.5)'; for (let i = 0; i < 6; i++) c.fillRect(x + w / 2 - 3, y + 8 + i * (h / 6), 6, h / 12); } }
+    // luces de las esquinas: verde en reposo, ámbar al abrir o cerrar, rojo en movimiento
+    const col = !moving ? '#6fffa0' : e.st === 'moving' ? '#ff6b6b' : '#ffc24a', on = !moving || Math.sin(t * 8) > 0;
+    for (const q of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) { c.fillStyle = on ? col : '#2a2f40'; c.beginPath(); c.arc(q[0], q[1], 6, 0, 6.2832); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke(); }
+    // panel con el nivel
+    const qx = P.panel[0] * TS, qy = P.panel[1] * TS; c.fillStyle = '#10182f'; c.fillRect(qx - 20, qy - 12, 40, 24); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.strokeRect(qx - 20, qy - 12, 40, 24);
+    c.fillStyle = col; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText((moving ? (down || (e && e.to === 2) ? '▼' : '▲') : '') + (lvl > 0.5 ? 'G' : '0'), qx, qy + 1);
+    c.restore();
+  }
+  return { drawPlatform, bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
 })();
 /* =====================================================================
    LANDART — dibujo de la llegada: nave, planeta, descenso, polvo y despliegue.
@@ -5550,7 +5583,7 @@ const World = (function () {
 
   /* ---------- Colisión ---------- */
   function roverBlocks(x, y) {
-    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov) return false;
+    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !Station.roverVisible(curS)) return false;
     for (const b of Rover.body(E.rover.x, E.rover.y, E.rover.a)) if (Math.hypot(b[0] - x, b[1] - y) < b[2] * 0.95) return true;
     return false;
   }
@@ -5730,7 +5763,7 @@ const World = (function () {
   function roverFree(x, y, a) { for (const b of Rover.body(x, y, a)) if (!circleFree(b[0], b[1], b[2])) return false; return true; }
   const standOK = (x, y) => { noRov = true; const v = canStand(x, y, 0.3); noRov = false; return v; };
   function boardRover() {
-    const E = curS && curS.ex; if (!E) return 'err'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
+    const E = curS && curS.ex; if (!E) return 'err'; if (!Station.roverVisible(curS)) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
     const sd = Rover.sides(), dl = Math.hypot(player.x - sd.left[0], player.y - sd.left[1]), dr = Math.hypot(player.x - sd.right[0], player.y - sd.right[1]), side = dl < dr ? sd.left : sd.right;
     boardAnim = { kind: 'in', t: 0, dur: 0.7, fx: player.x, fy: player.y, sx: side[0], sy: side[1] }; player.act = null; collect = null; Sfx.play('door'); return null;
   }
@@ -5770,9 +5803,10 @@ const World = (function () {
     if (shelIn) return { id: 'x:shelx', verb: 'leave', icon: '🚪', d: 0, q: Field.G.shel.find((z) => z.id === shelIn) };
     let best = null, bd = 9; const px = player.x, py = player.y, R = E.rover, sd = Rover.sides();
     const cons = (d, it) => { if (d < bd) { bd = d; best = Object.assign(it, { d }); } };
-    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y);
-    if (dh < 1.6) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
-    if (dr < 3.3) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
+    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = Station.roverVisible(curS);
+    if (dh < 1.6 && rv) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
+    if (dr < 3.3 && rv) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
+    { const P = Station.PLAT, dp = Math.hypot(px - P.panel[0], py - (P.panel[1] + 0.9)); if (dp < 2.2) cons(dp * 0.9, { id: 'x:rplat', verb: 'use', icon: '🛗' }); }
     for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; const d = Math.hypot(px - q.x, py - q.y); if (d < 1.5) cons(d, { id: 'x:site', verb: 'collect', icon: '🪨', s: q }); }
     for (const p of Field.G.pois) { const d = Math.hypot(px - p.x, py - p.y); if (d < Math.max(3.4, p.r * 0.55)) cons(d + 0.8, { id: 'x:poi', verb: 'investigate', icon: '🔭', p }); }
     for (const q of Field.G.rep) { const d = Math.hypot(px - q.x, py - q.y); if (d < 2.4) cons(d, { id: 'x:rep', verb: 'activate', icon: '📡', q }); }
@@ -5792,7 +5826,8 @@ const World = (function () {
     const R = E.rover, ev = Ex.env(S, R.x, R.y), nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.7 : 1);
     const seated = R.occ || (boardAnim && boardAnim.kind === 'in' && boardAnim.t / boardAnim.dur > 0.9);
     const bd = boardAnim ? Math.sin(Math.min(1, boardAnim.t / boardAnim.dur) * Math.PI) : 0;
-    ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
+    ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
+    if (Station.roverVisible(S)) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
     ents.push({ y: 1e6, f: () => {
       Rover.drawParts(c);
       if (collect) { const x = collect.x * TS, y = collect.y * TS, u = collect.t / collect.dur; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y - 6, 20, 0, 7); c.stroke(); c.strokeStyle = '#6fffa0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y - 6, 20, -Math.PI / 2, -Math.PI / 2 + u * 6.283); c.stroke(); }
@@ -5835,7 +5870,7 @@ const World = (function () {
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
-    const R = E.rover; c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore();
+    const R = E.rover; if (Station.roverVisible(curS)) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(X(player.x), Y(player.y), 4.5, 0, 7); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
     return true;
   }
@@ -7979,9 +8014,9 @@ const Game = (function () {
       if (S.ex && st.floor === 2) {
         const edge = (px, py) => { const mx = 14, ex = Math.max(mx, Math.min(CW - mx, px)), ey = Math.max(mx, Math.min(CH - mx, py)); return [ex, ey, ex !== px || ey !== py]; };
         if (S.land && S.land.ship) { const sp = edge(X(S.land.ship.x), Y(S.land.ship.y)); x.save(); x.translate(sp[0], sp[1]); x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -11); x.lineTo(7, 6); x.lineTo(-7, 6); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#ff8a3d'; x.fillRect(-7, 6, 14, 3); x.restore(); x.font = '700 11px system-ui'; x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; const nl = LANG === 'es' ? 'Nave' : 'Ship'; x.strokeText(nl, sp[0], sp[1] - 13); x.fillText(nl, sp[0], sp[1] - 13); }
-        const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y));
-        x.save(); x.translate(rp[0], rp[1]); x.rotate(rp[2] ? Math.atan2(Y(R0.y) - CH / 2, X(R0.x) - CW / 2) : R0.a); x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-9, -6, 18, 12); x.strokeRect(-9, -6, 18, 12); x.fillStyle = '#fff'; x.fillRect(3, -3, 5, 6); x.restore();
-        x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; x.strokeText('Rover', rp[0], rp[1] - 10); x.fillText('Rover', rp[0], rp[1] - 10);
+        const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y)), rvis = Station.roverVisible(S);
+        if (rvis) { x.save(); x.translate(rp[0], rp[1]); x.rotate(rp[2] ? Math.atan2(Y(R0.y) - CH / 2, X(R0.x) - CW / 2) : R0.a); x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-9, -6, 18, 12); x.strokeRect(-9, -6, 18, 12); x.fillStyle = '#fff'; x.fillRect(3, -3, 5, 6); x.restore(); }
+        if (rvis) { x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; x.strokeText('Rover', rp[0], rp[1] - 10); x.fillText('Rover', rp[0], rp[1] - 10); }
         const gl = Ex.goal(S); if (gl && S.ex.suit.on) { const gp = edge(X(gl.x), Y(gl.y)); x.strokeStyle = '#ffc24a'; x.lineWidth = 3; x.beginPath(); x.arc(gp[0], gp[1], 9 + 2 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'target', gp[0], gp[1], 18, '#ffc24a'); }
       }
       // tripulación (NPC) y jugador
@@ -8401,7 +8436,7 @@ const Game = (function () {
   function selectTool(k) { ex().tool = k; exHud(); }
   function exPrompt(n) {
     const E = ex(), T = { 'x:board': XT('Subir al rover', 'Board the rover'), 'x:exit': XT('Bajar del rover', 'Leave the rover'), 'x:store': XT('Abrir compartimento', 'Open compartment'), 'x:poi': XT('Investigar · ', 'Investigate · ') + (n.p ? xt(n.p.n) : ''), 'x:rep': (E.rep[n.q && n.q.id] ? XT('Repetidor activo', 'Relay online') : XT('Activar repetidor de radio', 'Activate radio relay')), 'x:shel': XT('Entrar al refugio', 'Enter the shelter'), 'x:shelx': XT('Salir del refugio', 'Leave the shelter') };
-    T['x:ship'] = XT('Revisar la nave', 'Inspect the ship');
+    T['x:ship'] = XT('Revisar la nave', 'Inspect the ship'); T['x:rplat'] = XT('Elevador del rover', 'Rover elevator');
     return n.id === 'x:site' ? XT('Recoger · ', 'Collect · ') + xt(n.s.name) : T[n.id];
   }
   function exCard(n) {
@@ -8421,6 +8456,7 @@ const Game = (function () {
     else if (n.id === 'x:store') body = h('div', null, h('b', null, '📦 ' + XT('Compartimento del rover', 'Rover compartment')), h('div', { class: 'small' }, Ex.storage(S).list.length + '/' + Ex.CAP.slots + XT(' muestras guardadas. E para abrir.', ' samples stored. E to open.')));
     else if (n.id === 'x:board') body = h('div', null, h('b', null, '🚙 ' + XT('Rover explorador R-1', 'Explorer rover R-1')), h('div', { class: 'small' }, XT('Batería ', 'Battery ') + Math.round(S.sys.rover.batt) + '% · ' + (E.suit.on ? XT('E para subir.', 'E to board.') : XT('Necesitas el traje puesto.', 'You need the suit on.'))));
     else if (n.id === 'x:ship') body = shipCard();
+    else if (n.id === 'x:rplat') body = roverLiftCard();
     else { cardEl.classList.add('hidden'); return; }
     cardEl.replaceChildren(body); cardEl.classList.remove('hidden');
   }
@@ -8443,6 +8479,7 @@ const Game = (function () {
       case 'x:shel': { if (!E.suit.on) return; if (World.enterShelter(n.q.id)) shelterPanel(n.q); break; }
       case 'x:shelx': World.leaveShelter(); lastCard = ''; break;
       case 'x:ship': shipPanel(); break;
+      case 'x:rplat': roverLiftPanel(); break;
     }
   }
   function shelterPanel(q) {
@@ -9320,7 +9357,43 @@ const Game = (function () {
     }, 100);
     paint();
   }
-  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom };
+
+  /* ---------- Elevador del rover (plataforma exterior ↔ garaje) ---------- */
+  /** ¿Puede moverse la plataforma? El rover tiene que estar bien colocado encima (o ya en el garaje). */
+  const roverLiftOk = () => Station.roverStored(S) || Station.roverOnPlatform(S.ex.rover);
+  function roverLiftCard() {
+    const e = Station.ensure(S).elev.rover, st = Station.roverStored(S), es = LANG === 'es';
+    return h('div', null, h('b', null, '🛗 ' + tr(Station.KINDS.rover.name)), h('div', { class: 'small' }, st ? lt('El rover está guardado en el garaje.', 'The rover is stored in the garage.') : roverLiftOk() ? lt('El rover está sobre la plataforma: listo para bajar.', 'The rover is on the platform: ready to go down.') : lt('Coloca el rover en el centro de la plataforma, alineado y parado.', 'Place the rover in the middle of the platform, aligned and stopped.')), h('div', { class: 'small' }, '👉 ' + lt('Pulsa E para abrir el panel.', 'Press E to open the panel.')));
+  }
+  function roverLiftPanel() {
+    const st0 = Station.ensure(S), e = st0.elev.rover, es = LANG === 'es';
+    let timer = 0, msg = null; const body = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), body), { sticky: true, onclose: () => clearInterval(timer) });
+    const paint = () => {
+      body.innerHTML = '';
+      const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle';
+      const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
+      body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-rlvl': lvl > 0.5 ? 'G' : '0' }, lvl > 0.5 ? 'G' : '0'), h('div', null, h('div', null, stN + ' · ' + (lvl > 0.5 ? lt('garaje', 'garage') : lt('superficie', 'surface'))), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round(d * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
+        h('p', { class: 'small' }, stored ? lt('El rover está guardado en el garaje, cargando.', 'The rover is stored in the garage, charging.') : roverLiftOk() ? '✔ ' + lt('El rover está bien colocado sobre la plataforma.', 'The rover is correctly placed on the platform.') : '⚠ ' + tr(Station.WHY.align)),
+        e.broken ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null,
+        msg ? h('p', { class: 'small tag warn', 'data-msg': 'warn' }, '⚠ ' + msg) : null,
+        idle ? (stored ? btn('⬆ ' + lt('Subir el rover a la superficie', 'Bring the rover up'), () => go(0), 'primary', { 'data-act': 'rlift-up' }) : btn('⬇ ' + lt('Bajar el rover al garaje', 'Send the rover down'), () => go(2), 'primary', { 'data-act': 'rlift-down' })) : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.'))].filter(Boolean));
+    };
+    const go = (to) => {
+      const r = Station.call(S, 'rover', to, { roverOn: roverLiftOk() });
+      if (!r.ok) { msg = tr(Station.WHY[r.why] || Station.WHY.rover); if (r.why === 'rover') msg = tr(Station.WHY.align); Sfx.play('bad'); return paint(); }
+      msg = null; Sfx.play('door'); paint();
+    };
+    let lastSt = e.st, tk = 0;
+    timer = setInterval(() => {
+      if (!s.isConnected) return clearInterval(timer);
+      if (e.st === 'moving' && ++tk % 4 === 0) Sfx.play('engine');
+      if (lastSt !== e.st) { Sfx.play(e.st === 'idle' ? 'ok' : 'deployclk'); lastSt = e.st; }
+      paint();
+    }, 100);
+    paint();
+  }
+  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });

@@ -12,7 +12,7 @@ const Station = (function () {
   const FLOOR_T = { 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
   const KINDS = {
     crew: { stops: [1, 2, 3], at: 1, name: T('Elevador de tripulación', 'Crew elevator'), secPerFloor: 2.2 },
-    rover: { stops: [0, 2], at: 2, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
+    rover: { stops: [0, 2], at: 0, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
   };
   const DOOR_S = 0.9, STAIRS_S = 7; // segundos de puertas y de la alternativa por escalera de emergencia (por piso)
   const WHY = {
@@ -23,10 +23,11 @@ const Station = (function () {
     notrover: T('El rover no puede usar el elevador de tripulación.', 'The rover cannot use the crew elevator.'),
     closed: T('Las puertas no están abiertas.', 'The doors are not open.'),
     full: T('Plataforma ocupada.', 'Platform occupied.'),
+    align: T('Coloca el rover en el centro de la plataforma, alineado y parado, y sin nadie dentro.', 'Place the rover in the middle of the platform, aligned and stopped, with nobody inside.'),
     cap: T('El elevador de tripulación no admite el rover.', 'The crew elevator does not take the rover.')
   };
   const mk = (kind) => ({ at: KINDS[kind].at, to: KINDS[kind].at, st: 'idle', t: 0, p: 0, occ: [], broken: false, trips: 0 });
-  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'bay', log: [] }; }
+  function fresh() { return { v: 1, elev: { crew: mk('crew'), rover: mk('rover') }, roverAt: 'surface', log: [] }; }
   /** Partidas anteriores: la estación se crea con los elevadores en reposo. */
   function ensure(S) {
     if (S.station && S.station.v === 1) { const s = S.station; for (const k in KINDS) if (!s.elev[k]) s.elev[k] = mk(k); return s; }
@@ -74,7 +75,7 @@ const Station = (function () {
       if (e.st === 'closing' && e.t >= DOOR_S) { e.st = 'moving'; e.t = 0; e.p = 0; }
       else if (e.st === 'moving') {
         const dur = Math.max(0.01, travelS(kind, e.at, e.to)); e.p = Math.min(1, e.t / dur);
-        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; }
+        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; }
       } else if (e.st === 'opening' && e.t >= DOOR_S) { e.st = 'idle'; e.t = 0; arrived = true; }
     }
     return arrived;
@@ -83,6 +84,16 @@ const Station = (function () {
   function setBroken(S, kind, on) { E(S, kind).broken = !!on; }
   /** Alternativa cuando el elevador de tripulación no funciona: escalera de emergencia, más lenta. Nunca bloquea la campaña. */
   function stairs(S, from, to) { if (!FLOORS.includes(from) || !FLOORS.includes(to)) return { ok: false, why: 'floor' }; return { ok: true, s: Math.abs(to - from) * STAIRS_S }; }
+  /** ¿Se ve el rover en la superficie? No si está guardado en el garaje ni mientras la plataforma baja con él. */
+  const roverVisible = (S) => { const st = ensure(S); return st.roverAt !== 'garage' && st.elev.rover.st !== 'moving'; };
+  const roverStored = (S) => ensure(S).roverAt === 'garage';
+  /** Plataforma del rover (coordenadas del mundo exterior): el rover aparca en su centro. */
+  const PLAT = { x: 70.5, y: 86.4, w: 7, h: 6.4, c: [74, 89.6], panel: [74, 93.4] };
+  /** ¿Está el rover bien colocado sobre la plataforma? (centrado, alineado, quieto y sin conductor) */
+  function roverOnPlatform(R) {
+    const d = Math.hypot(R.x - PLAT.c[0], R.y - PLAT.c[1]), ang = Math.abs(((R.a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
+    return d < 1.6 && ang < 0.5 && Math.abs(R.v) < 0.3 && !R.occ;
+  }
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();

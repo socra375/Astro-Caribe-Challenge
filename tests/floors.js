@@ -105,6 +105,42 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   ok('Tras la escalera se llega al piso 2', await pg.evaluate(() => World.floor === 2 && World.roomName(World.player.x, World.player.y) === 'elc2'));
   await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', false); World.arrive(1); });
 
+
+  /* ---- Elevador del rover: plataforma exterior ↔ garaje (interfaz real) ---- */
+  const rl = await pg.evaluate(() => {
+    World.arrive(2); const E = Game.S.ex, P = Station.PLAT; Ex.equip(Game.S);
+    E.rover.x = 80; E.rover.y = 95; E.rover.a = 0.6; E.rover.v = 0; E.rover.occ = false; // mal colocado
+    World.player.x = P.panel[0]; World.player.y = P.panel[1] + 0.9; Game._debug.setSpeed(0);
+    return { near: null, onPlat: Station.roverOnPlatform(E.rover), batt: Game.S.sys.rover.batt, load: E.rover.load.slice() };
+  });
+  await sleep(pg, 600);
+  const near1 = await pg.evaluate(() => ({ id: (World.exNear() || {}).id, prompt: document.getElementById('actBtn').textContent }));
+  ok('Junto a la plataforma del rover hay un panel interactivo («Elevador del rover»)', near1.id === 'x:rplat' && /Elevador del rover/.test(near1.prompt), JSON.stringify(near1));
+  ok('Un rover mal colocado (fuera del centro y torcido) no cuenta como colocado', rl.onPlat === false);
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  await pg.click('[data-act="rlift-down"]'); await sleep(pg, 200);
+  const bad = await pg.evaluate(() => ({ msg: (document.querySelector('[data-msg]') || {}).textContent, st: Game.S.station.elev.rover.st, trips: Game.S.station.elev.rover.trips }));
+  ok('El elevador del rover no se mueve si el vehículo no está correctamente colocado y explica por qué', /centro de la plataforma/.test(bad.msg || '') && bad.st === 'idle' && bad.trips === 0, JSON.stringify(bad));
+  await pg.keyboard.press('Escape'); await sleep(pg, 200);
+  await pg.evaluate(() => { const E = Game.S.ex, P = Station.PLAT; E.rover.x = P.c[0]; E.rover.y = P.c[1]; E.rover.a = 0; E.rover.v = 0; E.rover.load = ['x1']; });
+  await sleep(pg, 400);
+  const placed = await pg.evaluate(() => ({ ok: Station.roverOnPlatform(Game.S.ex.rover), vis: Station.roverVisible(Game.S), board: (World.exNear() || {}).id }));
+  ok('Con el rover centrado, alineado y parado sobre la plataforma se considera colocado', placed.ok && placed.vis, JSON.stringify(placed));
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  await pg.click('[data-act="rlift-down"]'); await sleep(pg, 1500);
+  const trip = await pg.evaluate(() => ({ st: Game.S.station.elev.rover.st, vis: Station.roverVisible(Game.S), door: Station.door(Game.S, 'rover'), occPanel: !!document.querySelector('[data-act="rlift-up"]') }));
+  ok('La plataforma baja con puertas que se cierran y el rover desaparece del exterior mientras viaja', (trip.st === 'moving' || trip.st === 'closing') && trip.door < 1 && !trip.occPanel, JSON.stringify(trip));
+  await pg.waitForFunction(() => Game.S.station.elev.rover.st === 'idle' && Game.S.station.roverAt === 'garage', null, { timeout: 15000 }); await sleep(pg, 400);
+  const gar = await pg.evaluate(() => ({ stored: Station.roverStored(Game.S), vis: Station.roverVisible(Game.S), board: (World.exNear() || {}).id, batt: Game.S.sys.rover.batt, load: Game.S.ex.rover.load.slice(), up: !!document.querySelector('[data-act="rlift-up"]') }));
+  ok('Llega al garaje: el rover queda guardado (no se ve ni se puede subir) conservando batería y muestras', gar.stored && !gar.vis && gar.board === 'x:rplat' && gar.batt === rl.batt && JSON.stringify(gar.load) === '["x1"]' && gar.up, JSON.stringify(gar));
+  await pg.click('[data-act="rlift-up"]'); await pg.waitForFunction(() => Game.S.station.elev.rover.st === 'idle' && Game.S.station.roverAt === 'surface', null, { timeout: 15000 }); await sleep(pg, 400);
+  const back = await pg.evaluate(() => ({ vis: Station.roverVisible(Game.S), at: Game.S.station.elev.rover.at, batt: Game.S.sys.rover.batt, load: Game.S.ex.rover.load.slice(), pos: [Game.S.ex.rover.x, Game.S.ex.rover.y] }));
+  ok('Al subir, el rover reaparece en la plataforma con la misma batería y las mismas muestras', back.vis && back.at === 0 && back.batt === rl.batt && JSON.stringify(back.load) === '["x1"]' && back.pos[0] === 74, JSON.stringify(back));
+  await pg.keyboard.press('Escape'); await sleep(pg, 200);
+  const sv3 = await pg.evaluate(() => { Station.call(Game.S, 'rover', 2, { roverOn: true }); for (let i = 0; i < 300; i++) Station.step(Game.S, 0.05); Game._debug.saveNow(); const r = Store.get('run'); return { at: r.S.station.elev.rover.at, ra: r.S.station.roverAt }; });
+  ok('El estado del elevador del rover y el rover guardado en el garaje se guardan con la partida', sv3.at === 2 && sv3.ra === 'garage', JSON.stringify(sv3));
+  await pg.evaluate(() => { Station.call(Game.S, 'rover', 0, { roverOn: true }); for (let i = 0; i < 300; i++) Station.step(Game.S, 0.05); World.arrive(1); });
+
   /* ---- Alertas con piso y sala ---- */
   const al = await pg.evaluate(() => { const f = Game._debug.floors.floorOfRoom; return { r: f('reactor'), b: f('rad'), c: f('bridge'), p: f('pad') }; });
   ok('Las alertas indican el piso de cada sala (reactor → piso 3, garaje → piso 2, puente → piso 1, exterior)', /Piso 3/.test(al.r) && /Piso 2/.test(al.b) && /Piso 1/.test(al.c) && /Exterior/.test(al.p), JSON.stringify(al));
@@ -121,7 +157,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   /* ---- Elevadores (motor puro) ---- */
   const el = await pg.evaluate(() => {
     const S = Sim.create({ scen: 'moon', diff: 'engineer', mode: 'junior', seed: 4 }); delete S.station; const m = Sim.migrate(JSON.parse(JSON.stringify(S)));
-    const o = { legacy: !!m.station && m.station.elev.crew.at === 1 && m.station.elev.rover.at === 2 && m.station.elev.crew.st === 'idle' };
+    const o = { legacy: !!m.station && m.station.elev.crew.at === 1 && m.station.elev.rover.at === 0 && m.station.elev.crew.st === 'idle' && m.station.roverAt === 'surface' };
     const st = Station.ensure(m);
     // llamar al elevador de tripulación 1 → 3
     const c1 = Station.call(m, 'crew', 3); o.call = c1; o.stBefore = st.elev.crew.st;
@@ -135,20 +171,20 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
     // avería y alternativa
     Station.setBroken(m, 'crew', true); o.broken = Station.call(m, 'crew', 1); o.stairs = Station.stairs(m, 3, 1); o.boardBroken = Station.board(m, 'crew', 'player'); Station.setBroken(m, 'crew', false);
     // elevador del rover: exige el vehículo sobre la plataforma
-    o.roverOff = Station.call(m, 'rover', 0, { roverOn: false }); o.roverOn = Station.call(m, 'rover', 0, { roverOn: true }); const re = st.elev.rover;
-    let rt = 0; for (let i = 0; i < 300 && !(re.st === 'idle' && re.at === 0); i++) { Station.step(m, 0.05); rt += 0.05; }
-    o.roverAt = re.at; o.roverTrips = re.trips; o.roverBad = Station.call(m, 'rover', 1, { roverOn: true }); o.same = Station.call(m, 'rover', 0, { roverOn: false });
+    o.roverOff = Station.call(m, 'rover', 2, { roverOn: false }); o.roverOn = Station.call(m, 'rover', 2, { roverOn: true }); const re = st.elev.rover;
+    let rt = 0; for (let i = 0; i < 300 && !(re.st === 'idle' && re.at === 2); i++) { Station.step(m, 0.05); rt += 0.05; }
+    o.roverAt = re.at; o.roverTrips = re.trips; o.stored = st.roverAt; o.roverBad = Station.call(m, 'rover', 1, { roverOn: true }); o.same = Station.call(m, 'rover', 2, { roverOn: false });
     // serialización
-    const rt2 = JSON.parse(JSON.stringify(m)); o.json = rt2.station.elev.rover.at === 0 && rt2.station.elev.crew.at === 3 && rt2.station.elev.crew.trips === 1;
+    const rt2 = JSON.parse(JSON.stringify(m)); o.json = rt2.station.elev.rover.at === 2 && rt2.station.elev.crew.at === 3 && rt2.station.elev.crew.trips === 1;
     return o;
   });
-  ok('Partidas anteriores: la estación se crea con los elevadores en reposo (tripulación en el 1, rover en el garaje)', el.legacy);
+  ok('Partidas anteriores: la estación se crea con los elevadores en reposo (tripulación en el 1, plataforma del rover en la superficie)', el.legacy);
   ok('El elevador de tripulación va 1 → 3 con puertas cerrándose, movimiento y puertas abriéndose (sin teletransporte)', el.call.ok && el.stBefore === 'closing' && el.seq === 'closing>moving>opening>idle' && el.doorClosed && el.mono, JSON.stringify([el.seq, el.stBefore]));
   ok('El viaje dura puertas + 2 pisos + puertas y termina en el piso pedido', Math.abs(el.arr - el.exp) < 0.2 && el.at === 3 && el.idle === 'idle', JSON.stringify([el.arr, el.exp]));
   ok('En movimiento no se puede pedir otro destino ni subir', el.busy.ok === false && el.busy.why === 'busy' && el.boardMoving.ok === false && el.boardMoving.why === 'closed');
   ok('Se sube y se baja solo con el elevador en reposo; el rover no puede usar el de tripulación; piso inexistente rechazado', el.board.ok && el.rover1.ok === false && el.rover1.why === 'cap' && el.occ.length === 1 && el.leave.ok && el.badFloor.ok === false && el.badFloor.why === 'floor', JSON.stringify([el.rover1, el.badFloor]));
   ok('Con el elevador averiado no se mueve, pero hay escalera de emergencia (7 s por piso) para no bloquear la campaña', el.broken.ok === false && el.broken.why === 'broken' && el.boardBroken.ok === false && el.stairs.ok && el.stairs.s === 14, JSON.stringify([el.broken, el.stairs]));
-  ok('El elevador del rover no se mueve sin el vehículo sobre la plataforma y sí con él (garaje → exterior)', el.roverOff.ok === false && el.roverOff.why === 'rover' && el.roverOn.ok && el.roverAt === 0 && el.roverTrips === 1, JSON.stringify([el.roverOff, el.roverOn, el.roverAt]));
+  ok('El elevador del rover no se mueve sin el vehículo sobre la plataforma y sí con él (superficie → garaje, y el rover queda guardado)', el.roverOff.ok === false && el.roverOff.why === 'rover' && el.roverOn.ok && el.roverAt === 2 && el.roverTrips === 1 && el.stored === 'garage', JSON.stringify([el.roverOff, el.roverOn, el.roverAt]));
   ok('El elevador del rover solo sirve a exterior y garaje; si ya está en el piso pedido no se mueve', el.roverBad.ok === false && el.roverBad.why === 'floor' && el.same.ok && el.same.same);
   ok('El estado de los elevadores es serializable (posición, viajes)', el.json);
 
@@ -161,7 +197,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   for (const b of await pg.$$('.menu-grid .btn')) { if (/Continuar|Continue/.test(await b.textContent())) { await b.click(); break; } }
   await sleep(pg, 400);
   const ld = await pg.evaluate(() => ({ at: Game.S.station && Game.S.station.elev.crew.at, rv: Game.S.station && Game.S.station.elev.rover.at, fl: World.floor, running: Game._debug.running }));
-  ok('Al cargar la partida se conservan el piso del jugador y la posición de los elevadores', ld.running && ld.at === 3 && ld.rv === 2 && ld.fl === 1, JSON.stringify(ld));
+  ok('Al cargar la partida se conservan el piso del jugador y la posición de los elevadores', ld.running && ld.at === 3 && ld.rv === 0 && ld.fl === 1, JSON.stringify(ld));
   /* ---- Migración de partidas anteriores a los pisos, con copia de seguridad ---- */
   const legacy = await pg.evaluate(() => {
     const S = JSON.parse(JSON.stringify(Game.S)); delete S.station; delete S.trip; delete S.land; // formato anterior a viaje, llegada y pisos
