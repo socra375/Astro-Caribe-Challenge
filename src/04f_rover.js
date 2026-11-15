@@ -40,7 +40,7 @@ const Rover = (function () {
     else if (Math.abs(dx) > 0.002 && free(R.x + dx, R.y, R.a)) { R.x += dx; moved = true; R.v *= 0.85; }
     else if (Math.abs(dy) > 0.002 && free(R.x, R.y + dy, R.a)) { R.y += dy; moved = true; R.v *= 0.85; }
     else if (mv > 0.2) {
-      if (mv > 6) { S.sys.rover.h = Math.max(10, S.sys.rover.h - (mv - 6) * 0.9); ev.push('bump'); }
+      if (mv > 6) { S.sys.rover.h = Math.max(0, S.sys.rover.h - (mv - 6) * 0.9); ev.push('bump'); if (S.sys.rover.h <= 0 && R.occ) { Surv.kill(S, 'rover'); ev.push('wreck'); } } // integridad 0 con el jugador al volante → derrota
       for (let i = 0; i < 6; i++) parts.push({ x: R.x + Math.cos(R.a) * 1.4, y: R.y + Math.sin(R.a) * 1.4, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 2, t: 0, life: 0.4, k: 'spark' });
       R.v = -R.v * 0.25; bump = 0.3;
     }

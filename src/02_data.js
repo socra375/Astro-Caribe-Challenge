@@ -241,7 +241,7 @@ const DATA = (function () {
   };
   const FAILWHY = {
     time: { es: 'Se acabó el tiempo disponible. Revisa qué recurso limitaba el progreso y vuelve a intentarlo.', en: 'Time ran out. Check which resource limited progress and try again.' },
-    dose: { es: 'La dosis media superó el presupuesto. Activa el protocolo antes y amplía el refugio.', en: 'The average dose exceeded the budget. Turn on the protocol earlier and expand the shelter.' },
+    dose: { es: 'La exposición a la radiación superó el límite de seguridad del modelo y la misión terminó.', en: 'Radiation exposure passed the safety limit of the model and the mission ended.' },
     quit: { es: 'Abandonaste la misión. Puedes repetirla cuando quieras.', en: 'You abandoned the mission. You can retry anytime.' }
   };
 
@@ -366,11 +366,14 @@ const DATA = (function () {
     player: { es: 'Terminaste la partida para revisar el informe.', en: 'You ended the game to review the report.' },
     o2: { es: 'Evacuación preventiva: el oxígeno se agotó y la tripulación volvió a casa en la cápsula de emergencia. Todos están bien.', en: 'Preventive evacuation: oxygen ran out and the crew returned home in the emergency capsule. Everyone is fine.' },
     water: { es: 'Misión abortada: sin agua no se puede seguir. La tripulación regresó a salvo.', en: 'Mission aborted: without water the base cannot continue. The crew returned safely.' },
-    food: { es: 'Misión abortada: se acabaron los alimentos. Una nave de rescate llevó a la tripulación a casa.', en: 'Mission aborted: food ran out. A rescue ship brought the crew home.' },
+    food: { es: 'Pasaron más de 72 horas seguidas sin alimentos. Sin energía, perdiste el conocimiento y la misión terminó.', en: 'More than 72 hours passed with no food. With no energy left, you lost consciousness and the mission ended.' },
     power: { es: 'Intervención de emergencia: sin energía para el soporte vital. La tripulación fue evacuada a salvo.', en: 'Emergency intervention: no power for life support. The crew was safely evacuated.' },
     press: { es: 'Evacuación preventiva: la presión bajó demasiado tiempo. Todos llegaron bien a la nave.', en: 'Preventive evacuation: pressure stayed too low. Everyone reached the ship safely.' },
     well: { es: 'El control de misión decidió traer a la tripulación de vuelta para que descanse.', en: 'Mission control decided to bring the crew home to rest.' },
     dose: { es: 'Misión abortada: la exposición estimada superó el límite del modelo. La tripulación regresa para revisión médica.', en: 'Mission aborted: estimated exposure passed the model limit. The crew returns for a medical check.' },
+    cold: { es: 'Saliste al exterior sin el traje espacial (o con su energía agotada). Fuera hace un frío extremo y el cuerpo se enfría en segundos.', en: 'You went outside without the space suit (or with its power gone). Outside it is extremely cold and the body chills in seconds.' },
+    rover: { es: 'El rover recibió demasiados impactos fuertes: su integridad llegó a cero y se destruyó con el conductor dentro.', en: 'The rover took too many hard impacts: its integrity reached zero and it was destroyed with the driver inside.' },
+    core: { es: 'El núcleo energético quedó fuera de servicio y la energía de reserva se agotó: la estación se apagó y se perdió en el espacio.', en: 'The energy core went offline and the backup power ran out: the station shut down and was lost in space.' },
     inc: { es: 'Misión abortada: un incidente crítico quedó sin resolver demasiado tiempo.', en: 'Mission aborted: a critical incident stayed unresolved too long.' }
   };
 

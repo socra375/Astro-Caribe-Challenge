@@ -315,14 +315,15 @@ const Game = (function () {
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
-        World.update(dt, S, inputVec());
+        World.update(dt, S, scaleIn(inputVec()));
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt); elFrame(dt);
+        exFrame(dt); elFrame(dt); survFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
-        if (S.ended) { saveRun(); setTimeout(showReport, 900); }
+        if (S.ended) { saveRun(); if (S.ended.kind === 'dead') startGameOver(S.ended.reason); else setTimeout(showReport, 900); }
       }
+      if (S.ended && S.ended.kind === 'dead' && !goActive) { saveRun(); startGameOver(S.ended.reason); } // derrota decidida fuera del bucle (rover, pruebas)
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
       World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
@@ -409,7 +410,7 @@ const Game = (function () {
     return true;
   }
   function newRun(scen, diff, opts) {
-    opts = opts || {};
+    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
@@ -431,7 +432,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
-  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */

@@ -560,11 +560,11 @@ const Sim = (function () {
     const end = (kind, reason) => { S.ended = { kind, reason, t: S.t }; log(S, kind === 'victory' ? 'ok' : 'crit', 'end.' + reason, {}); };
     if (r.o2.v <= 0 && S.sys.o2.conc < 17) return end('abort', 'o2');
     S.z.water = r.water.v <= 0.01 ? S.z.water + h : 0; if (S.z.water >= 12) return end('abort', 'water');
-    S.z.food = r.food.v <= 0.01 ? S.z.food + h : 0; if (S.z.food >= 72) return end('abort', 'food');
-    S.z.power = r.power.v <= 0.01 && (S.lf.o2 < 0.3 || S.lf.therm < 0.3) ? S.z.power + h : 0; if (S.z.power >= 24) return end('abort', 'power');
+    S.z.food = r.food.v <= 0.01 ? S.z.food + h : 0; if (S.z.food >= 72) return end('dead', 'food');
+    S.z.power = r.power.v <= 0.01 && (S.lf.o2 < 0.3 || S.lf.therm < 0.3) ? S.z.power + h : 0; if (S.z.power >= 24) return S.sys.reactor.h <= 20 ? end('dead', 'core') : end('abort', 'power'); // núcleo fuera de servicio y sin reserva → derrota
     S.z.press = S.sys.press.P < 60 ? S.z.press + h : 0; if (S.z.press >= 6) return end('abort', 'press');
     S.z.well = r.well.v < 10 ? S.z.well + h : 0; if (S.z.well >= 24) return end('abort', 'well');
-    if (S.st.maxDose >= S.limit) return end('abort', 'dose');
+    if (S.st.maxDose >= S.limit) return end('dead', 'dose');
     if (S.inc.some((i) => !i.res && i.fix && i.sev === 'crit' && S.t - i.t0 > 72)) return end('abort', 'inc');
     let all = true; for (let i = 1; i <= 7; i++) if (S.m[i].st !== 'done') all = false;
     if (all && !activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from)) end('victory', 'all');
@@ -1019,6 +1019,8 @@ const Sim = (function () {
     if (S.quiz[mid] != null) return;
     S.quiz[mid] = ok ? 1 : 0; S.st.quizTot++; if (ok) { S.st.quizOk++; S.pts += 30; }
   }
+  /** Derrota por una causa que decide la interfaz o el rover (frío, rover). Una sola vez por partida. */
+  function kill(S, reason) { if (S.ended) return false; S.ended = { kind: 'dead', reason, t: S.t }; log(S, 'crit', 'end.' + reason, {}); return true; }
   function finishRun(S) { if (!S.ended) { S.ended = { kind: 'partial', reason: 'player', t: S.t }; log(S, 'info', 'end.player', {}); } }
   function setPlayerZone(S, z) { const c = S.crew.find((x) => x.role === (S.playerRole || 'commander')) || S.crew[0]; c.zone = z; }
 
@@ -1036,7 +1038,7 @@ const Sim = (function () {
   }
 
   return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
-    finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
+    finishMission, reportSite, reportQuiz, finishRun, kill, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
 /*SIM-END*/

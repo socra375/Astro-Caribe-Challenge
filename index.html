@@ -195,6 +195,17 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
 .choice{border:2px solid var(--border-input);background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;text-align:left;cursor:pointer;min-height:44px}
 .choice[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,214,255,.25)}
+/* ===== Supervivencia y Game Over ===== */
+#survfx{position:fixed;inset:0;z-index:15;pointer-events:none}
+#survbar{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:30;min-width:min(320px,86vw);padding:6px 12px;border-radius:12px;background:rgba(8,12,28,.9);border:2px solid var(--warning);font-weight:700;font-size:15px;text-align:center}
+#survbar .sv-l::before{content:attr(data-ico) " "}
+#survbar .pbar{margin-top:5px}
+#gocv{position:fixed;inset:0;width:100%;height:100%;z-index:18;pointer-events:auto}
+.screen.cine.go{background:rgba(2,3,10,.88)}
+.go-panel{text-align:center;border-color:rgba(255,90,80,.5)!important;box-shadow:0 0 60px rgba(255,60,50,.25),var(--shadow)!important}
+.go-title{font-size:clamp(44px,13vw,96px);font-weight:900;letter-spacing:.06em;line-height:1;background:linear-gradient(180deg,#ffd0c0,#ff5a4a 60%,#a01818);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(255,70,60,.55));animation:gopulse 2.4s ease-in-out infinite alternate}
+@keyframes gopulse{from{filter:drop-shadow(0 0 10px rgba(255,70,60,.35))}to{filter:drop-shadow(0 0 26px rgba(255,70,60,.8))}}
+.go-cause{font-size:17px;line-height:1.45}
 /* ===== Inicio cinematográfico: carga, menú, edad / misión / dificultad ===== */
 .screen.cine{background:radial-gradient(ellipse at 22% 18%,rgba(60,90,255,.22),transparent 60%),radial-gradient(ellipse at 82% 82%,rgba(150,80,255,.22),transparent 58%),rgba(3,5,16,.28)}
 .cine-panel{background:rgba(10,14,38,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(140,120,255,.38);box-shadow:0 0 60px rgba(90,100,255,.22),0 0 120px rgba(150,80,255,.12),var(--shadow);animation:wizin .5s both}
@@ -586,7 +597,7 @@ const DATA = (function () {
   };
   const FAILWHY = {
     time: { es: 'Se acabó el tiempo disponible. Revisa qué recurso limitaba el progreso y vuelve a intentarlo.', en: 'Time ran out. Check which resource limited progress and try again.' },
-    dose: { es: 'La dosis media superó el presupuesto. Activa el protocolo antes y amplía el refugio.', en: 'The average dose exceeded the budget. Turn on the protocol earlier and expand the shelter.' },
+    dose: { es: 'La exposición a la radiación superó el límite de seguridad del modelo y la misión terminó.', en: 'Radiation exposure passed the safety limit of the model and the mission ended.' },
     quit: { es: 'Abandonaste la misión. Puedes repetirla cuando quieras.', en: 'You abandoned the mission. You can retry anytime.' }
   };
 
@@ -711,11 +722,14 @@ const DATA = (function () {
     player: { es: 'Terminaste la partida para revisar el informe.', en: 'You ended the game to review the report.' },
     o2: { es: 'Evacuación preventiva: el oxígeno se agotó y la tripulación volvió a casa en la cápsula de emergencia. Todos están bien.', en: 'Preventive evacuation: oxygen ran out and the crew returned home in the emergency capsule. Everyone is fine.' },
     water: { es: 'Misión abortada: sin agua no se puede seguir. La tripulación regresó a salvo.', en: 'Mission aborted: without water the base cannot continue. The crew returned safely.' },
-    food: { es: 'Misión abortada: se acabaron los alimentos. Una nave de rescate llevó a la tripulación a casa.', en: 'Mission aborted: food ran out. A rescue ship brought the crew home.' },
+    food: { es: 'Pasaron más de 72 horas seguidas sin alimentos. Sin energía, perdiste el conocimiento y la misión terminó.', en: 'More than 72 hours passed with no food. With no energy left, you lost consciousness and the mission ended.' },
     power: { es: 'Intervención de emergencia: sin energía para el soporte vital. La tripulación fue evacuada a salvo.', en: 'Emergency intervention: no power for life support. The crew was safely evacuated.' },
     press: { es: 'Evacuación preventiva: la presión bajó demasiado tiempo. Todos llegaron bien a la nave.', en: 'Preventive evacuation: pressure stayed too low. Everyone reached the ship safely.' },
     well: { es: 'El control de misión decidió traer a la tripulación de vuelta para que descanse.', en: 'Mission control decided to bring the crew home to rest.' },
     dose: { es: 'Misión abortada: la exposición estimada superó el límite del modelo. La tripulación regresa para revisión médica.', en: 'Mission aborted: estimated exposure passed the model limit. The crew returns for a medical check.' },
+    cold: { es: 'Saliste al exterior sin el traje espacial (o con su energía agotada). Fuera hace un frío extremo y el cuerpo se enfría en segundos.', en: 'You went outside without the space suit (or with its power gone). Outside it is extremely cold and the body chills in seconds.' },
+    rover: { es: 'El rover recibió demasiados impactos fuertes: su integridad llegó a cero y se destruyó con el conductor dentro.', en: 'The rover took too many hard impacts: its integrity reached zero and it was destroyed with the driver inside.' },
+    core: { es: 'El núcleo energético quedó fuera de servicio y la energía de reserva se agotó: la estación se apagó y se perdió en el espacio.', en: 'The energy core went offline and the backup power ran out: the station shut down and was lost in space.' },
     inc: { es: 'Misión abortada: un incidente crítico quedó sin resolver demasiado tiempo.', en: 'Mission aborted: a critical incident stayed unresolved too long.' }
   };
 
@@ -1983,11 +1997,11 @@ const Sim = (function () {
     const end = (kind, reason) => { S.ended = { kind, reason, t: S.t }; log(S, kind === 'victory' ? 'ok' : 'crit', 'end.' + reason, {}); };
     if (r.o2.v <= 0 && S.sys.o2.conc < 17) return end('abort', 'o2');
     S.z.water = r.water.v <= 0.01 ? S.z.water + h : 0; if (S.z.water >= 12) return end('abort', 'water');
-    S.z.food = r.food.v <= 0.01 ? S.z.food + h : 0; if (S.z.food >= 72) return end('abort', 'food');
-    S.z.power = r.power.v <= 0.01 && (S.lf.o2 < 0.3 || S.lf.therm < 0.3) ? S.z.power + h : 0; if (S.z.power >= 24) return end('abort', 'power');
+    S.z.food = r.food.v <= 0.01 ? S.z.food + h : 0; if (S.z.food >= 72) return end('dead', 'food');
+    S.z.power = r.power.v <= 0.01 && (S.lf.o2 < 0.3 || S.lf.therm < 0.3) ? S.z.power + h : 0; if (S.z.power >= 24) return S.sys.reactor.h <= 20 ? end('dead', 'core') : end('abort', 'power'); // núcleo fuera de servicio y sin reserva → derrota
     S.z.press = S.sys.press.P < 60 ? S.z.press + h : 0; if (S.z.press >= 6) return end('abort', 'press');
     S.z.well = r.well.v < 10 ? S.z.well + h : 0; if (S.z.well >= 24) return end('abort', 'well');
-    if (S.st.maxDose >= S.limit) return end('abort', 'dose');
+    if (S.st.maxDose >= S.limit) return end('dead', 'dose');
     if (S.inc.some((i) => !i.res && i.fix && i.sev === 'crit' && S.t - i.t0 > 72)) return end('abort', 'inc');
     let all = true; for (let i = 1; i <= 7; i++) if (S.m[i].st !== 'done') all = false;
     if (all && !activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from)) end('victory', 'all');
@@ -2442,6 +2456,8 @@ const Sim = (function () {
     if (S.quiz[mid] != null) return;
     S.quiz[mid] = ok ? 1 : 0; S.st.quizTot++; if (ok) { S.st.quizOk++; S.pts += 30; }
   }
+  /** Derrota por una causa que decide la interfaz o el rover (frío, rover). Una sola vez por partida. */
+  function kill(S, reason) { if (S.ended) return false; S.ended = { kind: 'dead', reason, t: S.t }; log(S, 'crit', 'end.' + reason, {}); return true; }
   function finishRun(S) { if (!S.ended) { S.ended = { kind: 'partial', reason: 'player', t: S.t }; log(S, 'info', 'end.player', {}); } }
   function setPlayerZone(S, z) { const c = S.crew.find((x) => x.role === (S.playerRole || 'commander')) || S.crew[0]; c.zone = z; }
 
@@ -2459,7 +2475,7 @@ const Sim = (function () {
   }
 
   return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
-    finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
+    finishMission, reportSite, reportQuiz, finishRun, kill, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;
 /*SIM-END*/
@@ -3583,6 +3599,48 @@ const Station = (function () {
   const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
   return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+})();
+/* =====================================================================
+   Surv: supervivencia y derrota. Motor puro (sin DOM) para que se pueda probar.
+   Cada causa de derrota sale de condiciones reales del simulador:
+   · cold  → estar fuera de la base sin traje (o con la energía del traje agotada). Tarda COLD_S s y se puede evitar volviendo.
+   · rover → un choque fuerte deja la integridad del rover en 0 con el jugador al volante (lo decide Rover.update).
+   · food  → 72 h simuladas seguidas sin alimentos (Sim.endings).
+   · dose  → la dosis de radiación llega al límite del modelo (Sim.endings).
+   · core  → el reactor queda fuera de servicio y sin energía de reserva durante 24 h (Sim.endings).
+   Nada es aleatorio: dependen de lo que hace el jugador y de recursos que ya se ven en el juego.
+   ===================================================================== */
+const Surv = (() => {
+  const COLD_S = 16; // segundos fuera sin traje hasta la congelación
+  const HUNGER_H = 72; // horas sin comida hasta el desmayo (mismo umbral que Sim.endings)
+  const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+  function ensure(S) { if (!S.surv) S.surv = { cold: 0, al: {}, why: null }; if (!S.surv.al) S.surv.al = {}; return S.surv; }
+  /** c = { outside, suitOn, suitEn, inShel, inRover }. Devuelve el nivel de frío (0–1); a 1 llega la congelación. */
+  function coldStep(S, dt, c) {
+    const s = ensure(S); let rate = 0;
+    if (c.outside && !c.inShel && !c.inRover) {
+      if (!c.suitOn) { rate = 1 / COLD_S; s.why = 'nosuit'; } else if (c.suitEn <= 0) { rate = 1 / 40; s.why = 'suit'; }
+    }
+    s.cold = rate > 0 ? Math.min(1, s.cold + rate * dt) : Math.max(0, s.cold - dt / 5);
+    return s.cold;
+  }
+  /** Efectos del hambre: visión borrosa desde 8 h sin comida, oscuridad desde 30 h; el desmayo llega a las 72 h. */
+  function hunger(S) { const h = S.z ? S.z.food : 0; return { h, blur: cl((h - 8) / 48, 0, 1), dark: cl((h - 30) / 40, 0, 1), left: Math.max(0, HUNGER_H - h) }; }
+  const doseF = (S) => (S.limit ? S.st.maxDose / S.limit : 0);
+  const coreOut = (S) => S.sys.reactor.h <= 20;
+  /** Avisos nuevos antes de llegar a la situación crítica (cada uno una vez, con histéresis). */
+  function warnings(S) {
+    const s = ensure(S), A = s.al, out = [], hu = hunger(S), d = doseF(S), rv = S.sys.rover.h, usedRover = !!(S.ex && S.ex.rover && S.ex.rover.odo > 0);
+    const flag = (k, on, off) => { if (on && !A[k]) { A[k] = 1; out.push(k); } else if (A[k] && off) A[k] = 0; };
+    flag('cold.start', s.cold > 0.02, s.cold === 0); flag('cold.crit', s.cold > 0.6, s.cold < 0.2);
+    flag('food.zero', S.r.food.v <= 0.01, S.r.food.v > 0.5); flag('food.late', hu.h >= 36, hu.h < 20); flag('food.faint', hu.h >= 60, hu.h < 40);
+    flag('dose.hi', d >= 0.6, d < 0.5); flag('dose.crit', d >= 0.85, d < 0.7);
+    flag('core.low', S.sys.reactor.h < 35, S.sys.reactor.h > 45); flag('core.out', coreOut(S), S.sys.reactor.h > 30);
+    flag('rover.low', usedRover && rv < 40, rv > 50); flag('rover.crit', usedRover && rv < 20, rv > 30);
+    return out;
+  }
+  function kill(S, why) { return Sim.kill(S, why); }
+  return { COLD_S, HUNGER_H, ensure, coldStep, hunger, doseF, coreOut, warnings, kill };
 })();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
@@ -4764,7 +4822,7 @@ const Rover = (function () {
     else if (Math.abs(dx) > 0.002 && free(R.x + dx, R.y, R.a)) { R.x += dx; moved = true; R.v *= 0.85; }
     else if (Math.abs(dy) > 0.002 && free(R.x, R.y + dy, R.a)) { R.y += dy; moved = true; R.v *= 0.85; }
     else if (mv > 0.2) {
-      if (mv > 6) { S.sys.rover.h = Math.max(10, S.sys.rover.h - (mv - 6) * 0.9); ev.push('bump'); }
+      if (mv > 6) { S.sys.rover.h = Math.max(0, S.sys.rover.h - (mv - 6) * 0.9); ev.push('bump'); if (S.sys.rover.h <= 0 && R.occ) { Surv.kill(S, 'rover'); ev.push('wreck'); } } // integridad 0 con el jugador al volante → derrota
       for (let i = 0; i < 6; i++) parts.push({ x: R.x + Math.cos(R.a) * 1.4, y: R.y + Math.sin(R.a) * 1.4, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 2, t: 0, life: 0.4, k: 'spark' });
       R.v = -R.v * 0.25; bump = 0.3;
     }
@@ -6971,14 +7029,15 @@ const Game = (function () {
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
-        World.update(dt, S, inputVec());
+        World.update(dt, S, scaleIn(inputVec()));
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt); elFrame(dt);
+        exFrame(dt); elFrame(dt); survFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
-        if (S.ended) { saveRun(); setTimeout(showReport, 900); }
+        if (S.ended) { saveRun(); if (S.ended.kind === 'dead') startGameOver(S.ended.reason); else setTimeout(showReport, 900); }
       }
+      if (S.ended && S.ended.kind === 'dead' && !goActive) { saveRun(); startGameOver(S.ended.reason); } // derrota decidida fuera del bucle (rover, pruebas)
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
       World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
@@ -7065,7 +7124,7 @@ const Game = (function () {
     return true;
   }
   function newRun(scen, diff, opts) {
-    opts = opts || {};
+    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
@@ -7087,7 +7146,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
-  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
@@ -8829,7 +8888,7 @@ const Game = (function () {
     }
     if (c.outside && E.suit.on && !Sfx.muted) { const ev = Ex.env(S, c.x, c.y); const rate = (ev.burst ? 5 : 1) * (c.inShel ? 0.1 : 1); geigerT -= dt; if (geigerT <= 0) { geigerT = (0.6 + Math.random() * 1.2) / rate; if (ev.burst > 0.5 && !c.inShel) Sfx.play('geiger'); } }
     const outNow = c.outside && E.suit.on, mc0 = $('#mini'); if (outNow && !miniForced) { miniWas = mc0.classList.contains('hidden'); mc0.classList.remove('hidden'); miniForced = true; } else if (!outNow && miniForced) { if (miniWas) mc0.classList.add('hidden'); miniForced = false; }
-    if (World.needSuit) toast(XT('Necesitas el traje para salir', 'You need the suit to go out'), XT('Equípalo en el vestuario de la bahía.', 'Put it on at the bay locker.'), 'warn');
+    if (World.needSuit) noSuitPanel(); // sin traje: se avisa del peligro y el jugador decide
     exT += dt; if (exT > 0.2) { exT = 0; exHud(); exCard(World.exNear()); }
   }
   function exAttach() { wasOut = false; lastCard = ''; if (evaEl) { evaEl.classList.add('hidden'); toolsEl.classList.add('hidden'); } }
@@ -9613,6 +9672,195 @@ const Game = (function () {
     paint();
   }
   const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel };
+/* =================== SUPERVIVENCIA Y GAME OVER ===================
+   Efectos progresivos (frío, hambre), avisos, animaciones cortas de derrota y pantalla de GAME OVER con «Reintentar».
+   La lógica de cada causa está en Surv / Sim.endings / Rover.update; aquí solo se muestra. */
+  let survSlow = 1, lastStart = null, goActive = false, goDone = null;
+  const survFx = h('div', { id: 'survfx', 'aria-hidden': 'true' });
+  const survBar = h('div', { id: 'survbar', class: 'hidden', role: 'status', 'aria-live': 'polite' }, h('span', { class: 'sv-l' }), h('div', { class: 'pbar' }, h('i')));
+  const goCv = h('canvas', { id: 'gocv', class: 'hidden', 'aria-hidden': 'true' });
+  document.body.append(survFx, survBar, goCv);
+  const scaleIn = (v) => (survSlow >= 0.999 ? v : { x: v.x * survSlow, y: v.y * survSlow, thr: v.thr * survSlow, str: v.str * survSlow, stick: v.stick ? { x: v.stick.x, y: v.stick.y, m: v.stick.m * survSlow } : null });
+
+  const SV_W = {
+    'cold.start': { sev: 'warn', who: 'medic', t: ['¡Sin traje en el exterior!', 'No suit outside!'], d: ['El frío te congela en segundos. Vuelve a la esclusa ya.', 'The cold freezes you in seconds. Get back to the airlock now.'], act: ['Camina de vuelta a la esclusa.', 'Walk back to the airlock.'] },
+    'cold.crit': { sev: 'crit', who: 'medic', t: ['¡Congelación inminente!', 'Freezing imminent!'], d: ['Casi no puedes moverte. Entra ya en la base.', 'You can barely move. Get inside the base now.'], act: ['Entra por la esclusa.', 'Go in through the airlock.'] },
+    'food.zero': { sev: 'warn', who: 'medic', t: ['Sin alimentos', 'No food left'], d: ['La tripulación empezará a perder energía. Recupera comida: cosecha, usa las reservas o pide suministros a la Tierra.', 'The crew will start losing energy. Get food: harvest, use reserves or ask Earth for supplies.'], act: ['Consola de alimentos o radio con la Tierra.', 'Food console or radio to Earth.'] },
+    'food.late': { sev: 'crit', who: 'medic', t: ['Debilidad por hambre', 'Weak from hunger'], d: ['Tu visión se nubla. Quedan menos de 36 horas simuladas antes del desmayo.', 'Your vision is blurring. Less than 36 simulated hours remain before you faint.'], act: ['Consigue alimentos ya.', 'Get food now.'] },
+    'food.faint': { sev: 'crit', who: 'medic', t: ['¡Vas a desmayarte!', 'You are about to faint!'], d: ['Menos de 12 horas simuladas. Cualquier alimento reinicia la cuenta.', 'Less than 12 simulated hours. Any food resets the count.'], act: ['Come lo que haya en la cocina.', 'Eat whatever is in the kitchen.'] },
+    'dose.hi': { sev: 'warn', who: 'medic', t: ['Dosis de radiación alta', 'High radiation dose'], d: ['Has superado el 60 % del límite. Usa el refugio y el blindaje.', 'You have passed 60 % of the limit. Use the shelter and shielding.'], act: ['Refugio de radiación.', 'Radiation shelter.'] },
+    'dose.crit': { sev: 'crit', who: 'medic', t: ['¡Dosis peligrosa!', 'Dangerous dose!'], d: ['Estás cerca del límite: otra exposición terminaría la misión.', 'You are close to the limit: another exposure would end the mission.'], act: ['Al refugio, ya.', 'Into the shelter, now.'] },
+    'core.low': { sev: 'warn', who: 'engineer', t: ['Núcleo energético dañado', 'Energy core damaged'], d: ['El reactor está por debajo del 35 %. Repáralo antes de que se apague.', 'The reactor is below 35 %. Repair it before it shuts down.'], act: ['Consola del reactor: mantenimiento.', 'Reactor console: maintenance.'] },
+    'core.out': { sev: 'crit', who: 'engineer', t: ['¡Núcleo apagado!', 'Core offline!'], d: ['El reactor no produce energía. Si la batería llega a cero y no lo reparas, la estación se pierde.', 'The reactor produces no power. If the battery hits zero and you do not repair it, the station is lost.'], act: ['Repara el reactor y ahorra energía.', 'Repair the reactor and save power.'] },
+    'rover.low': { sev: 'warn', who: 'engineer', t: ['Rover dañado', 'Rover damaged'], d: ['Integridad por debajo del 40 %. Frena antes de los obstáculos.', 'Integrity below 40 %. Slow down before obstacles.'], act: ['Reduce la velocidad; repáralo en el taller.', 'Slow down; repair it in the workshop.'] },
+    'rover.crit': { sev: 'crit', who: 'engineer', t: ['¡Rover a punto de romperse!', 'Rover about to break!'], d: ['Otro choque fuerte podría destruirlo con ti dentro. Frena y vuelve a la base.', 'Another hard hit could destroy it with you inside. Slow down and go back to base.'], act: ['Vuelve despacio a la base.', 'Drive slowly back to base.'] }
+  };
+  function survWarn(k) {
+    const a = SV_W[k]; if (!a) return; const es = LANG === 'es';
+    call({ key: 'sv.' + k, sev: a.sev, who: a.who, title: es ? a.t[0] : a.t[1], desc: es ? a.d[0] : a.d[1], act: es ? a.act[0] : a.act[1] });
+    Sfx.play(a.sev === 'crit' ? 'crit' : 'warn');
+  }
+  function survVisual(cold, hu, dose) {
+    const f = [];
+    if (hu.blur > 0) f.push('blur(' + (hu.blur * 5).toFixed(1) + 'px)');
+    const br = 1 - 0.65 * hu.dark - 0.12 * cold; if (br < 0.999) f.push('brightness(' + br.toFixed(2) + ')');
+    if (cold > 0) f.push('saturate(' + (1 - 0.4 * cold).toFixed(2) + ') hue-rotate(' + (-18 * cold).toFixed(0) + 'deg)');
+    cv.style.filter = f.join(' ');
+    survFx.style.background = cold > 0 ? 'radial-gradient(ellipse at center, rgba(120,190,255,' + (0.08 * cold).toFixed(3) + ') 25%, rgba(150,215,255,' + (0.75 * cold).toFixed(3) + ') 100%), rgba(40,110,255,' + (0.25 * cold).toFixed(3) + ')'
+      : hu.dark > 0 ? 'radial-gradient(ellipse at center, rgba(0,0,0,0) ' + (60 - 45 * hu.dark).toFixed(0) + '%, rgba(0,0,0,' + (0.9 * hu.dark).toFixed(3) + ') 100%)' : 'none';
+    const es = LANG === 'es'; let txt = '', f1 = 0, col = '';
+    if (cold > 0.02) { txt = '🥶 ' + (es ? 'Congelación' : 'Freezing'); f1 = cold; col = '#7fc4ff'; }
+    else if (hu.h >= 10) { txt = '🍽 ' + (es ? 'Sin comida: desmayo en ' : 'No food: fainting in ') + Math.ceil(hu.left) + ' h'; f1 = hu.h / Surv.HUNGER_H; col = '#ffb454'; }
+    else if (dose >= 0.6) { txt = '☢ ' + (es ? 'Dosis de radiación ' : 'Radiation dose ') + Math.round(dose * 100) + ' %'; f1 = dose; col = '#b58cff'; }
+    survBar.classList.toggle('hidden', !txt);
+    if (txt) { survBar.firstChild.textContent = txt.replace(/^\S+\s/, ''); survBar.firstChild.dataset.ico = txt.split(' ')[0]; survBar.lastChild.firstChild.style.width = Math.round(Math.min(1, f1) * 100) + '%'; survBar.lastChild.firstChild.style.background = col; }
+  }
+  function survFrame(dt) {
+    if (!S || S.ended) return;
+    const c = World.exCtx(), E = S.ex || null;
+    const cold = Surv.coldStep(S, dt, { outside: !!(c && c.outside), suitOn: !!(E && E.suit.on), suitEn: E ? E.suit.en : 100, inShel: !!(c && c.inShel), inRover: !!(c && c.inRover) });
+    const hu = Surv.hunger(S), dose = Surv.doseF(S);
+    survSlow = c && c.inRover ? 1 : 1 - 0.55 * cold - 0.35 * hu.dark;
+    for (const k of Surv.warnings(S)) survWarn(k);
+    survVisual(cold, hu, dose);
+    if (cold >= 1) Sim.kill(S, 'cold');
+  }
+  function survReset() {
+    survSlow = 1; goActive = false; goDone = null;
+    cv.style.filter = ''; cv.style.transform = ''; survFx.style.background = 'none'; survBar.classList.add('hidden'); goCv.classList.add('hidden');
+  }
+  /** Sin traje en la esclusa: se explica el peligro y el jugador decide (no se sale por accidente). */
+  let noSuitCd = 0;
+  function noSuitPanel() {
+    if (modalOpen() || performance.now() < noSuitCd) return; const es = LANG === 'es';
+    const stay = () => { noSuitCd = performance.now() + 3000; pop(); };
+    push(h('div', { class: 'panel narrow cine-panel' }, h('h2', null, '⚠ ' + (es ? 'Sin traje espacial' : 'No space suit')),
+      h('p', null, es ? 'Fuera de la base hace un frío extremo y no hay aire. Sin traje te congelarás en unos 16 segundos. Equípalo antes en el vestuario de la bahía.' : 'Outside the base it is extremely cold and there is no air. Without a suit you will freeze in about 16 seconds. Put it on first at the bay locker.'),
+      h('div', { class: 'row' }, btn(es ? 'Quedarme dentro' : 'Stay inside', stay, 'primary', { autofocus: true, 'data-act': 'nosuit-stay' }), btn(es ? 'Salir de todos modos' : 'Go out anyway', () => { noSuitCd = performance.now() + 3000; pop(); World.cycleLock(true); }, '', { 'data-act': 'nosuit-go' }))), { sticky: true, onclose: () => { noSuitCd = performance.now() + 3000; } });
+  }
+
+  /* ---------- Animaciones de derrota (cortas y sencillas, sin imágenes explícitas) ---------- */
+  const ANIM_T = { cold: 3.4, rover: 3.2, food: 3.6, dose: 4.2, core: 4.6 };
+  const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const ease = (p) => 1 - Math.pow(1 - p, 3);
+  function drawCold(g, w, h2, p, t) {
+    g.fillStyle = 'rgba(30,90,200,' + (0.5 * p) + ')'; g.fillRect(0, 0, w, h2);
+    g.strokeStyle = 'rgba(225,242,255,0.85)'; g.lineWidth = 2;
+    for (let i = 0; i < 70; i++) {
+      const side = i % 4, u = rnd(i), L = (50 + rnd(i + 9) * 170) * ease(p);
+      const x = side === 0 ? u * w : side === 1 ? u * w : side === 2 ? 0 : w, y = side === 0 ? 0 : side === 1 ? h2 : u * h2;
+      const dx = side === 2 ? 1 : side === 3 ? -1 : 0, dy = side === 0 ? 1 : side === 1 ? -1 : 0, a = (rnd(i + 3) - 0.5) * 0.9;
+      const ca = Math.cos(a), sa = Math.sin(a), vx = dx * ca - dy * sa, vy = dx * sa + dy * ca;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + vx * L, y + vy * L);
+      for (const k of [0.4, 0.7]) { const bx = x + vx * L * k, by = y + vy * L * k; g.moveTo(bx, by); g.lineTo(bx + (vx * 0.5 - vy * 0.8) * L * 0.3, by + (vy * 0.5 + vx * 0.8) * L * 0.3); g.moveTo(bx, by); g.lineTo(bx + (vx * 0.5 + vy * 0.8) * L * 0.3, by + (vy * 0.5 - vx * 0.8) * L * 0.3); }
+      g.stroke();
+    }
+    const vg = g.createRadialGradient(w / 2, h2 / 2, Math.min(w, h2) * 0.15, w / 2, h2 / 2, Math.max(w, h2) * 0.7); vg.addColorStop(0, 'rgba(200,230,255,0)'); vg.addColorStop(1, 'rgba(210,235,255,' + (0.8 * p) + ')'); g.fillStyle = vg; g.fillRect(0, 0, w, h2);
+    for (let i = 0; i < 24; i++) { const x = (rnd(i + 40) * w + t * 30 * (0.5 + rnd(i))) % w, y = (rnd(i + 70) * h2 + t * 60 * (0.5 + rnd(i + 1))) % h2; g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.arc(x, y, 1.5 + rnd(i + 5) * 2, 0, 7); g.fill(); }
+    if (p > 0.7) { g.fillStyle = 'rgba(4,12,34,' + ((p - 0.7) / 0.3) + ')'; g.fillRect(0, 0, w, h2); }
+    cv.style.transform = 'translate(' + (Math.sin(t * 50) * 3 * (1 - p)).toFixed(1) + 'px,' + (Math.cos(t * 43) * 2 * (1 - p)).toFixed(1) + 'px)';
+  }
+  function drawRover(g, w, h2, p, t) {
+    const cx = w / 2, cy = h2 * 0.55, R = Math.min(w, h2);
+    for (let i = 0; i < 14; i++) { const q = Math.max(0, p - 0.12 - i * 0.02), a = (0.45 * (1 - q)) * (q > 0 ? 1 : 0); g.fillStyle = 'rgba(70,70,78,' + a + ')'; g.beginPath(); g.arc(cx + (rnd(i) - 0.5) * R * 0.5, cy - q * R * (0.35 + rnd(i + 3) * 0.4), R * (0.04 + q * 0.12 + rnd(i + 8) * 0.03), 0, 7); g.fill(); }
+    const fr = R * 0.34 * ease(Math.min(1, p / 0.5)), fa = p < 0.55 ? 1 : Math.max(0, 1 - (p - 0.55) / 0.3);
+    const fg = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, fr)); fg.addColorStop(0, 'rgba(255,250,200,' + fa + ')'); fg.addColorStop(0.35, 'rgba(255,170,50,' + 0.9 * fa + ')'); fg.addColorStop(0.75, 'rgba(210,60,20,' + 0.6 * fa + ')'); fg.addColorStop(1, 'rgba(120,20,10,0)'); g.fillStyle = fg; g.beginPath(); g.arc(cx, cy, Math.max(1, fr), 0, 7); g.fill();
+    for (let i = 0; i < 46; i++) { const a = rnd(i) * 6.283, sp = R * (0.25 + rnd(i + 11) * 0.55), tt = p * 1.6, x = cx + Math.cos(a) * sp * tt, y = cy + Math.sin(a) * sp * tt + 260 * tt * tt * rnd(i + 5); g.fillStyle = i % 3 ? 'rgba(255,200,90,' + (1 - p) + ')' : 'rgba(40,40,46,' + (1 - p * 0.6) + ')'; g.fillRect(x, y, 3 + rnd(i + 2) * 5, 3 + rnd(i + 4) * 5); }
+    if (p < 0.1) { g.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - p / 0.1)) + ')'; g.fillRect(0, 0, w, h2); }
+    if (p > 0.75) { g.fillStyle = 'rgba(0,0,0,' + ((p - 0.75) / 0.25) + ')'; g.fillRect(0, 0, w, h2); }
+    cv.style.transform = p < 0.5 ? 'translate(' + (Math.sin(t * 70) * 8 * (1 - p * 2)).toFixed(1) + 'px,' + (Math.cos(t * 61) * 8 * (1 - p * 2)).toFixed(1) + 'px)' : '';
+  }
+  function drawFaint(g, w, h2, p, t) {
+    cv.style.filter = 'blur(' + (Math.max(survVisBlur(), p * 12)).toFixed(1) + 'px) brightness(' + (1 - 0.85 * p).toFixed(2) + ')';
+    cv.style.transform = 'rotate(' + (Math.sin(t * 2.4) * 2.2 * p).toFixed(2) + 'deg) scale(' + (1 + 0.06 * p).toFixed(3) + ')';
+    const R = Math.max(w, h2), vg = g.createRadialGradient(w / 2, h2 / 2, Math.max(0, R * (0.55 * (1 - p))), w / 2, h2 / 2, R * (0.8 - 0.4 * p)); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.97)'); g.fillStyle = vg; g.fillRect(0, 0, w, h2);
+    if (p > 0.35) { const k = Math.min(1, (p - 0.35) / 0.5) * 0.5; g.fillStyle = '#000'; g.fillRect(0, 0, w, h2 * k); g.fillRect(0, h2 * (1 - k), w, h2 * k); }
+    if (p > 0.9) { g.fillStyle = 'rgba(0,0,0,' + ((p - 0.9) / 0.1) + ')'; g.fillRect(0, 0, w, h2); }
+  }
+  const survVisBlur = () => 0;
+  /** Esqueleto holográfico estilizado: líneas de neón, sin detalles anatómicos explícitos. */
+  function skeleton(sc) {
+    const B = [], add = (x1, y1, x2, y2, w) => B.push([x1 * sc, y1 * sc, x2 * sc, y2 * sc, w || 3]);
+    add(0, -0.34, 0, 0.1, 5); // columna
+    for (let i = 0; i < 5; i++) { const y = -0.26 + i * 0.045, wd = 0.1 - Math.abs(i - 1.5) * 0.012; add(0, y, -wd, y + 0.03); add(0, y, wd, y + 0.03); }
+    add(-0.12, -0.28, 0.12, -0.28, 4); add(-0.12, -0.28, -0.2, -0.08); add(-0.2, -0.08, -0.16, 0.08); add(0.12, -0.28, 0.2, -0.08); add(0.2, -0.08, 0.16, 0.08);
+    add(-0.09, 0.1, 0.09, 0.1, 4); add(-0.09, 0.1, -0.1, 0.3); add(-0.1, 0.3, -0.09, 0.5); add(0.09, 0.1, 0.1, 0.3); add(0.1, 0.3, 0.09, 0.5);
+    return B;
+  }
+  function drawDose(g, w, h2, p, t) {
+    g.fillStyle = 'rgba(0,10,25,' + (0.7 * Math.min(1, p * 3)) + ')'; g.fillRect(0, 0, w, h2);
+    const sc = Math.min(w, h2) * 0.74, cx = w / 2, cy = h2 * 0.5;
+    g.save(); g.translate(cx, cy); g.lineCap = 'round';
+    const fl = 0.75 + 0.25 * Math.sin(t * 40) * (p > 0.2 ? 1 : 0.2), bodyA = Math.max(0, 1 - p / 0.35), skA = Math.min(1, Math.max(0, (p - 0.15) / 0.25));
+    // silueta del personaje (relleno suave) que se vuelve esqueleto holográfico
+    if (bodyA > 0) { g.fillStyle = 'rgba(90,220,255,' + 0.28 * bodyA + ')'; g.strokeStyle = 'rgba(120,230,255,' + 0.7 * bodyA + ')'; g.lineWidth = 3; g.beginPath(); g.arc(0, -0.4 * sc, 0.075 * sc, 0, 7); g.fill(); g.stroke(); g.beginPath(); g.roundRect(-0.13 * sc, -0.3 * sc, 0.26 * sc, 0.4 * sc, 0.05 * sc); g.fill(); g.stroke(); g.beginPath(); g.roundRect(-0.1 * sc, 0.1 * sc, 0.2 * sc, 0.42 * sc, 0.04 * sc); g.fill(); g.stroke(); }
+    const dis = Math.max(0, (p - 0.5) / 0.5), bones = skeleton(sc);
+    g.shadowColor = '#4de6ff'; g.shadowBlur = 14; g.strokeStyle = 'rgba(140,240,255,' + (skA * fl) + ')'; g.fillStyle = 'rgba(140,240,255,' + (skA * fl) + ')';
+    g.lineWidth = 3; g.beginPath(); g.arc(0, -0.4 * sc, 0.07 * sc, 0, 7); if (dis < 0.3) g.stroke(); g.fillStyle = 'rgba(0,15,30,' + skA + ')'; g.beginPath(); g.arc(-0.025 * sc, -0.41 * sc, 0.014 * sc, 0, 7); g.arc(0.025 * sc, -0.41 * sc, 0.014 * sc, 0, 7); g.fill();
+    bones.forEach((b, i) => { if (rnd(i + 90) < dis) { if (p < 0.98 && Math.random() < 0.15) { g.fillStyle = 'rgba(140,240,255,0.8)'; g.fillRect((b[0] + b[2]) / 2 + (Math.random() - 0.5) * 20, (b[1] + b[3]) / 2 - dis * 120 * Math.random(), 2, 2); } return; } g.lineWidth = b[4]; g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(b[2], b[3]); g.stroke(); });
+    g.restore();
+    g.fillStyle = 'rgba(80,220,255,0.07)'; for (let y = 0; y < h2; y += 4) g.fillRect(0, y, w, 1);
+    const sy = ((t * 160) % (h2 + 80)) - 40; g.fillStyle = 'rgba(120,240,255,0.18)'; g.fillRect(0, sy, w, 22);
+    if (p > 0.92) { g.fillStyle = 'rgba(0,0,0,' + ((p - 0.92) / 0.08) + ')'; g.fillRect(0, 0, w, h2); }
+  }
+  function drawCore(g, w, h2, p, t) {
+    g.fillStyle = '#02030a'; g.fillRect(0, 0, w, h2);
+    for (let i = 0; i < 120; i++) { const x = ((rnd(i) * w - t * (6 + rnd(i + 4) * 30)) % w + w) % w, y = rnd(i + 7) * h2; g.fillStyle = 'rgba(220,230,255,' + (0.3 + rnd(i + 2) * 0.6) + ')'; g.fillRect(x, y, 1 + rnd(i + 9) * 1.5, 1 + rnd(i + 9) * 1.5); }
+    const R = Math.min(w, h2), e = ease(p), x = w * (0.4 + 0.5 * e), y = h2 * (0.5 - 0.22 * e), sc = (R / 380) * (1 - 0.82 * e), a = t * 0.5 * (0.4 + e);
+    g.save(); g.translate(x, y); g.rotate(a); g.scale(sc, sc);
+    g.fillStyle = '#3558c0'; g.fillRect(-220, -34, 120, 68); g.fillRect(100, -34, 120, 68); g.strokeStyle = '#9db4ff'; g.lineWidth = 2; for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(-220 + i * 30, -34); g.lineTo(-220 + i * 30, 34); g.moveTo(100 + i * 30, -34); g.lineTo(100 + i * 30, 34); g.stroke(); }
+    g.fillStyle = '#7d89aa'; g.fillRect(-100, -10, 200, 20);
+    g.fillStyle = '#c9d2ea'; g.beginPath(); g.roundRect(-60, -48, 120, 96, 26); g.fill(); g.strokeStyle = '#8795bd'; g.lineWidth = 6; g.beginPath(); g.ellipse(0, 0, 90, 90, 0, 0, 7); g.stroke();
+    const lit = p < 0.5 ? (Math.random() < 0.85 - p * 1.2 ? 1 : 0.15) : 0;
+    g.fillStyle = 'rgba(255,214,110,' + (0.2 + 0.8 * lit) * (p < 0.5 ? 1 : 0.15) + ')'; for (let i = -2; i <= 2; i++) g.fillRect(i * 22 - 7, -8, 14, 16);
+    g.restore();
+    if (p < 0.4) for (let i = 0; i < 8; i++) { const sx = x + (Math.random() - 0.5) * 240 * sc, sy2 = y + (Math.random() - 0.5) * 120 * sc; g.fillStyle = 'rgba(255,200,90,' + Math.random() + ')'; g.fillRect(sx, sy2, 3, 3); }
+    g.fillStyle = 'rgba(255,60,50,' + (0.12 * (0.5 + 0.5 * Math.sin(t * 8)) * (1 - p)) + ')'; g.fillRect(0, 0, w, h2);
+    g.fillStyle = 'rgba(255,200,190,' + Math.min(1, p * 3) * (1 - Math.max(0, (p - 0.8) / 0.2)) + ')'; g.font = 'bold ' + Math.round(R * 0.04 + 10) + 'px system-ui'; g.textAlign = 'center'; g.fillText(LANG === 'es' ? 'NÚCLEO APAGADO · PÉRDIDA DE ENERGÍA' : 'CORE OFFLINE · POWER LOST', w / 2, h2 * 0.9);
+    if (p > 0.85) { g.fillStyle = 'rgba(0,0,0,' + ((p - 0.85) / 0.15) + ')'; g.fillRect(0, 0, w, h2); }
+  }
+  const DRAW = { cold: drawCold, rover: drawRover, food: drawFaint, dose: drawDose, core: drawCore };
+  function startGameOver(reason) {
+    if (goActive) return; goActive = true; survBar.classList.add('hidden'); survFx.style.background = 'none';
+    Sfx.play('crit'); const rm = document.documentElement.classList.contains('rm'), T = rm ? 1.2 : (ANIM_T[reason] || 3.4), d = dpr || 1;
+    goCv.width = Math.floor(innerWidth * d); goCv.height = Math.floor(innerHeight * d); goCv.classList.remove('hidden');
+    const g = goCv.getContext('2d'), t0 = performance.now(); let done = false;
+    const finish = () => { if (done) return; done = true; window.removeEventListener('keydown', onKey); goCv.removeEventListener('pointerdown', finish); goCv.classList.add('hidden'); cv.style.transform = ''; showGameOver(reason); };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); finish(); } };
+    goDone = finish; window.addEventListener('keydown', onKey); goCv.addEventListener('pointerdown', finish);
+    const tick = (now) => {
+      if (done || !goActive) return; const t = (now - t0) / 1000, p = Math.min(1, t / T);
+      g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight);
+      if (!rm) (DRAW[reason] || drawFaint)(g, innerWidth, innerHeight, p, t); else { g.fillStyle = 'rgba(0,0,0,' + p + ')'; g.fillRect(0, 0, innerWidth, innerHeight); }
+      if (p >= 1) finish(); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  const GO_T = {
+    cold: { t: ['Congelación', 'Frozen'], tip: ['Equípate el traje en el vestuario de la bahía antes de salir. En el exterior vigila la energía del traje y vuelve cuando el aviso lo pida.', 'Put the suit on at the bay locker before going out. Outside, watch the suit power and head back when the warning says so.'] },
+    rover: { t: ['Accidente con el rover', 'Rover accident'], tip: ['Frena antes de los obstáculos: solo los choques a más de 6 casillas por segundo dañan el rover. Con la integridad baja, vuelve despacio y repáralo en el taller.', 'Brake before obstacles: only hits above 6 tiles per second damage the rover. With low integrity, drive back slowly and repair it in the workshop.'] },
+    food: { t: ['Desmayo por falta de alimentos', 'Fainted from lack of food'], tip: ['Cualquier alimento reinicia la cuenta. Siembra pronto, cuida las reservas y pide suministros a la Tierra antes de que se acaben.', 'Any food resets the count. Plant early, look after the reserves and ask Earth for supplies before they run out.'] },
+    dose: { t: ['Exposición a la radiación', 'Radiation exposure'], tip: ['Usa el refugio y el blindaje durante las ráfagas solares y limita el tiempo fuera. El medidor de dosis avisa a partir del 60 %.', 'Use the shelter and shielding during solar bursts and limit time outside. The dose meter warns from 60 %.'] },
+    core: { t: ['Falla del núcleo energético', 'Energy core failure'], tip: ['Repara el reactor antes de que baje del 20 % y ahorra energía con las prioridades eléctricas para que la batería aguante.', 'Repair the reactor before it drops below 20 % and save power with the electrical priorities so the battery lasts.'] }
+  };
+  function showGameOver(reason) {
+    if (!S) return; const es = LANG === 'es', T = GO_T[reason] || GO_T.food, i = es ? 0 : 1, day = Math.floor(S.t / 24) + 1;
+    let extra = ''; if (reason === 'cold' && S.surv) extra = S.surv.why === 'suit' ? (es ? ' La energía del traje estaba agotada.' : ' The suit power was exhausted.') : (es ? ' No llevabas el traje puesto.' : ' You were not wearing the suit.');
+    const body = h('div', { class: 'panel narrow cine-panel go-panel', role: 'alertdialog', 'aria-label': 'Game over' },
+      h('div', { class: 'go-title', 'data-go': reason }, 'GAME OVER'), h('h2', null, T.t[i]),
+      h('p', { class: 'go-cause' }, (es ? 'Causa: ' : 'Cause: ') + tr(DATA.ENDT[reason]) + extra),
+      h('p', { class: 'small' }, '💡 ' + T.tip[i]),
+      h('p', { class: 'small muted' }, (es ? 'Sobreviviste ' : 'You survived ') + day + (es ? (day === 1 ? ' día.' : ' días.') : (day === 1 ? ' day.' : ' days.'))),
+      h('div', { class: 'row', style: { justifyContent: 'center' } }, btn(es ? 'REINTENTAR' : 'RETRY', retryMission, 'primary wiz-big', { 'data-act': 'retry', autofocus: true }),
+        btn('📄 ' + _('report'), () => { goActive = false; showReport(); }), btn(_('mainMenu'), () => { goActive = false; survReset(); mainMenu(); })));
+    showScreen(body, 'cine go');
+  }
+  /** Reintentar: misma misión y ajustes, partida nueva desde cero (recursos, personajes, rover y sistemas en su valor inicial). */
+  function retryMission() {
+    survReset(); const o = lastStart; if (!o) { mainMenu(); return; }
+    popAll(); newRun(o.scen, o.diff, o.opts);
+  }
+  const survDebug = { noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
@@ -9777,7 +10025,7 @@ const Game = (function () {
     if (R.brownH > 4) improve.push(es ? 'Apaga primero lo no esencial cuando falte energía.' : 'Turn off non-essentials first when power is short.');
     if (R.foodProd < 3) improve.push(es ? 'Siembra pronto: los cultivos tardan 7 días.' : 'Plant early: crops take 7 days.');
     if (!improve.length) improve.push(es ? 'Prueba el nivel siguiente o el otro escenario.' : 'Try the next level or the other scenario.');
-    const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
+    const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'dead' ? (es ? 'Fin de la misión' : 'Mission over') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
     const tbl = (rows) => h('table', null, h('tbody', null, rows.map(([a, b]) => h('tr', null, h('th', null, a), h('td', null, b)))));
     const body = h('div', { class: 'panel' },
       h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + (isAdv() ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ' · ' + diffName(S.diff) + (isAdv() ? ' · ' + (es ? 'semilla ' : 'seed ') + S.seed : '')),
@@ -9950,7 +10198,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { bootLoad, setupScreen, floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { surv: survDebug, bootLoad, setupScreen, floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

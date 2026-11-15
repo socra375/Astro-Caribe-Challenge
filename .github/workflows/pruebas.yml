@@ -47,6 +47,7 @@ jobs:
           node tests/travel.js --shots capturas
           node tests/floors.js
           node tests/start.js capturas
+          node tests/survival.js capturas
 
       - name: Guardar capturas
         if: always()

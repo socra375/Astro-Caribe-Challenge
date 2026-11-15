@@ -38,6 +38,23 @@ No hace falta instalar nada. Si el navegador bloquea `localStorage` (modo privad
 
 Los minijuegos tienen controles de teclado y de puntero o táctiles (se explican en cada pantalla de instrucciones).
 
+## Supervivencia y Game Over
+La partida se puede perder, siempre por condiciones reales del simulador, **con avisos antes** y sin azar (dependen de lo que hace el jugador y de recursos visibles). Cada derrota tiene una animación corta, muestra la **causa** y ofrece **REINTENTAR**.
+
+| Causa | Condición real | Avisos previos | Animación |
+|---|---|---|---|
+| Congelación | Estar fuera de la base sin traje (16 s) o con la energía del traje agotada (40 s). Volver a la base a tiempo lo evita | Aviso por radio, barra «Congelación», pantalla azulada, movimiento cada vez más lento | Escarcha que cubre la pantalla |
+| Accidente con el rover | Un choque fuerte (más de 6 casillas/s) resta integridad; a 0 con el jugador al volante, el rover explota. Un rover dañado sin conductor no causa derrota | Avisos a integridad < 40 % y < 20 % | Explosión, humo y escombros |
+| Falta de alimentos | 72 h simuladas seguidas sin alimentos (cualquier comida reinicia la cuenta) | Aviso al llegar a 0, visión borrosa desde 8 h, oscuridad desde 30 h, barra con las horas restantes | Desmayo: visión que se cierra |
+| Radiación | La dosis llega al límite del modelo | Avisos al 60 % y al 85 % | Silueta esquelética holográfica (líneas de neón) que se desvanece, sin imágenes explícitas |
+| Falla del núcleo | Reactor fuera de servicio (integridad ≤ 20 %) y sin energía de reserva durante 24 h | Avisos al 35 % y al ≤ 20 % | La estación a la deriva en el espacio |
+
+- **Salir sin traje** ya no se bloquea sin más: aparece un aviso con «Quedarme dentro» y «Salir de todos modos».
+- **Reintentar** crea una partida nueva con la misma misión y ajustes (recursos, tripulación, rover, sistemas y efectos visuales en su valor inicial); no se conserva nada dañado.
+- Las animaciones se pueden saltar con Intro, Espacio, Esc o un clic; con «reducir movimiento» se acortan a un fundido.
+- Las demás finalizaciones (agua, oxígeno, presión, bienestar, incidente sin resolver) siguen siendo misiones interrumpidas con informe, sin Game Over.
+- Pruebas: `node tests/survival.js` (27).
+
 ## Inicio: carga, edad, misión y dificultad
 Al abrir el juego aparece una **carga espacial** (fondo animado con estrellas y planetas, una nave que avanza por la ruta como barra de progreso, porcentaje y mensajes) que pasa sola al menú; se puede saltar. Al pulsar «Iniciar misión» un asistente de tres pasos pregunta:
 
@@ -456,6 +473,10 @@ node tests/floors.js
 node tests/start.js
 ```
 
+```bash
+node tests/survival.js
+```
+
 **Integración continua:** `.github/workflows/pruebas.yml` ejecuta en GitHub Actions, en cada PR y en cada cambio en `main`, la comprobación de que `index.html` coincide con `src/`, las 100 simulaciones, el contraste, las pruebas e2e, las de exploración exterior, las de EarthLink Radio y las de cámaras en Chromium. Guarda las capturas como artefacto. Un PR solo está «en verde» si pasan todas.
 
 También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar 100 simulaciones de prueba». Las pruebas trabajan sobre copias del motor y no modifican el progreso del jugador.
@@ -467,6 +488,7 @@ También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar
 - `earthlink.js` (Chromium, sin Internet, con la Web Speech API **simulada**): **67/67** comprobaciones de EarthLink Radio: apertura y cierre por botón y tecla (y tecla configurable, rechazo de teclas en uso), representación de la Tierra y datos (distancia, retardo real y comprimido, canal, pendientes), los seis estados calculados con la simulación, seis canales con funciones distintas, envío con retraso, orden de los mensajes, escala configurable, perfiles de voz (incluidos `npc_earth_control_*`) con voiceURI, velocidad, tono y volumen, cada especialista con su voz, subtítulos sincronizados con los límites de palabra, volumen de radio independiente, fallo de antena con mensajes en cola y recuperación al reparar, interferencia, pérdida de energía, daño exterior y reparación, el fallo termina solo, propuestas de especialistas, consecuencias (diagnóstico, pronóstico, misión, órdenes, suministros, ruta, plagas, dosis, muestras, recogida), informes con valores reales, historial (acotado, persistente al guardar y cargar), modos 7-12 y 13+, Marte (3–22 min), ausencia de voz antes de interactuar, funcionamiento sin TTS, sin red y en móvil de 390 × 844 px.
 - `expo.js` (Chromium, sin Internet): **109/109** comprobaciones de la exploración exterior: traje (equipar, quitar, aspecto, reparar, revisión), esclusa con y sin traje, subir, bajar y volver a subir (también junto a rocas), conducción real con teclado (aceleración gradual, velocidad máxima, giro, resistencia, frenado y marcha atrás), colisiones con rocas, casco y edificios, batería agotada, consumo de oxígeno y energía y sus variaciones, radiación (refugio y ráfagas), alertas con histéresis por radio, evacuación de emergencia, señal y repetidores, tarjeta y recogida de muestras con registro único, muestras ocultas y escáner, contenedor y compartimento limitados, organizar y retirar, descarga solo cerca de la base, almacén, análisis y registro científico, herramientas, puntos de interés, refugio, las cuatro misiones, diferencias entre la Luna y Marte, accesibilidad por rutas a pie y en rover de todos los objetivos, HUD en los dos niveles, guardado y carga sin duplicados, migración de partidas antiguas, rendimiento y controles táctiles en un móvil de 390 × 844 px.
 - `floors.js` (Chromium, sin Internet): **68/68** comprobaciones de los pisos: reparto de salas, solo la planta baja con exterior, cada piso como ranura independiente (probado con un cuarto piso de prueba), `setFloor`, piso guardado y partidas anteriores en el piso 1, red de seguridad al colocar al jugador, NPC que cambian de piso por el elevador sin teletransporte, teletransporte de la sala de comandos, elevador con llamada, trayecto real y llegada, escalera de emergencia con el elevador averiado, alertas con piso, selector de pisos del mapa, la migración de una partida anterior con copia de seguridad y restauración, el elevador del rover (no se mueve sin el vehículo bien colocado; guarda el rover en el garaje con su batería y muestras; vuelve a subirlo), el núcleo energético (escala, equipamiento, consolas alcanzables, puerta de seguridad que bloquea solo al jugador, protocolo con traje, caducidad), y los elevadores (tripulación y rover) como máquinas de estados con su avance en el bucle y en el guardado.
+- `survival.js` (Chromium, sin Internet): **27/27** comprobaciones de la supervivencia: las cinco derrotas con su condición real, avisos y efectos progresivos antes, animación y pantalla de GAME OVER con la causa, aviso al salir sin traje, volver a tiempo sin perder, rover dañado sin conductor, reactor sano sin falla y «Reintentar» que restaura todo.
 - `start.js` (Chromium, sin Internet): **24/24** comprobaciones del inicio: carga con nave y porcentaje que pasa sola al menú, edad de 5 a 17+ (barra, botones y teclado), cuatro misiones, tres dificultades, edad y dificultad independientes conectadas con la partida real, y móvil sin desbordes.
 - `travel.js` (Chromium, sin Internet, con la Web Speech API **simulada**): **41/41** comprobaciones del viaje: dependencias del encendido, cabina con 5 tripulantes, cambio de personaje, errores que explican y no bloquean, lanzamiento y omisión solo tras la primera vez, navegación y correcciones con consecuencias, soporte vital con los 4 eventos, reporte a Tierra con la voz del comandante y la respuesta con la de Control Tierra, diferencias Junior/Ingeniero, enlace con el aterrizaje, guardado sin repetir el viaje y panel en móvil.
 - `landing.js` (Chromium, sin Internet): **45/45** comprobaciones de la llegada: las 4 zonas de cada escenario tienen sitio libre y ruta, la nave aterriza centrada en Luna y Marte, el suelo es gris o rojizo, Marte usa escudo térmico y paracaídas y la Luna no, la primera vez no se puede omitir y después sí, narración y subtítulos, el despliegue completa 9 pasos y activa el relé, las decisiones (zona, ignición, nivelado, prioridad, reparación) tienen consecuencias, la campaña empieza tras aterrizar, el guardado conserva zona y nave, **cargar no repite el aterrizaje**, la repetición no cambia la partida, el coste de dibujo es < 12 ms por cuadro y el panel cabe en móvil.
