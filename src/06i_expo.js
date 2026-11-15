@@ -117,6 +117,7 @@
   function selectTool(k) { ex().tool = k; exHud(); }
   function exPrompt(n) {
     const E = ex(), T = { 'x:board': XT('Subir al rover', 'Board the rover'), 'x:exit': XT('Bajar del rover', 'Leave the rover'), 'x:store': XT('Abrir compartimento', 'Open compartment'), 'x:poi': XT('Investigar · ', 'Investigate · ') + (n.p ? xt(n.p.n) : ''), 'x:rep': (E.rep[n.q && n.q.id] ? XT('Repetidor activo', 'Relay online') : XT('Activar repetidor de radio', 'Activate radio relay')), 'x:shel': XT('Entrar al refugio', 'Enter the shelter'), 'x:shelx': XT('Salir del refugio', 'Leave the shelter') };
+    T['x:ship'] = XT('Revisar la nave', 'Inspect the ship');
     return n.id === 'x:site' ? XT('Recoger · ', 'Collect · ') + xt(n.s.name) : T[n.id];
   }
   function exCard(n) {
@@ -135,6 +136,7 @@
     else if (n.id === 'x:shel') body = h('div', null, h('b', null, '🛡️ ' + XT('Refugio blindado ', 'Shielded shelter ') + n.q.id.slice(1)), h('div', { class: 'small' }, XT('Dentro la radiación baja un 92 % y hay un depósito de emergencia (+40 % de O₂ y energía, 1 vez por salida).', 'Inside, radiation drops 92% and there is an emergency cache (+40% O₂ and power, once per outing).')));
     else if (n.id === 'x:store') body = h('div', null, h('b', null, '📦 ' + XT('Compartimento del rover', 'Rover compartment')), h('div', { class: 'small' }, Ex.storage(S).list.length + '/' + Ex.CAP.slots + XT(' muestras guardadas. E para abrir.', ' samples stored. E to open.')));
     else if (n.id === 'x:board') body = h('div', null, h('b', null, '🚙 ' + XT('Rover explorador R-1', 'Explorer rover R-1')), h('div', { class: 'small' }, XT('Batería ', 'Battery ') + Math.round(S.sys.rover.batt) + '% · ' + (E.suit.on ? XT('E para subir.', 'E to board.') : XT('Necesitas el traje puesto.', 'You need the suit on.'))));
+    else if (n.id === 'x:ship') body = shipCard();
     else { cardEl.classList.add('hidden'); return; }
     cardEl.replaceChildren(body); cardEl.classList.remove('hidden');
   }
@@ -156,6 +158,7 @@
       case 'x:rep': { const r = Ex.activateRepeater(S, n.q.id); if (r === 'on') toast(XT('Ya está activo', 'Already online'), '', 'info'); else Sfx.play('ok'); lastCard = ''; break; }
       case 'x:shel': { if (!E.suit.on) return; if (World.enterShelter(n.q.id)) shelterPanel(n.q); break; }
       case 'x:shelx': World.leaveShelter(); lastCard = ''; break;
+      case 'x:ship': shipPanel(); break;
     }
   }
   function shelterPanel(q) {

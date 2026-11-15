@@ -157,6 +157,26 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 #xcard{position:absolute;left:50%;transform:translateX(-50%);bottom:152px;width:min(440px,calc(100vw - 16px));background:rgba(10,16,36,.95);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;font-size:14px;z-index:5;pointer-events:none}
 #xcard .small{font-size:12px;margin:2px 0}
 
+
+/* ===== Llegada y aterrizaje ===== */
+#landw{position:fixed;inset:0;z-index:30;background:#02040c}
+#landcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#landui{position:absolute;inset:0;pointer-events:none}
+#landui>*{pointer-events:auto}
+#landSkip{position:absolute;left:12px;top:12px;z-index:3;min-height:44px}
+.lpanel{position:absolute;right:12px;top:12px;bottom:12px;width:min(430px,92vw);overflow:auto;background:rgba(10,16,36,.95);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.lcard{position:absolute;left:12px;bottom:12px;max-width:min(470px,calc(100vw - 24px));max-height:60vh;overflow:auto;background:rgba(10,16,36,.93);border:1px solid var(--border);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+.lcard.dep{top:64px;bottom:auto;max-width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 140px)}
+.lcard.lcen,.lcen{left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);max-width:min(480px,calc(100vw - 24px))}
+.lcen{position:absolute;background:rgba(10,16,36,.96);border:2px solid var(--accent);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);text-align:center}
+.lbtn{position:absolute;right:16px;bottom:16px;min-height:52px;font-size:18px}
+.ign{font-size:20px;min-height:56px;position:relative;background-image:conic-gradient(var(--success) calc(var(--p,0)*360deg),transparent 0)}
+.dots i{display:inline-block;width:10px;height:10px;border-radius:50%;background:#26345e;margin-right:3px}
+.dots i.on{background:var(--accent)}
+.dsteps{margin:6px 0 0;padding-left:0;list-style:none;font-size:13px}
+.dsteps li{padding:3px 0;opacity:.55}.dsteps li.done{opacity:1;color:var(--success)}.dsteps li.act{opacity:1;font-weight:700}
+@media (max-width:700px){.lpanel{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:58vh}.lcard.dep{top:60px;left:8px;max-height:30vh}.lcard{left:8px;bottom:8px}.lbtn{right:8px;bottom:8px}}
+
 /* ===== Screens & modals ===== */
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 30% 20%,#1a2a5c 0,#070b1a 60%);overflow:auto}
 .screen.dim{background:rgba(3,6,16,.72)}
@@ -729,6 +749,9 @@ const Sfx = (function () {
     geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
     photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
     engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045),
+    thrust: () => { tone(48, 0.2, 'sawtooth', 0, 0.07); tone(96, 0.18, 'square', 0.02, 0.025); for (let i = 0; i < 3; i++) tone(180 + ((i * 7919) % 400), 0.05, 'square', i * 0.05, 0.015); },
+    thump: () => { tone(70, 0.28, 'sine', 0, 0.3); tone(38, 0.4, 'triangle', 0.02, 0.28); for (let i = 0; i < 5; i++) tone(400 + ((i * 6151) % 900), 0.04, 'square', i * 0.02, 0.04); },
+    deployclk: () => { tone(330, 0.05, 'square', 0, 0.09); tone(220, 0.09, 'triangle', 0.06, 0.12); },
     // EarthLink Radio: conexión, transmisión, recepción, interferencia y fin de transmisión (volumen propio)
     rcon: () => { [440, 660, 880, 1320].forEach((f, i) => tone(f, 0.09, 'sine', i * 0.08, 0.16)); tone(2400, 0.05, 'square', 0.36, 0.05); },
     rtx: () => { tone(1500, 0.05, 'square', 0, 0.06); tone(900, 0.07, 'triangle', 0.05, 0.1); },
@@ -1516,6 +1539,7 @@ const Sim = (function () {
   function campDone() { return { i: CAMP.length, unlocked: Object.assign({}, ALLROOMS), f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1, x1: 1, x2: 1, x3: 1, x4: 1, x5: 1 }, basicDone: true, hold: 0, inc: 0, xi: EXP.length }; }
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
+    if (typeof Land !== 'undefined') Land.ensure(S);
     if (!S.camp) S.camp = campDone();
     { const C = S.camp; C.unlocked.med = 1; if (C.xi == null) { C.xi = 0; if (C.basicDone) { C.unlocked.food = 1; } } }
     if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
@@ -2556,7 +2580,8 @@ const Ex = (function () {
   }
   /** Señal de radio (0–1): antena de la base y repetidores activados; la distancia, el polvo y las tormentas la reducen. */
   function signal(S, x, y) {
-    const e = ensure(S), mars = S.scen === 'mars', nodes = [{ x: Field.PAD[0], y: Field.PAD[1], r: SIG_RANGE[S.scen] || 100 }];
+    const e = ensure(S), mars = S.scen === 'mars', nodes = [{ x: Field.PAD[0], y: Field.PAD[1], r: (SIG_RANGE[S.scen] || 100) * Land.mods(S).sig }], rl = Land.relayNode(S);
+    if (rl) nodes.push(rl);
     for (const q of Field.G.rep) if (e.rep[q.id]) nodes.push({ x: q.x, y: q.y, r: REP_RANGE });
     let best = 0;
     for (const n of nodes) best = Math.max(best, 1 - Math.pow(Math.hypot(n.x - x, n.y - y) / n.r, 1.6));
@@ -2627,7 +2652,7 @@ const Ex = (function () {
     if (ev.dust) su.integ = Math.max(0, su.integ - 0.012 * dt);
     else if (ev.ground.k === 'deep' && mv > 0.2 && !c.inRover) su.integ = Math.max(0, su.integ - 0.01 * dt);
     const sh = c.inShel ? 0.08 : c.inRover ? 0.6 : 1;
-    const rate = RAD_RATE[S.scen] * sh * (1 + (100 - integ) / 120) * (ev.burst ? 5 : 1) * (S.mods && S.mods.spe > 0 ? 1.6 : 1) * (r === 'medic' ? 0.8 : 1) * (ev.dust ? 0.9 : 1);
+    const rate = RAD_RATE[S.scen] * sh * (1 + (100 - integ) / 120) * (ev.burst ? 5 : 1) * (S.mods && S.mods.spe > 0 ? 1.6 : 1) * (r === 'medic' ? 0.8 : 1) * (ev.dust ? 0.9 : 1) * Land.mods(S).rad;
     su.rad += rate * dt; e.doseTot += rate * dt;
     const cr = S.crew.find((q) => q.role === r); if (cr) cr.dose += rate * dt * DOSE_K;
     if (c.inShel) { e.f.shelter = true; if (c.inShel && condOn(S)) e.m.c.m4shel += dt; }
@@ -3156,6 +3181,160 @@ const EL = (function () {
   function takeEvac(S) { const e = ensure(S); const v = e.evac; e.evac = false; return v; }
 
   return { CH, DESK, INT, SCALES, def, ensure, link, delays, status, buildReport, options, outText, send, step, accept, dismiss, markRead, setScale, takeEvac, speaker, totalUnread, legDelay, emergency, lowest, RESN, RESU };
+})();
+/* =====================================================================
+   LAND — llegada y aterrizaje planetario (motor puro, sin dibujo).
+   Zonas de aterrizaje con características reales por escenario, consecuencias
+   suaves (nunca bloquean la campaña), estado guardable (S.land) y la nave
+   permanente con piezas que tienen estado.
+   Coordenadas en baldosas, en el mismo sistema que Field / World.
+   ===================================================================== */
+const Land = (function () {
+  const T = (es, en) => ({ es, en });
+  const STEPS = ['bays', 'unload', 'solar', 'antenna', 'power', 'connect', 'life', 'rover', 'verify'];
+  const STEP_T = {
+    bays: T('Apertura de compartimentos de carga', 'Opening cargo bays'), unload: T('Descarga de módulos', 'Unloading modules'), solar: T('Despliegue de paneles solares', 'Deploying solar panels'),
+    antenna: T('Instalación de antenas', 'Installing antennas'), power: T('Activación de los sistemas energéticos', 'Activating power systems'), connect: T('Conexión de módulos habitables', 'Connecting habitat modules'),
+    life: T('Activación del soporte vital', 'Activating life support'), rover: T('Preparación de la bahía del rover', 'Preparing the rover bay'), verify: T('Verificación de las instalaciones', 'Verifying the facilities')
+  };
+  const STEP_D = {
+    bays: T('Las compuertas se abren para sacar la carga. Si una se atasca, se pierde tiempo.', 'Doors open to take the cargo out. If one jams, time is lost.'),
+    unload: T('Tres módulos bajan de la nave: habitable, científico y técnico.', 'Three modules come off the ship: habitat, science and technical.'),
+    solar: T('Los paneles se despliegan hacia el Sol para producir electricidad.', 'Panels unfold toward the Sun to make electricity.'),
+    antenna: T('La antena apunta a la Tierra: sin ella no hay radio.', 'The antenna points at Earth: no antenna, no radio.'),
+    power: T('Las baterías y el reactor se conectan a la red de la base.', 'Batteries and the reactor join the base grid.'),
+    connect: T('Túneles presurizados unen los módulos para caminar sin traje.', 'Pressurized tunnels join the modules so you can walk without a suit.'),
+    life: T('Se enciende el sistema que produce aire y recicla agua.', 'The system that makes air and recycles water switches on.'),
+    rover: T('La bahía queda lista para el rover R-1 y la esclusa.', 'The bay is made ready for rover R-1 and the airlock.'),
+    verify: T('Se revisan presión, energía, aire y comunicaciones.', 'Pressure, power, air and comms are checked.')
+  };
+  const PARTS = ['engine', 'legs', 'hatch', 'tanks', 'beacon'];
+  const PART_T = { engine: T('Motor de descenso', 'Descent engine'), legs: T('Patas de aterrizaje', 'Landing legs'), hatch: T('Compuerta de carga', 'Cargo hatch'), tanks: T('Tanques', 'Tanks'), beacon: T('Baliza y antena', 'Beacon and antenna') };
+  const PART_FAULT = {
+    engine: T('El sensor de presión del motor marca un valor dudoso. Si no se revisa, el encendido puede retrasarse.', 'The engine pressure sensor reads oddly. Unchecked, ignition may be late.'),
+    legs: T('Una pata tiene un amortiguador un poco duro. Si no se revisa, el contacto será más brusco.', 'One leg damper is a little stiff. Unchecked, touchdown will be rougher.'),
+    hatch: T('Una compuerta de carga responde lenta. Si no se revisa, tardará más en abrirse.', 'A cargo hatch answers slowly. Unchecked, it will open more slowly.'),
+    tanks: T('Un tanque marca una pequeña diferencia de presión. Si no se revisa, se pierde algo de material.', 'A tank shows a small pressure difference. Unchecked, some material is lost.'),
+    beacon: T('La baliza no confirma su señal. Si no se revisa, no servirá de relé de radio.', 'The beacon does not confirm its signal. Unchecked, it will not work as a radio relay.')
+  };
+  const REPAIR_MAT = 3, LEVEL_MAT = 3;
+
+  /* ---------- Destinos ---------- */
+  const DEST = {
+    moon: {
+      n: T('La Luna', 'The Moon'), sub: T('Satélite natural de la Tierra', "Earth's natural satellite"),
+      facts: [[T('Gravedad', 'Gravity'), '1,62 m/s² (1/6 de la Tierra)'], [T('Atmósfera', 'Atmosphere'), T('Prácticamente ninguna', 'Practically none')], [T('Temperatura', 'Temperature'), '−170 °C … +120 °C'], [T('Día solar', 'Solar day'), T('≈ 29,5 días terrestres', '≈ 29.5 Earth days')], [T('Señal a la Tierra', 'Signal to Earth'), T('≈ 1,3 s de retraso', '≈ 1.3 s delay')]],
+      brief: T('Destino: la Luna. No hay aire que frene la nave: todo el descenso depende de los motores. El suelo es regolito, un polvo afilado que flota mucho tiempo.', 'Destination: the Moon. There is no air to slow the ship: the whole descent depends on engines. The ground is regolith, a sharp dust that hangs for a long time.')
+    },
+    mars: {
+      n: T('Marte', 'Mars'), sub: T('El planeta rojo', 'The red planet'),
+      facts: [[T('Gravedad', 'Gravity'), '3,71 m/s² (38 % de la Tierra)'], [T('Atmósfera', 'Atmosphere'), T('Muy fina, de CO₂', 'Very thin, mostly CO₂')], [T('Temperatura', 'Temperature'), '−125 °C … +20 °C'], [T('Día solar (sol)', 'Solar day (sol)'), '24 h 40 min'], [T('Señal a la Tierra', 'Signal to Earth'), T('de 3 a 22 minutos', '3 to 22 minutes')]],
+      brief: T('Destino: Marte. La atmósfera es fina pero caliente al entrar: el escudo térmico, el paracaídas y los motores trabajan por turnos. El polvo rojo y el viento mandan en la superficie.', 'Destination: Mars. The thin air still heats the ship on entry: heat shield, parachute and engines work in turns. Red dust and wind rule the surface.')
+    }
+  };
+
+  /* ---------- Zonas de aterrizaje ----------
+     Atributos 0–3 (más alto = más de eso). x,y: plataforma de la nave en el mapa exterior. */
+  const A = (terrain, slope, rocks, expo, res, comm, space) => ({ terrain, slope, rocks, expo, res, comm, space });
+  const ZONES = {
+    moon: [
+      { id: 'z1', x: 96, y: 114, c: A(0, 0, 1, 1, 1, 2, 3), n: T('Llanura del Sur', 'Southern Plain'), t: T('Llanura de regolito compactado', 'Compacted regolith plain'), d: T('Un terreno amplio y casi plano. No tiene nada espectacular cerca, pero casi nada sale mal.', 'A wide, nearly flat ground. Nothing spectacular nearby, but little goes wrong.') },
+      { id: 'z2', x: 42, y: 112, c: A(2, 2, 3, 1, 3, 1, 1), n: T('Borde del cráter Aurora', 'Aurora Crater Rim'), t: T('Terreno irregular con rocas', 'Rugged, rocky ground'), d: T('Muy cerca del hielo del cráter en sombra, pero el suelo es irregular y hay poco espacio plano.', 'Right next to the shadowed-crater ice, but the ground is uneven with little flat space.') },
+      { id: 'z3', x: 122, y: 112, c: A(1, 1, 1, 3, 1, 3, 2), n: T('Cresta Oriental', 'Eastern Ridge'), t: T('Cresta despejada', 'Open ridge'), d: T('Ve bien hacia la Tierra, pero está abierta al Sol y a las partículas: más radiación.', 'Has a clear line to Earth, but it is open to the Sun and to particles: more radiation.') },
+      { id: 'z4', x: 8, y: 118, c: A(1, 1, 2, 0, 0, 0, 2), n: T('Valle del Oeste', 'Western Valley'), t: T('Valle resguardado', 'Sheltered valley'), d: T('Las paredes protegen de la radiación, pero tapan la señal y está lejos de recursos.', 'The walls shield from radiation, but they block signal and resources are far.') }
+    ],
+    mars: [
+      { id: 'z1', x: 96, y: 114, c: A(0, 0, 1, 1, 1, 2, 3), n: T('Llanura del Sur', 'Southern Plain'), t: T('Llanura de arena compacta', 'Packed-sand plain'), d: T('Terreno amplio y firme. El viento arrastra polvo, pero es fácil colocar los módulos.', 'Wide, firm ground. Wind carries dust, but modules are easy to place.') },
+      { id: 'z2', x: 42, y: 112, c: A(2, 2, 3, 1, 3, 1, 1), n: T('Delta fósil', 'Fossil Delta'), t: T('Terreno de capas y bloques', 'Layered, blocky ground'), d: T('Junto a sedimentos donde pudo haber agua. El suelo es irregular y hay bloques sueltos.', 'Beside sediments where water may have flowed. Uneven ground with loose blocks.') },
+      { id: 'z3', x: 122, y: 112, c: A(1, 1, 1, 3, 1, 3, 2), n: T('Meseta de Hematita', 'Hematite Mesa'), t: T('Meseta alta y expuesta', 'High, exposed mesa'), d: T('Buena vista hacia el cielo para las antenas, pero el viento y la radiación pegan más fuerte.', 'Great sky view for antennas, but wind and radiation hit harder.') },
+      { id: 'z4', x: 8, y: 118, c: A(1, 1, 2, 0, 0, 0, 2), n: T('Cañón del Oeste', 'Western Canyon'), t: T('Cañón resguardado', 'Sheltered canyon'), d: T('Las paredes frenan el viento y la radiación, pero cuesta comunicarse y los recursos quedan lejos.', 'Walls slow wind and radiation, but comms are hard and resources are far.') }
+    ]
+  };
+  const LV = [T('baja', 'low'), T('media', 'medium'), T('alta', 'high'), T('muy alta', 'very high')];
+  const ATTR = [['terrain', T('Terreno', 'Terrain'), '🪨'], ['slope', T('Pendiente', 'Slope'), '📐'], ['rocks', T('Rocas', 'Rocks'), '🌑'], ['expo', T('Exposición', 'Exposure'), '☢️'], ['res', T('Recursos cerca', 'Nearby resources'), '💧'], ['comm', T('Comunicaciones', 'Communications'), '📡'], ['space', T('Espacio libre', 'Free space'), '⬜']];
+  // etiquetas de cada atributo (0..3)
+  const ATTR_LBL = {
+    terrain: [T('Lisa', 'Smooth'), T('Algo irregular', 'Slightly uneven'), T('Irregular', 'Uneven'), T('Muy irregular', 'Very uneven')],
+    slope: [T('0–2°', '0–2°'), T('3–5°', '3–5°'), T('6–9°', '6–9°'), T('10°+', '10°+')],
+    rocks: LV, expo: LV, res: LV, comm: LV, space: LV
+  };
+  /** Consecuencias de una zona (todas pequeñas y reversibles; nada bloquea la campaña). */
+  function fx(c) {
+    const rough = c.rocks + c.slope + (c.terrain > 1 ? 1 : 0);
+    return {
+      sig: +(0.82 + 0.1 * c.comm).toFixed(2), // alcance de la antena de la base
+      rad: +(0.8 + 0.15 * c.expo).toFixed(2), // dosis fuera de la base
+      reveal: c.res, // muestras ocultas que ya se conocen
+      mat: 3 * c.space - Math.round(1.5 * rough), // materiales: espacio libre suma, terreno difícil resta
+      rough, shake: rough >= 4 ? 2 : rough >= 2 ? 1 : 0
+    };
+  }
+
+  /* ---------- Estado ---------- */
+  const zoneList = (sc) => ZONES[sc === 'mars' ? 'mars' : 'moon'];
+  const zoneOf = (sc, id) => zoneList(sc).find((z) => z.id === id) || zoneList(sc)[0];
+  function parts() { const o = {}; for (const k of PARTS) o[k] = 'ok'; return o; }
+  /** Partida nueva con aterrizaje por jugar. */
+  function fresh(S) {
+    const flag = PARTS[(S.seed >>> 3) % PARTS.length];
+    return { v: 1, scen: S.scen, done: false, stage: 'arrive', zone: null, prio: null, lev: null, ign: null, flag, parts: parts(), ship: null, inst: {}, steps: 0, mods: { sig: 1, rad: 1 }, relay: false, replays: 0, log: [] };
+  }
+  /** Partidas anteriores y atajos de prueba: aterrizaje ya completado, zona por defecto y sin cambios en la simulación. */
+  function ensure(S) {
+    if (S.land && S.land.v === 1) return S.land;
+    const z = zoneList(S.scen)[0], L = { v: 1, scen: S.scen, done: true, stage: 'done', zone: z.id, prio: null, lev: null, ign: null, flag: null, parts: parts(), ship: { x: z.x, y: z.y }, inst: {}, steps: STEPS.length, mods: { sig: 1, rad: 1 }, relay: false, replays: 0, log: [], legacy: true };
+    for (const k of STEPS) L.inst[k] = 1;
+    S.land = L; return L;
+  }
+  const zone = (S) => { const L = ensure(S); return L.zone ? zoneOf(S.scen, L.zone) : null; };
+  const pad = (S) => { const L = ensure(S); return L.ship ? [L.ship.x, L.ship.y] : null; };
+  const mods = (S) => ensure(S).mods;
+  const done = (S) => ensure(S).done;
+  /** El jugador elige la zona: fija la posición de la nave. */
+  function pick(S, id) { const L = ensure(S), z = zoneOf(S.scen, id); L.zone = z.id; L.ship = { x: z.x, y: z.y }; L.mods = { sig: fx(z.c).sig, rad: fx(z.c).rad }; return z; }
+  /** Pieza con fallo previo, si se revisó y se arregló. */
+  function repair(S, part) { const L = ensure(S); if (L.parts[part] === 'ok') return false; L.parts[part] = 'ok'; if (part === 'beacon') L.relay = true; return true; }
+  const warnParts = (S) => PARTS.filter((k) => ensure(S).parts[k] !== 'ok');
+
+  /** Al terminar el despliegue: aplica las consecuencias de la zona y de las decisiones. Devuelve un resumen. */
+  function complete(S, o) {
+    const L = ensure(S), z = zone(S), f = fx(z.c), sum = { mat: 0, reveal: [], notes: [] };
+    o = o || {};
+    // 1 · terreno y espacio: materiales (nivelar la plataforma cuesta 4 pero evita el daño en las patas)
+    let mat = f.mat;
+    if (o.lev === true && f.rough >= 3) { mat -= LEVEL_MAT; L.lev = true; }
+    else if (f.rough >= 3) { L.lev = false; if (L.parts.legs === 'ok') L.parts.legs = 'warn'; sum.notes.push('legs'); }
+    if (L.ign === 'late' && L.parts.engine === 'ok') L.parts.engine = 'warn';
+    if (L.flag && L.parts[L.flag] === 'warn' && L.flag === 'tanks') mat -= 3;
+    if (S.r && S.r.mat) { const before = S.r.mat.v; S.r.mat.v = Math.max(0, Math.min(S.r.mat.max, S.r.mat.v + mat)); sum.mat = Math.round(S.r.mat.v - before); }
+    // 2 · recursos cercanos: muestras ocultas ya conocidas
+    if (typeof Field !== 'undefined' && Field.G && S.ex && f.reveal > 0) {
+      const P = L.ship, hid = Field.G.sites.filter((s) => s.hidden).sort((a, b) => Math.hypot(a.x - P.x, a.y - P.y) - Math.hypot(b.x - P.x, b.y - P.y)).slice(0, f.reveal);
+      for (const s of hid) { S.ex.rev[s.id] = true; sum.reveal.push(s.id); }
+    }
+    // 3 · prioridad inicial: un empujón pequeño al sistema elegido
+    if (L.prio === 'power' && S.r.power) S.r.power.v = Math.min(S.r.power.max, S.r.power.v + S.r.power.max * 0.06);
+    if (L.prio === 'life' && S.r.o2) S.r.o2.v = Math.min(S.r.o2.max, S.r.o2.v + S.r.o2.max * 0.06);
+    if (L.prio === 'comms') { L.relay = L.parts.beacon === 'ok' || L.relay; L.mods.sig = +(L.mods.sig + 0.08).toFixed(2); }
+    if (L.parts.beacon === 'ok') L.relay = true;
+    // 4 · estado final
+    L.done = true; L.stage = 'done'; L.steps = STEPS.length; for (const k of STEPS) L.inst[k] = 1;
+    L.log.push({ zone: L.zone, prio: L.prio, lev: L.lev, ign: L.ign, mat: sum.mat, reveal: sum.reveal.length });
+    return sum;
+  }
+  /** Relé de radio de la nave (si su baliza funciona y se activó en el despliegue). */
+  const relayNode = (S) => { const L = ensure(S); return L.relay && L.parts.beacon === 'ok' && L.ship ? { x: L.ship.x, y: L.ship.y, r: 34 } : null; };
+  /** Resumen en texto de las consecuencias de una zona (para la pantalla de elección). */
+  function effects(z, es, adv) {
+    const f = fx(z.c), o = [];
+    o.push(f.sig >= 1.05 ? (es ? '📡 Antena de la base con más alcance' : '📡 Base antenna reaches farther') : f.sig <= 0.9 ? (es ? '📡 Comunicaciones más débiles' : '📡 Weaker communications') : (es ? '📡 Comunicaciones normales' : '📡 Normal communications'));
+    o.push(f.rad >= 1.1 ? (es ? '☢️ Más radiación en las salidas' : '☢️ More radiation on outings') : f.rad <= 0.9 ? (es ? '☢️ Menos radiación en las salidas' : '☢️ Less radiation on outings') : (es ? '☢️ Radiación normal' : '☢️ Normal radiation'));
+    o.push(f.reveal ? (es ? '💧 Conoces ' + f.reveal + ' muestra' + (f.reveal > 1 ? 's' : '') + ' oculta' + (f.reveal > 1 ? 's' : '') + ' desde el inicio' : '💧 You know ' + f.reveal + ' hidden sample' + (f.reveal > 1 ? 's' : '') + ' from the start') : (es ? '💧 Los recursos hay que buscarlos' : '💧 You must search for resources'));
+    o.push(f.rough >= 3 ? (es ? '🧱 Despliegue difícil: puedes nivelar el terreno' : '🧱 Hard deployment: you can level the ground') : (es ? '🧱 Despliegue sencillo' : '🧱 Easy deployment'));
+    if (adv) o.push((es ? '⚙ Antena ×' : '⚙ Antenna ×') + f.sig + ' · ' + (es ? 'dosis ×' : 'dose ×') + f.rad + ' · ' + (es ? 'materiales ' : 'materials ') + (f.mat >= 0 ? '+' : '') + f.mat);
+    return o;
+  }
+  return { STEPS, STEP_T, STEP_D, PARTS, PART_T, PART_FAULT, REPAIR_MAT, LEVEL_MAT, DEST, ZONES, ATTR, ATTR_LBL, LV, zoneList, zoneOf, fx, fresh, ensure, zone, pad, mods, done, pick, repair, warnParts, complete, relayNode, effects };
 })();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
@@ -4064,8 +4243,11 @@ const Field = (function () {
   function addObs(o) { G.obs.push(o); const x0 = Math.floor((o.x - o.r) / 4), x1 = Math.floor((o.x + o.r) / 4), y0 = Math.floor((o.y - o.r) / 4), y1 = Math.floor((o.y + o.r) / 4); for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const k = cellKey(cx, cy); (hash.get(k) || hash.set(k, []).get(k)).push(o); } }
   function distSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1; let u = ((px - ax) * dx + (py - ay) * dy) / l2; u = Math.max(0, Math.min(1, u)); return Math.hypot(px - (ax + dx * u), py - (ay + dy * u)); }
   const trailDist = (x, y) => { let m = 1e9; for (const t of TRAILS) for (let i = 1; i < t.length; i++) m = Math.min(m, distSeg(x, y, t[i - 1][0], t[i - 1][1], t[i][0], t[i][1])); return m; };
-  function init(s) {
+  const BASE_TRAILS = TRAILS.length;
+  let SHIP = null; // plataforma de la nave: [x, y] (se fija antes de generar el terreno)
+  function init(s, pad) {
     sc = s === 'mars' ? 'mars' : 'moon'; chunks = new Map(); hash = new Map();
+    SHIP = pad ? { x: pad[0], y: pad[1] } : null; TRAILS.length = BASE_TRAILS; if (SHIP) TRAILS.push([[68, 110], [SHIP.x, SHIP.y]]);
     const mars = sc === 'mars', rnd = rngOf(mars ? 777 : 313);
     G = { obs: [], craters: [], zones: [], dunes: [], pois: POI[sc].map((p) => Object.assign({}, p)), rep: REPEATERS[sc].map((p) => Object.assign({}, p)), shel: SHELTERS[sc].map((p) => Object.assign({}, p)), sites: [], pebbles: [] };
     // muestras: las del entorno de la base (mismas posiciones que ya existían) y las de las zonas de exploración
@@ -4078,9 +4260,9 @@ const Field = (function () {
     }
     // cráteres grandes (el rover no los cruza) y pequeños
     const bigC = mars ? [[22, 112, 9], [124, 108, 8], [-18, 126, 10], [150, 138, 11], [30, 160, 9]] : [[26, 110, 9], [122, 110, 8], [-18, 126, 10], [150, 140, 11], [30, 160, 9], [90, 168, 8]];
-    for (const c of bigC) if (trailDist(c[0], c[1]) > c[2] + 1.5) { G.craters.push({ x: c[0], y: c[1], r: c[2], big: true }); addObs({ x: c[0], y: c[1], r: c[2] * 0.7, rover: true, t: 'crater' }); }
+    for (const c of bigC) if (trailDist(c[0], c[1]) > c[2] + 1.5 && !(SHIP && Math.hypot(c[0] - SHIP.x, c[1] - SHIP.y) < c[2] + 6)) { G.craters.push({ x: c[0], y: c[1], r: c[2], big: true }); addObs({ x: c[0], y: c[1], r: c[2] * 0.7, rover: true, t: 'crater' }); }
     for (const p of G.pois) if (p.k === 'icecrater') { G.craters.push({ x: p.x, y: p.y, r: p.r, ice: true }); }
-    const okFree = (x, y, m) => !inRect(x, y, 4 + (m || 0)) && trailDist(x, y) > 3.6 + (m || 0) && Math.hypot(x - PAD[0], y - PAD[1]) > 12 && G.pois.every((p) => Math.hypot(p.x - x, p.y - y) > p.r * 0.5 + 3) && G.sites.every((s) => Math.hypot(s.x - x, s.y - y) > 2.2) && G.rep.every((q) => Math.hypot(q.x - x, q.y - y) > 4) && G.shel.every((q) => Math.hypot(q.x - x, q.y - y) > 4.5);
+    const okFree = (x, y, m) => !inRect(x, y, 4 + (m || 0)) && !(SHIP && Math.hypot(x - SHIP.x, y - SHIP.y) < 9 + (m || 0)) && trailDist(x, y) > 3.6 + (m || 0) && Math.hypot(x - PAD[0], y - PAD[1]) > 12 && G.pois.every((p) => Math.hypot(p.x - x, p.y - y) > p.r * 0.5 + 3) && G.sites.every((s) => Math.hypot(s.x - x, s.y - y) > 2.2) && G.rep.every((q) => Math.hypot(q.x - x, q.y - y) > 4) && G.shel.every((q) => Math.hypot(q.x - x, q.y - y) > 4.5);
     for (let i = 0; i < 70; i++) { const c = { x: B.x0 + 4 + rnd() * (B.x1 - B.x0 - 8), y: B.y0 + 4 + rnd() * (B.y1 - B.y0 - 8), r: 1.6 + rnd() * 3.4 }; if (okFree(c.x, c.y, c.r) && G.craters.every((q) => Math.hypot(q.x - c.x, q.y - c.y) > q.r + c.r + 1)) G.craters.push(c); }
     // zonas de suelo (movilidad)
     const Z = mars ? [['sand', 130, 110, 18, 10], ['sand', 60, 142, 14, 9], ['sand', -22, 72, 14, 10], ['sand', 8, -8, 16, 10], ['slope', 90, 160, 16, 6], ['slope', 176, 60, 10, 14]] : [['deep', 140, 122, 16, 9], ['deep', 30, 150, 14, 8], ['deep', -12, 36, 12, 9], ['deep', 176, 100, 12, 8], ['deep', 74, 132, 10, 6]];
@@ -4097,6 +4279,7 @@ const Field = (function () {
     for (const p of G.pois) if (p.k === 'lander' || p.k === 'seismo' || p.k === 'weather') addObs({ x: p.x, y: p.y, r: p.k === 'lander' ? 1.6 : 0.8, t: 'equip' });
     for (const q of G.rep) addObs({ x: q.x, y: q.y, r: 0.9, t: 'equip' });
     for (const q of G.shel) addObs({ x: q.x, y: q.y, r: 2.3, t: 'dome' });
+    if (SHIP) addObs({ x: SHIP.x, y: SHIP.y, r: 3.1, t: 'ship' });
   }
 
   /* ---------- Consultas ---------- */
@@ -4235,6 +4418,7 @@ const Field = (function () {
     if (!G) return [];
     const out = [], vis = (x, y, m) => x * TS > cam.x - m && x * TS < cam.x + vw + m && y * TS > cam.y - m && y * TS < cam.y + vh + m;
     for (const p of G.pois) if (vis(p.x, p.y, 120) && ['seismo', 'weather', 'lander'].includes(p.k)) out.push({ y: p.y, f: () => sprite(ctx, p.k, p.x * TS, p.y * TS, t, 0) });
+    if (SHIP && S && vis(SHIP.x, SHIP.y, 200)) out.push({ y: SHIP.y + 1.5, f: () => LandArt.shipWorld(ctx, SHIP.x * TS, SHIP.y * TS, t, S) });
     for (const q of G.rep) if (vis(q.x, q.y, 120)) out.push({ y: q.y, f: () => sprite(ctx, 'rpt', q.x * TS, q.y * TS, t, !!(ex && ex.rep && ex.rep[q.id])) });
     for (const q of G.shel) if (vis(q.x, q.y, 140)) out.push({ y: q.y, f: () => sprite(ctx, 'shelter', q.x * TS, q.y * TS, t, { id: q.id, open: ex && ex.inShel === q.id }) });
     for (const s of G.sites) {
@@ -4253,7 +4437,7 @@ const Field = (function () {
     }
   }
 
-  return { B, PAD, TRAILS, init, reset, hit, ground, near, info, coord, drawTerrain, ents, guideLights, KG, CAT, KIND_T, WHY, inRect,
+  return { B, PAD, TRAILS, get ship() { return SHIP; }, init, reset, hit, ground, near, info, coord, drawTerrain, ents, guideLights, KG, CAT, KIND_T, WHY, inRect,
     get G() { return G; }, get sc() { return sc; }, poi: (id) => G && G.pois.find((p) => p.id === id), site: (id) => G && G.sites.find((s) => s.id === id), rep: (id) => G && G.rep.find((r) => r.id === id) };
 })();
 /* =====================================================================
@@ -4377,6 +4561,254 @@ const Rover = (function () {
     c.restore();
   }
   return { bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
+})();
+/* =====================================================================
+   LANDART — dibujo de la llegada: nave, planeta, descenso, polvo y despliegue.
+   Todo en Canvas 2D, sin imágenes. Las funciones reciben el contexto y el
+   estado; no guardan nada del juego. Luna y Marte usan escenas distintas
+   (no es el mismo dibujo con otros colores): sin aire / con aire, polvo
+   balístico / polvo con arrastre y viento, plumas de motor distintas,
+   escudo térmico y paracaídas solo en Marte.
+   ===================================================================== */
+const LandArt = (function () {
+  const TS = 32, TAU = 6.2832;
+  const hs = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const lerp = (a, b, u) => a + (b - a) * u, cl = (v, a, b) => Math.max(a, Math.min(b, v)), ease = (u) => { u = cl(u, 0, 1); return u * u * (3 - 2 * u); };
+  const sub = (u, a, b) => cl((u - a) / (b - a), 0, 1); // tramo [a,b] de u → 0..1
+  function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  const LED = { ok: '#6fffa0', warn: '#ffc857', down: '#ff6b6b' };
+
+  /* ---------- Nave en vista lateral ----------
+     Origen: centro de la base entre las patas, sobre el suelo. s = píxeles por unidad (la nave mide ≈ 110 u). */
+  function shipSide(c, x, y, s, o) {
+    o = o || {}; const t = o.t || 0, leg = o.legs == null ? 1 : o.legs, comp = (o.comp || 0) * 3;
+    c.save(); c.translate(x, y); c.scale(s, s); if (o.tilt) c.rotate(o.tilt);
+    // plumas del motor (detrás de la nave)
+    if (o.flame > 0.02) flame(c, o.flame, o.scen, t);
+    // paracaídas
+    if (o.chute > 0.02) {
+      const k = o.chute, W = 62 * k, H = 38 * k, top = -200 - 40 * k;
+      c.strokeStyle = 'rgba(230,230,235,.7)'; c.lineWidth = 0.8; for (let i = -4; i <= 4; i++) { c.beginPath(); c.moveTo(i * 3.2, -100); c.lineTo(i * W / 4.6, top + H * 0.35 + Math.abs(i) * 1.6); c.stroke(); }
+      const g = c.createLinearGradient(-W, top, W, top); g.addColorStop(0, '#f4f1ea'); g.addColorStop(0.5, '#ff8a3d'); g.addColorStop(1, '#f4f1ea'); c.fillStyle = g;
+      c.beginPath(); c.ellipse(0, top + H * 0.4, W, H, 0, Math.PI, 0); c.lineTo(W, top + H * 0.4); c.quadraticCurveTo(0, top + H * 0.9, -W, top + H * 0.4); c.fill();
+    }
+    // patas (se extienden con leg: 0 plegadas → 1 abiertas)
+    const fx = lerp(14, 31, leg), fy = lerp(-16, 0, leg) + comp * 0.2;
+    c.strokeStyle = '#9097a8'; c.lineWidth = 2.6; c.lineCap = 'round';
+    for (const sg of [-1, 1]) { c.beginPath(); c.moveTo(sg * 12, -24); c.lineTo(sg * fx, fy - 2); c.stroke(); c.beginPath(); c.moveTo(sg * 15, -46); c.lineTo(sg * lerp(15, 22, leg), -22 + comp * 0.5); c.stroke(); c.fillStyle = '#c9cfdc'; c.beginPath(); c.ellipse(sg * fx, fy, 6.2, 2.2, 0, 0, TAU); c.fill(); }
+    c.lineCap = 'butt';
+    // campana del motor
+    c.fillStyle = '#3a3f4f'; c.beginPath(); c.moveTo(-6, -17 + comp); c.lineTo(-10, -7 + comp); c.lineTo(10, -7 + comp); c.lineTo(6, -17 + comp); c.closePath(); c.fill();
+    c.save(); c.translate(0, comp);
+    // escudo térmico (Marte) bajo el casco
+    if (o.heat > 0.02) { const g = c.createRadialGradient(0, -16, 4, 0, -8, 46); g.addColorStop(0, 'rgba(255,250,220,' + 0.95 * o.heat + ')'); g.addColorStop(0.4, 'rgba(255,150,50,' + 0.8 * o.heat + ')'); g.addColorStop(1, 'rgba(255,60,20,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(0, -10, 40, 52, 0, 0, TAU); c.fill(); }
+    // casco
+    const hg = c.createLinearGradient(-17, 0, 17, 0); hg.addColorStop(0, '#8e95a8'); hg.addColorStop(0.35, '#e6eaf2'); hg.addColorStop(1, '#7f869a');
+    c.fillStyle = hg; rr(c, -17, -80, 34, 64, 6); c.fill(); c.strokeStyle = '#4b5166'; c.lineWidth = 1.2; c.stroke();
+    // franjas y puertos
+    c.fillStyle = '#ff8a3d'; c.fillRect(-17, -30, 34, 5); c.fillStyle = '#38d6ff'; c.fillRect(-17, -62, 34, 3);
+    // compuertas de carga (laterales): giran al abrirse
+    const hc = o.hatch || 0;
+    for (const sg of [-1, 1]) { c.save(); c.translate(sg * 17, -42); c.rotate(sg * hc * 1.45); c.fillStyle = '#5d6478'; c.fillRect(sg > 0 ? 0 : -14, -14, 14, 28); c.strokeStyle = '#2a2f40'; c.strokeRect(sg > 0 ? 0 : -14, -14, 14, 28); c.restore(); if (hc > 0.05) { c.fillStyle = 'rgba(255,214,120,' + 0.55 * hc + ')'; c.fillRect(sg > 0 ? 14 : -22, -20, 8, 8); } }
+    // morro y cabina
+    c.fillStyle = '#d9deea'; c.beginPath(); c.moveTo(-17, -80); c.quadraticCurveTo(0, -112, 17, -80); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#16314f'; c.beginPath(); c.ellipse(0, -84, 6.5, 4.4, 0, 0, TAU); c.fill(); c.fillStyle = 'rgba(120,220,255,.6)'; c.beginPath(); c.ellipse(-1.6, -85, 2.6, 1.4, 0, 0, TAU); c.fill();
+    // antena y baliza
+    c.strokeStyle = '#aeb5c6'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -102); c.lineTo(0, -116); c.stroke();
+    const bl = o.beacon === 'down' ? 0 : o.beacon === 'warn' ? (Math.sin(t * 9) > 0.7 ? 1 : 0.15) : (Math.sin(t * 3) > 0 ? 1 : 0.25);
+    c.fillStyle = 'rgba(111,255,160,' + bl + ')'; c.beginPath(); c.arc(0, -117, 2.2, 0, TAU); c.fill();
+    if (o.lights) for (let i = 0; i < PARTS_N; i++) { c.fillStyle = LED[(o.parts && o.parts[PARTS_K[i]]) || 'ok']; c.beginPath(); c.arc(-9 + i * 4.5, -70, 1.4, 0, TAU); c.fill(); }
+    c.restore(); c.restore();
+  }
+  const PARTS_K = ['engine', 'legs', 'hatch', 'tanks', 'beacon'], PARTS_N = 5;
+  /** Pluma del motor: en la Luna es fina, larga y casi sin humo (no hay aire que la ensanche); en Marte es más ancha, naranja y deja humo. */
+  function flame(c, f, scen, t) {
+    const L = 30 + f * 80, fl = 0.85 + 0.15 * Math.sin(t * 60);
+    if (scen === 'mars') {
+      const g = c.createLinearGradient(0, -8, 0, -8 + L * fl); g.addColorStop(0, 'rgba(255,250,210,.95)'); g.addColorStop(0.35, 'rgba(255,160,50,.85)'); g.addColorStop(1, 'rgba(255,70,20,0)');
+      c.fillStyle = g; c.beginPath(); c.moveTo(-8, -8); c.quadraticCurveTo(-14 - f * 6, L * 0.5, 0, L * fl); c.quadraticCurveTo(14 + f * 6, L * 0.5, 8, -8); c.fill();
+    } else {
+      const g = c.createLinearGradient(0, -8, 0, -8 + L * 1.35 * fl); g.addColorStop(0, 'rgba(255,255,255,.98)'); g.addColorStop(0.3, 'rgba(170,210,255,.8)'); g.addColorStop(1, 'rgba(120,170,255,0)');
+      c.fillStyle = g; c.beginPath(); c.moveTo(-5, -8); c.lineTo(-2.2, L * 1.35 * fl); c.lineTo(2.2, L * 1.35 * fl); c.lineTo(5, -8); c.fill();
+    }
+  }
+
+  /* ---------- Nave en el mapa exterior (vista cenital en perspectiva) ---------- */
+  function shipWorld(c, x, y, t, S) {
+    const L = S && S.land; if (!L) return; const P = L.parts || {};
+    c.save(); c.translate(x, y);
+    c.fillStyle = 'rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(8, 12, 118, 64, 0, 0, TAU); c.fill();
+    // paneles solares desplegados a los lados
+    for (const sg of [-1, 1]) { c.save(); c.translate(sg * 72, -2); c.fillStyle = '#1c2f5e'; rr(c, -26, -26, 52, 52, 3); c.fill(); c.strokeStyle = '#6a8fd6'; c.lineWidth = 1; for (let i = -1; i <= 1; i++) { c.beginPath(); c.moveTo(i * 17, -26); c.lineTo(i * 17, 26); c.stroke(); c.beginPath(); c.moveTo(-26, i * 17); c.lineTo(26, i * 17); c.stroke(); } c.restore(); }
+    // patas y pies
+    c.strokeStyle = '#8b92a4'; c.lineWidth = 4; for (const a of [0.8, 2.34, 3.94, 5.5]) { c.beginPath(); c.moveTo(Math.cos(a) * 26, Math.sin(a) * 18); c.lineTo(Math.cos(a) * 84, Math.sin(a) * 56); c.stroke(); c.fillStyle = '#c9cfdc'; c.beginPath(); c.ellipse(Math.cos(a) * 88, Math.sin(a) * 58, 12, 7, 0, 0, TAU); c.fill(); }
+    // casco
+    const g = c.createRadialGradient(-14, -18, 6, 0, 0, 62); g.addColorStop(0, '#f3f5fa'); g.addColorStop(1, '#8a91a6'); c.fillStyle = g; c.beginPath(); c.ellipse(0, -2, 58, 42, 0, 0, TAU); c.fill(); c.strokeStyle = '#4b5166'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#ff8a3d'; c.beginPath(); c.ellipse(0, -2, 44, 31, 0, 0.2, Math.PI - 0.2); c.lineTo(0, -2); c.fill();
+    c.fillStyle = '#e8ecf5'; c.beginPath(); c.ellipse(0, -8, 38, 26, 0, 0, TAU); c.fill(); c.strokeStyle = '#8c93a3'; c.stroke();
+    c.fillStyle = '#16314f'; c.beginPath(); c.ellipse(0, -10, 14, 9, 0, 0, TAU); c.fill(); c.fillStyle = 'rgba(120,220,255,.55)'; c.beginPath(); c.ellipse(-3, -12, 6, 3, 0, 0, TAU); c.fill();
+    // compuerta de carga con rampa (sur)
+    const open = L.done && (P.hatch !== 'down'); c.fillStyle = open ? '#20263a' : '#5d6478'; rr(c, -16, 14, 32, 18, 3); c.fill(); if (open) { c.fillStyle = '#9097a8'; c.beginPath(); c.moveTo(-14, 30); c.lineTo(14, 30); c.lineTo(20, 48); c.lineTo(-20, 48); c.closePath(); c.fill(); c.strokeStyle = '#4b5166'; c.stroke(); }
+    // antena de la baliza
+    c.strokeStyle = '#aeb5c6'; c.lineWidth = 2; c.beginPath(); c.moveTo(22, -24); c.lineTo(28, -66); c.stroke(); c.beginPath(); c.ellipse(30, -70, 12, 6, -0.5, 0, TAU); c.stroke();
+    const bk = P.beacon === 'down' ? 0 : P.beacon === 'warn' ? (Math.sin(t * 9) > 0.7 ? 1 : 0.15) : (Math.sin(t * 3) > 0 ? 1 : 0.3); c.fillStyle = 'rgba(111,255,160,' + bk + ')'; c.beginPath(); c.arc(28, -74, 3.2, 0, TAU); c.fill();
+    if (bk > 0.6 && L.relay) { c.strokeStyle = 'rgba(111,255,160,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 2; i++) { c.beginPath(); c.arc(28, -74, 9 + ((t * 14 + i * 9) % 18), -2.4, -0.7); c.stroke(); } }
+    // diodos de estado de las cinco piezas
+    for (let i = 0; i < 5; i++) { const st = P[PARTS_K[i]] || 'ok', pul = st === 'warn' ? 0.5 + 0.5 * Math.sin(t * 6) : 1; c.fillStyle = LED[st]; c.globalAlpha = 0.45 + 0.55 * pul; c.beginPath(); c.arc(-24 + i * 12, 22, 3.4, 0, TAU); c.fill(); c.globalAlpha = 1; }
+    c.restore();
+  }
+
+  /* ---------- Planeta (aproximación) ---------- */
+  const CRAT = []; for (let i = 0; i < 46; i++) { const a = hs(i * 3.1) * TAU, d = Math.sqrt(hs(i * 5.7 + 1)) * 0.92; CRAT.push([Math.cos(a) * d, Math.sin(a) * d, 0.035 + hs(i * 9.3) * 0.11]); }
+  function planet(c, cx, cy, R, scen, t, mark) {
+    c.save(); c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.clip();
+    if (scen === 'mars') {
+      const g = c.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R * 1.05); g.addColorStop(0, '#e08a52'); g.addColorStop(0.55, '#b4552f'); g.addColorStop(1, '#4a1d10'); c.fillStyle = g; c.fillRect(cx - R, cy - R, R * 2, R * 2);
+      c.fillStyle = 'rgba(70,24,12,.5)'; for (const b of [[-0.2, 0.1, 0.5, 0.2], [0.25, -0.25, 0.35, 0.14], [-0.35, -0.3, 0.25, 0.1]]) { c.beginPath(); c.ellipse(cx + b[0] * R, cy + b[1] * R, b[2] * R, b[3] * R, 0.4, 0, TAU); c.fill(); }
+      c.strokeStyle = 'rgba(60,20,10,.55)'; c.lineWidth = Math.max(1, R * 0.012); c.beginPath(); c.moveTo(cx - R * 0.55, cy + R * 0.1); c.quadraticCurveTo(cx, cy + R * 0.02, cx + R * 0.6, cy + R * 0.2); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(cx, cy - R * 0.97, R * 0.34, R * 0.1, 0, 0, TAU); c.fill();
+      if (R > 140) { c.strokeStyle = 'rgba(255,200,160,.14)'; c.lineWidth = R * 0.01; for (let i = 0; i < 6; i++) { c.beginPath(); c.ellipse(cx + Math.sin(t * 0.05 + i) * R * 0.1, cy + (i - 3) * R * 0.28, R * 0.9, R * 0.05, 0, 0, TAU); c.stroke(); } }
+    } else {
+      const g = c.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R * 1.05); g.addColorStop(0, '#d0d1d8'); g.addColorStop(0.6, '#8b8c94'); g.addColorStop(1, '#3b3c43'); c.fillStyle = g; c.fillRect(cx - R, cy - R, R * 2, R * 2);
+      c.fillStyle = 'rgba(40,41,50,.4)'; for (const b of [[-0.25, -0.1, 0.4, 0.28], [0.3, 0.2, 0.3, 0.2], [0.1, -0.45, 0.25, 0.15]]) { c.beginPath(); c.ellipse(cx + b[0] * R, cy + b[1] * R, b[2] * R, b[3] * R, 0.3, 0, TAU); c.fill(); }
+      for (const k of CRAT) { const x = cx + k[0] * R, y = cy + k[1] * R, r = k[2] * R; c.fillStyle = 'rgba(30,30,38,.28)'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = Math.max(1, r * 0.1); c.beginPath(); c.arc(x - r * 0.08, y - r * 0.08, r, 3.6, 5.6); c.stroke(); }
+    }
+    // terminador: la luz viene de la izquierda-arriba
+    const sh = c.createLinearGradient(cx - R * 0.5, cy - R * 0.5, cx + R, cy + R * 0.6); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(0.6, 'rgba(0,0,0,.2)'); sh.addColorStop(1, 'rgba(0,0,8,.78)'); c.fillStyle = sh; c.fillRect(cx - R, cy - R, R * 2, R * 2);
+    c.restore();
+    if (scen === 'mars') { const g = c.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.1); g.addColorStop(0, 'rgba(255,170,110,.5)'); g.addColorStop(1, 'rgba(255,140,80,0)'); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R * 1.1, 0, TAU); c.fill(); }
+    if (mark) { const mx = cx + mark[0] * R, my = cy + mark[1] * R, p = (t * 1.6) % 1; c.strokeStyle = 'rgba(111,255,160,.95)'; c.lineWidth = 2.5; c.beginPath(); c.arc(mx, my, 10 + p * 22, 0, TAU); c.globalAlpha = 1 - p; c.stroke(); c.globalAlpha = 1; c.beginPath(); c.arc(mx, my, 8, 0, TAU); c.stroke(); c.fillStyle = '#6fffa0'; c.beginPath(); c.arc(mx, my, 2.6, 0, TAU); c.fill(); }
+  }
+  function stars(c, w, h, t, n, par) { for (let i = 0; i < n; i++) { const x = ((hs(i) * w + t * par * (0.3 + hs(i + 9))) % w + w) % w, y = hs(i * 1.7 + 3) * h, a = 0.25 + 0.75 * hs(i * 2.3 + 5) * (0.8 + 0.2 * Math.sin(t * 2 + i)); c.fillStyle = 'rgba(255,255,255,' + a + ')'; const z = hs(i * 7) > 0.93 ? 2.4 : 1.3; c.fillRect(x, y, z, z); } }
+
+  /** Aproximación: u 0..1. La nave cruza en vista lateral mientras el planeta crece y aparece la zona elegida. */
+  function approach(c, w, h, t, u, scen, mark) {
+    c.fillStyle = '#02040c'; c.fillRect(0, 0, w, h); stars(c, w, h, t, 160, 3);
+    const e = ease(u), R = lerp(0.17, 1.55, Math.pow(e, 1.15)) * h, top = lerp(0.42, 0.32, e) * h, cx = lerp(0.7, 0.5, e) * w, cy = top + R;
+    if (scen !== 'mars') { const ex = w * 0.12, ey = h * 0.16, er = Math.max(6, h * 0.022); const g = c.createRadialGradient(ex, ey, 0, ex, ey, er * 3); g.addColorStop(0, 'rgba(120,180,255,.5)'); g.addColorStop(1, 'rgba(120,180,255,0)'); c.fillStyle = g; c.beginPath(); c.arc(ex, ey, er * 3, 0, TAU); c.fill(); c.fillStyle = '#4a86d8'; c.beginPath(); c.arc(ex, ey, er, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(ex - er * 0.2, ey - er * 0.3, er * 0.45, 0, TAU); c.fill(); }
+    else { c.fillStyle = '#b9a58f'; c.beginPath(); c.arc(w * 0.16, h * 0.18, Math.max(2, h * 0.006), 0, TAU); c.fill(); c.beginPath(); c.arc(w * 0.22, h * 0.1, Math.max(1.5, h * 0.004), 0, TAU); c.fill(); }
+    planet(c, cx, cy, R, scen, t, u > 0.62 ? [mark ? mark[0] : 0, mark ? mark[1] : -0.7] : null);
+    const sx = lerp(0.14, 0.36, e) * w, sy = lerp(0.3, 0.24, e) * h + Math.sin(t * 0.8) * 4, sc = Math.max(0.6, h / 520);
+    shipSide(c, sx, sy + 48 * sc, sc, { t, scen, legs: 0, tilt: 1.35 + Math.sin(t * 0.6) * 0.02, flame: u > 0.55 ? 0.35 + 0.25 * Math.sin(t * 5) : 0, beacon: 'ok' });
+  }
+
+  /* ---------- Polvo ---------- */
+  function dustNew() { return []; }
+  /** Moon: partículas balísticas, rápidas y afiladas, que viajan lejos sin frenarse. Mars: nube con arrastre que se hincha, sube y el viento arrastra. */
+  function dustEmit(P, scen, x, y, pw, n) {
+    for (let i = 0; i < n; i++) {
+      const a = (Math.random() < 0.5 ? -1 : 1), sp = (scen === 'mars' ? 30 + Math.random() * 120 : 80 + Math.random() * 300) * pw;
+      P.push(scen === 'mars' ? { x: x + (Math.random() - 0.5) * 60, y, vx: a * sp, vy: -(10 + Math.random() * 70) * pw, s: 6 + Math.random() * 14, g: 0, life: 0, max: 5 + Math.random() * 5, k: 1 }
+        : { x: x + (Math.random() - 0.5) * 30, y, vx: a * sp, vy: -(5 + Math.random() * 60) * pw, s: 1.4 + Math.random() * 2.4, g: 62, life: 0, max: 3.5 + Math.random() * 4, k: 0 });
+    }
+    if (P.length > 700) P.splice(0, P.length - 700);
+  }
+  function dustStep(P, scen, dt, wind, groundY) {
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i]; p.life += dt;
+      if (p.life > p.max) { P.splice(i, 1); continue; }
+      if (p.k) { const d = Math.exp(-1.15 * dt); p.vx = p.vx * d + wind * (1 - d); p.vy = p.vy * d - 8 * dt; p.s += 14 * dt; } else { p.vy += p.g * dt; if (p.y > groundY) { p.y = groundY; p.vy = -p.vy * 0.25; p.vx *= 0.8; } }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+  }
+  function dustDraw(c, P, scen) {
+    for (const p of P) {
+      const a = 1 - p.life / p.max;
+      if (p.k) { c.fillStyle = 'rgba(214,138,88,' + (0.22 * a) + ')'; c.beginPath(); c.arc(p.x, p.y, p.s, 0, TAU); c.fill(); }
+      else { c.fillStyle = 'rgba(190,190,200,' + (0.7 * a) + ')'; c.fillRect(p.x, p.y, p.s, p.s); }
+    }
+  }
+
+  /* ---------- Fondo de la superficie ---------- */
+  function sky(c, w, h, groundY, scen, t, alt) {
+    if (scen === 'mars') {
+      const g = c.createLinearGradient(0, 0, 0, groundY); const dark = cl(alt, 0, 1);
+      g.addColorStop(0, dark > 0.5 ? '#2a1410' : '#6d3a28'); g.addColorStop(0.55, '#b86a48'); g.addColorStop(1, '#e7ab82'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+      const sx = w * 0.78, sy = h * 0.2; const sg = c.createRadialGradient(sx, sy, 2, sx, sy, h * 0.16); sg.addColorStop(0, 'rgba(255,248,230,.95)'); sg.addColorStop(0.18, 'rgba(255,225,190,.55)'); sg.addColorStop(1, 'rgba(255,200,150,0)'); c.fillStyle = sg; c.fillRect(0, 0, w, h);
+      c.fillStyle = 'rgba(120,60,40,.35)'; for (let k = 0; k < 3; k++) { const base = groundY - 6 - k * 14; c.beginPath(); c.moveTo(0, groundY); for (let x = 0; x <= w; x += 24) c.lineTo(x, base - (hs(k * 9 + x * 0.013) * 22 + 10 + k * 10) * (k ? 1 : 0.5)); c.lineTo(w, groundY); c.fill(); }
+    } else {
+      c.fillStyle = '#02040c'; c.fillRect(0, 0, w, h); stars(c, w, h, 0, 220, 0);
+      const er = h * 0.028; c.fillStyle = '#4a86d8'; c.beginPath(); c.arc(w * 0.2, h * 0.18, er, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(w * 0.2 - er * 0.2, h * 0.18 - er * 0.3, er * 0.45, 0, TAU); c.fill();
+      c.fillStyle = '#17181e'; c.beginPath(); c.moveTo(0, groundY); for (let x = 0; x <= w; x += 30) c.lineTo(x, groundY - 8 - hs(x * 0.021) * 26); c.lineTo(w, groundY); c.fill();
+    }
+  }
+  /** Perfil del terreno: más pendiente y más rocas según la zona. cr = {slope, rocks}. */
+  function ground(c, w, h, gY, scen, cr, tx, t, lights) {
+    const mars = scen === 'mars', col = mars ? ['#9a5230', '#6e3820', '#c27a47'] : ['#686970', '#44454b', '#8d8e96'];
+    const sl = (cr.slope || 0) * 0.018, amp = 4 + (cr.terrain || 0) * 5, yAt = (x) => { const px = x / w, flat = Math.abs(px - tx) < 0.07 ? 0 : 1; return gY + (px - tx) * sl * h * flat + Math.sin(x * 0.017 + 2) * amp * flat + hs(Math.floor(x / 14)) * amp * 0.6 * flat; };
+    c.fillStyle = col[0]; c.beginPath(); c.moveTo(0, h); for (let x = 0; x <= w + 8; x += 8) c.lineTo(x, yAt(x)); c.lineTo(w, h); c.closePath(); c.fill();
+    c.fillStyle = col[1]; c.beginPath(); c.moveTo(0, h); for (let x = 0; x <= w + 8; x += 8) c.lineTo(x, yAt(x) + 26 + hs(x * 0.01) * 14); c.lineTo(w, h); c.fill();
+    c.strokeStyle = col[2]; c.lineWidth = 2; c.beginPath(); for (let x = 0; x <= w + 8; x += 8) x ? c.lineTo(x, yAt(x)) : c.moveTo(x, yAt(x)); c.stroke();
+    // cráteres (Luna) o dunas (Marte)
+    if (mars) { c.fillStyle = 'rgba(230,170,110,.25)'; for (let i = 0; i < 5; i++) { const x = hs(i * 4.4) * w; c.beginPath(); c.ellipse(x, yAt(x) + 8, 60 + hs(i) * 50, 8, 0, Math.PI, 0); c.fill(); } }
+    else { c.fillStyle = 'rgba(0,0,0,.28)'; for (let i = 0; i < 5; i++) { const x = hs(i * 4.4 + 2) * w; if (Math.abs(x / w - tx) < 0.1) continue; c.beginPath(); c.ellipse(x, yAt(x) + 10, 34 + hs(i) * 46, 7, 0, 0, TAU); c.fill(); } }
+    // rocas según la zona
+    const nR = 5 + (cr.rocks || 0) * 9;
+    for (let i = 0; i < nR; i++) { const x = hs(i * 6.7 + 3) * w; if (Math.abs(x / w - tx) < 0.06) continue; const r = 5 + hs(i * 3.3) * (8 + (cr.rocks || 0) * 5), y = yAt(x); c.fillStyle = col[1]; c.beginPath(); c.moveTo(x - r, y + 2); c.lineTo(x - r * 0.5, y - r * 0.8); c.lineTo(x + r * 0.3, y - r); c.lineTo(x + r, y + 2); c.closePath(); c.fill(); c.fillStyle = col[2]; c.globalAlpha = 0.5; c.beginPath(); c.moveTo(x - r * 0.5, y - r * 0.8); c.lineTo(x + r * 0.3, y - r); c.lineTo(x + r * 0.1, y - r * 0.3); c.closePath(); c.fill(); c.globalAlpha = 1; }
+    // plataforma de aterrizaje: aro y balizas
+    const px = tx * w, py = gY; c.fillStyle = 'rgba(255,255,255,.1)'; c.beginPath(); c.ellipse(px, py + 3, w * 0.07, 7, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(111,255,160,.8)'; c.lineWidth = 2; c.beginPath(); c.ellipse(px, py + 3, w * 0.07, 7, 0, 0, TAU); c.stroke();
+    for (const sg of [-1, 1]) { const lx = px + sg * w * 0.075; c.fillStyle = Math.sin(t * 5 + sg) > 0 ? '#6fffa0' : '#2d6a46'; c.beginPath(); c.arc(lx, py + 1, 3.4, 0, TAU); c.fill(); }
+    return yAt;
+  }
+
+  /** Descenso: st = {scen, a (altura 1→0), x (px), flame, heat, chute, comp, shake, cr, tx, parts, t, P(polvo), wind}. Devuelve donde apoya la nave. */
+  function descent(c, w, h, st) {
+    const t = st.t, a = cl(st.a, 0, 1), gY = h * 0.82 + h * 0.5 * Math.pow(a, 1.0), feet = h * 0.34 + (h * 0.82 - h * 0.34) * Math.pow(1 - a, 1.25);
+    c.save(); if (st.shake) c.translate((Math.random() - 0.5) * st.shake, (Math.random() - 0.5) * st.shake);
+    sky(c, w, h, gY, st.scen, t, a);
+    if (st.scen === 'mars' && st.wind) { c.strokeStyle = 'rgba(255,210,170,.18)'; c.lineWidth = 1.5; for (let i = 0; i < 22; i++) { const x = ((hs(i) * w + t * 220 * (0.5 + hs(i + 3))) % (w + 120)) - 60, y = hs(i * 2.2) * gY; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 40 + hs(i) * 30, y); c.stroke(); } }
+    const yAt = ground(c, w, h, gY, st.scen, st.cr || {}, st.tx, t);
+    const sc = Math.max(0.7, h / 480), footY = feet;
+    const o = { t, scen: st.scen, legs: st.legs == null ? 1 : st.legs, flame: st.flame, heat: st.heat, chute: st.chute, comp: st.comp, beacon: st.parts && st.parts.beacon, hatch: 0 };
+    shipSide(c, st.x, footY, sc, o);
+    dustDraw(c, st.P || [], st.scen);
+    c.restore();
+    return { gY, footY, yAt, sc };
+  }
+
+  /* ---------- Despliegue ---------- */
+  const MW = { hab: 4.2, sci: 3.6, tech: 3.4 }, MH = { hab: 2.7, sci: 2.3, tech: 2.2 };
+  function module_(c, x, y, u, kind, on, t) {
+    const w = MW[kind], hh = MH[kind];
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(x, y, w * u * 0.6, u * 0.3, 0, 0, TAU); c.fill();
+    const g = c.createLinearGradient(0, y - hh * u, 0, y); g.addColorStop(0, kind === 'hab' ? '#9fb4e6' : kind === 'sci' ? '#e6ecf5' : '#aab0be'); g.addColorStop(1, kind === 'hab' ? '#5a6fa8' : kind === 'sci' ? '#9aa6bb' : '#656c7d');
+    c.fillStyle = g; rr(c, x - w * u / 2, y - hh * u, w * u, hh * u, u * (kind === 'hab' ? 0.9 : 0.35)); c.fill(); c.strokeStyle = '#3d4458'; c.lineWidth = 1.5; c.stroke();
+    if (kind === 'sci') { c.fillStyle = '#d6dcea'; c.beginPath(); c.ellipse(x, y - hh * u, w * u * 0.28, u * 0.8, 0, Math.PI, 0); c.fill(); c.stroke(); }
+    if (kind === 'tech') { c.strokeStyle = '#4b5166'; c.lineWidth = 2; for (let i = 0; i < 3; i++) { const px = x - w * u * 0.3 + i * w * u * 0.3; c.beginPath(); c.moveTo(px, y - hh * u); c.lineTo(px, y - hh * u - u * 0.6); c.stroke(); } }
+    const n = kind === 'hab' ? 3 : 2; for (let i = 0; i < n; i++) { const wx = x - w * u / 2 + (i + 0.5) * (w * u / n); c.fillStyle = on ? 'rgba(255,224,150,' + (0.8 + 0.1 * Math.sin(t * 3 + i)) + ')' : '#16213d'; rr(c, wx - u * 0.3, y - hh * u * 0.72, u * 0.6, u * 0.55, 3); c.fill(); }
+  }
+  function deploy(c, w, h, st) {
+    const t = st.t, p = st.prog, mars = st.scen === 'mars', gY = h * 0.74, u = Math.min(w / 34, h / 15), cx = w * 0.5;
+    sky(c, w, h, gY, st.scen, t, 0.2); ground(c, w, h, gY, st.scen, { slope: 0, rocks: (st.cr && st.cr.rocks) || 0, terrain: 0 }, 0.5, t);
+    if (mars) { c.fillStyle = 'rgba(230,170,120,.12)'; c.fillRect(0, gY - 40, w, 40); }
+    c.lineJoin = 'round';
+    const ex = (a, b) => ease(sub(p[0], a, b)), onP = p[4] > 0.5;
+    // paneles solares: un conjunto de seis que se abre en abanico
+    const sP = ease(p[2]), bx = cx + 8.6 * u;
+    for (let i = 0; i < 6; i++) { const k = ease(sub(sP, i * 0.08, 0.5 + i * 0.08)), px = bx + i * u * 1.02 * k, bw = lerp(u * 0.22, u * 0.94, k), ph = lerp(u * 1.9, u * 0.95, k); c.save(); c.translate(px, gY + u * 0.1); const g = c.createLinearGradient(0, -ph, 0, 0); g.addColorStop(0, onP ? '#3b64c4' : '#243a78'); g.addColorStop(1, '#14224c'); c.fillStyle = g; c.beginPath(); c.moveTo(-bw / 2, 0); c.lineTo(bw / 2, 0); c.lineTo(bw / 2 - u * 0.08 * k, -ph); c.lineTo(-bw / 2 - u * 0.08 * k, -ph); c.closePath(); c.fill(); c.strokeStyle = '#7fa0e8'; c.lineWidth = 1; c.stroke(); if (k > 0.5) { c.beginPath(); c.moveTo(0, 0); c.lineTo(-u * 0.04, -ph); c.stroke(); } c.restore(); }
+    // módulos: salen por las compuertas y se colocan a cada lado de la nave
+    const mk = [['hab', -4.6, 0.0], ['sci', -10.2, 0.12], ['tech', 5.0, 0.06]];
+    const mkPos = mk.map(([kind, dx, dl]) => { const k = ease(sub(p[1], dl, 0.75 + dl * 0.6)); return [kind, lerp(cx + (dx > 0 ? u * 1.2 : -u * 1.2), cx + dx * u, k), k]; });
+    // túneles presurizados
+    const tk = ease(p[5]); if (tk > 0) for (const [a, b] of [[0, 1], [0, 2]]) { const A = mkPos[a][1], B = mkPos[b][1], aw = MW[mkPos[a][0]] * u / 2, bw2 = MW[mkPos[b][0]] * u / 2, sg = B > A ? 1 : -1, x0 = A + sg * aw, x1 = B - sg * bw2, xm = lerp(x0, x1, tk); c.fillStyle = '#7a8397'; c.fillRect(Math.min(x0, xm), gY - u * 1.3, Math.abs(xm - x0), u * 0.9); c.strokeStyle = '#3d4458'; c.lineWidth = 1.5; c.strokeRect(Math.min(x0, xm), gY - u * 1.3, Math.abs(xm - x0), u * 0.9); }
+    // nave (aterrizada, con compuertas abiertas)
+    shipSide(c, cx, gY, u / 21, { t, scen: st.scen, legs: 1, hatch: ex(0, 0.6), lights: true, parts: st.parts, beacon: st.parts && st.parts.beacon });
+    for (const [kind, x, k] of mkPos) if (k > 0.02) module_(c, x, gY, u, kind, onP, t);
+    // cables de energía con pulso viajero
+    if (p[4] > 0) { const k = ease(p[4]); c.lineWidth = 2.5; for (const dx of [-10.2, -4.6, 5.0, 11.4]) { const x1 = cx + dx * u; c.strokeStyle = 'rgba(255,214,90,.4)'; c.beginPath(); c.moveTo(cx, gY + 5); c.lineTo(lerp(cx, x1, k), gY + 5); c.stroke(); const pu = (t * 0.7 + dx * 0.05) % 1; c.fillStyle = '#ffd65a'; c.beginPath(); c.arc(lerp(cx, x1, k * pu), gY + 5, 3, 0, TAU); c.fill(); } }
+    // antena: el mástil sube y el plato se orienta
+    const ak = ease(p[3]); if (ak > 0.01) { const ax = cx + 16 * u, mh = ak * u * 5.5; c.strokeStyle = '#aeb5c6'; c.lineWidth = 3; c.beginPath(); c.moveTo(ax, gY); c.lineTo(ax, gY - mh); c.stroke(); c.save(); c.translate(ax, gY - mh); c.rotate(-0.7 + ak * 0.3); c.fillStyle = '#e1e5ee'; c.beginPath(); c.ellipse(0, 0, u * 1.0 * ak, u * 0.4 * ak, 0, Math.PI, 0); c.fill(); c.strokeStyle = '#6a7186'; c.stroke(); c.restore(); c.fillStyle = Math.sin(t * 4) > 0 ? '#6fffa0' : '#2d6a46'; c.beginPath(); c.arc(ax, gY - mh - 4, 3, 0, TAU); c.fill(); if (ak > 0.95) { c.strokeStyle = 'rgba(111,255,160,.4)'; c.lineWidth = 1.5; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(ax, gY - mh, 14 + ((t * 20 + i * 12) % 36), -1.4, -0.4); c.stroke(); } } }
+    // soporte vital: vapor del módulo habitable y anillo de confirmación
+    if (p[6] > 0) { const hx = mkPos[0][1]; for (let i = 0; i < 6; i++) { const ph = (t * 0.6 + i * 0.17) % 1; c.fillStyle = 'rgba(200,240,255,' + 0.35 * (1 - ph) * p[6] + ')'; c.beginPath(); c.arc(hx + (i - 2.5) * u * 0.4, gY - u * 2.8 - ph * u * 1.8, 3 + ph * 8, 0, TAU); c.fill(); } c.strokeStyle = 'rgba(111,255,160,' + 0.5 * (0.5 + 0.5 * Math.sin(t * 3)) * p[6] + ')'; c.lineWidth = 3; rr(c, hx - MW.hab * u / 2 - 4, gY - MH.hab * u - 4, MW.hab * u + 8, MH.hab * u + 8, u); c.stroke(); }
+    // el rover rueda desde la nave hasta su plataforma, en primer plano
+    const rk = ease(p[7]); { const padX = cx + 2.0 * u, ry = gY + u * 1.15; if (rk > 0.01 || p[7] > 0) { c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.setLineDash([6, 5]); c.strokeRect(padX, ry - u * 0.2, u * 3.6, u * 0.6); c.setLineDash([]); } if (rk > 0.01) { const rx = lerp(cx + u * 0.4, padX + u * 1.8, rk); c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(rx, ry + 2, u * 0.95, u * 0.16, 0, 0, TAU); c.fill(); c.fillStyle = '#d9a441'; rr(c, rx - u * 0.8, ry - u * 0.8, u * 1.6, u * 0.55, 4); c.fill(); c.fillStyle = '#8a6a2b'; c.fillRect(rx - u * 0.2, ry - u * 1.15, u * 0.4, u * 0.4); c.fillStyle = '#20263a'; for (const dx of [-0.52, 0.52]) { c.beginPath(); c.arc(rx + dx * u, ry - u * 0.2, u * 0.27, 0, TAU); c.fill(); } } }
+    // verificación: barrido y marcas
+    const vk = p[8]; if (vk > 0) { const sx = lerp(cx - u * 13, cx + u * 13, ease(sub(vk, 0, 0.7))); c.fillStyle = 'rgba(111,255,160,.16)'; c.fillRect(sx - 6, gY - u * 7, 12, u * 7.5); c.strokeStyle = 'rgba(111,255,160,.9)'; c.lineWidth = 2; c.beginPath(); c.moveTo(sx, gY - u * 7); c.lineTo(sx, gY + u * 0.5); c.stroke();
+      c.font = 'bold ' + Math.round(u * 0.9) + 'px system-ui'; c.textAlign = 'center'; for (const m of [mkPos[0][1], mkPos[1][1], mkPos[2][1], cx]) if (sx > m) { c.fillStyle = '#6fffa0'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText('✔', m, gY - u * 4.6); c.fillText('✔', m, gY - u * 4.6); } }
+    if (mars) { c.strokeStyle = 'rgba(255,210,170,.16)'; c.lineWidth = 1.5; for (let i = 0; i < 16; i++) { const x = ((hs(i) * w + t * 140 * (0.5 + hs(i + 3))) % (w + 100)) - 50, y = gY - hs(i * 2.2) * u * 6; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 36, y); c.stroke(); } }
+    dustDraw(c, st.P || [], st.scen);
+  }
+  return { shipSide, shipWorld, planet, approach, descent, deploy, dustNew, dustEmit, dustStep, dustDraw, ease, sub, hs };
 })();
 
 /* =====================================================================
@@ -4685,7 +5117,7 @@ const World = (function () {
     const S0 = SHELTER;
     for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
     for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
-    samples = []; Field.init(scen);
+    samples = []; Field.init(scen, buildPad);
     // Terreno exterior
     scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
     props = scenery.props;
@@ -4765,8 +5197,9 @@ const World = (function () {
     return true;
   }
   const BOTCOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
-  function init(sc) {
-    scen = sc; build(); staticCv = null; mapCv = null;
+  let buildPad = null;
+  function init(sc, pad) {
+    scen = sc; buildPad = pad || (curS && curS.scen === sc ? Land.pad(curS) : null) || null; build(); staticCv = null; mapCv = null;
     player.x = Layout.START[0]; player.y = Layout.START[1]; player.dir = 2; player.role = 'commander'; marker = null;
     bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => mkBot(role, HOME[role][0], i));
     airlock = { st: 'in', t: 0 }; parts = []; camInit = false; veilCache = { room: null, d: null };
@@ -4992,6 +5425,7 @@ const World = (function () {
     for (const p of Field.G.pois) { const d = Math.hypot(px - p.x, py - p.y); if (d < Math.max(3.4, p.r * 0.55)) cons(d + 0.8, { id: 'x:poi', verb: 'investigate', icon: '🔭', p }); }
     for (const q of Field.G.rep) { const d = Math.hypot(px - q.x, py - q.y); if (d < 2.4) cons(d, { id: 'x:rep', verb: 'activate', icon: '📡', q }); }
     for (const q of Field.G.shel) { const d = Math.hypot(px - q.x, py - (q.y + 2.6)); if (d < 2.4) cons(d, { id: 'x:shel', verb: 'enter', icon: '🛡️', q }); }
+    if (Field.ship && curS && curS.land && curS.land.done) { const d = Math.hypot(px - Field.ship.x, py - (Field.ship.y + 2.4)); if (d < 3.6) cons(d, { id: 'x:ship', verb: 'inspect', icon: '🚀' }); }
     return best;
   }
   function exCtx() {
@@ -5045,6 +5479,7 @@ const World = (function () {
     if (mapCv) { c.globalAlpha = 0.95; c.drawImage(mapCv, X(0), Y(0), W * s, H * s); c.globalAlpha = 1; }
     for (const p of Field.G.pois) { const known = E.disc[p.id] || E.visited[p.id] || Math.hypot(player.x - p.x, player.y - p.y) < 45; if (!known) continue; c.fillStyle = E.visited[p.id] ? '#6fffa0' : '#ffd36b'; c.save(); c.translate(X(p.x), Y(p.y)); c.rotate(0.785); c.fillRect(-4, -4, 8, 8); c.restore(); }
     for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; c.fillStyle = '#9dffe3'; c.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
+    if (Field.ship) { c.fillStyle = '#e8ecf5'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X(Field.ship.x), Y(Field.ship.y) - 6); c.lineTo(X(Field.ship.x) + 5, Y(Field.ship.y) + 4); c.lineTo(X(Field.ship.x) - 5, Y(Field.ship.y) + 4); c.closePath(); c.fill(); c.stroke(); }
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
@@ -5794,6 +6229,7 @@ const Game = (function () {
     if (k === 'cm.sent') return [es ? 'Mensaje enviado' : 'Message sent', (es ? 'Tardará ' : 'Takes ') + fmt(p.ow) + (es ? ' h en llegar a la Tierra (simulado).' : ' h to reach Earth (simulated).')];
     if (k === 'cm.recv') return [es ? 'Respuesta de la Tierra' : 'Reply from Earth', (es ? 'Ida y vuelta: ' : 'Round trip: ') + fmt(p.rt) + ' h'];
     if (k.startsWith('ex.')) return exLogText(e);
+    if (k.startsWith('land.')) return k === 'land.arr' ? [lt('Llegada y aterrizaje completados', 'Arrival and landing complete'), [tr(Land.zoneOf(S.scen, p.zone).n), p.rev ? '💧 ' + p.rev : '', p.mat ? (p.mat > 0 ? '+' : '') + p.mat + ' ' + lt('materiales', 'materials') : ''].filter(Boolean).join(' · ')] : [lt('Nave reparada', 'Ship repaired'), tr(Land.PART_T[p.part])];
     if (k.startsWith('el.')) return elLogText(e);
     if (k === 'm.start') return [(es ? 'Misión iniciada: ' : 'Mission started: ') + tr(DATA.MIS[p.id].t), ''];
     if (k === 'm.done') return [(es ? 'Misión completada: ' : 'Mission completed: ') + tr(DATA.MIS[p.id].t), '★'.repeat(p.stars)];
@@ -6073,7 +6509,7 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
+    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; if (!S.land.done) { Store.del('run'); return false; } World.init(S.scen, Land.pad(S)); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
     beginPlay();
     return true;
   }
@@ -6083,7 +6519,13 @@ const Game = (function () {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp }); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
     settings.scen = scen; settings.mode = S.mode; settings.diff = S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = S.mode === 'junior'; Store.set('settings', settings);
-    World.init(scen); stats.runs++; Store.set('stats', stats);
+    // La llegada se juega una sola vez al empezar. Los atajos de prueba (skipCamp / skipLanding) saltan directo a la base ya desplegada.
+    if (opts.skipCamp || opts.skipLanding || /[?&]quick\b/.test(location.search)) { Land.ensure(S); finishNewRun(scen); return; }
+    popAll(); clearLayer(); startLanding(S);
+  }
+  function finishNewRun(scen, inited) {
+    if (!inited) World.init(scen, Land.pad(S));
+    stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
   }
@@ -6108,7 +6550,7 @@ const Game = (function () {
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
-        btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
+        btn('📘 ' + _('manual'), manual), btn('🛰️ ' + lt('Archivo de misión: ver la llegada', 'Mission file: watch the arrival'), replayArrival), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
@@ -6156,7 +6598,7 @@ const Game = (function () {
     push(panel('⏸ ' + _('paused'), h('div', { class: 'menu-grid' },
       btn('▶ ' + _('resume'), () => { pop(); }, 'primary', { autofocus: true }),
       btn('💾 ' + _('save'), () => { saveRun(); toast(_('saved'), '', 'ok'); }),
-      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel),
+      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel), btn('🛰️ ' + lt('Ver la llegada otra vez', 'Watch the arrival again'), replayArrival),
       btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }),
       btn('🏠 ' + _('mainMenu'), () => { saveRun(); mainMenu(); }))), { onclose: () => { paused = false; updateHud(); } });
   }
@@ -7144,6 +7586,7 @@ const Game = (function () {
       // rover y objetivo de la expedición (los que quedan fuera del plano se señalan en el borde)
       if (S.ex) {
         const edge = (px, py) => { const mx = 14, ex = Math.max(mx, Math.min(CW - mx, px)), ey = Math.max(mx, Math.min(CH - mx, py)); return [ex, ey, ex !== px || ey !== py]; };
+        if (S.land && S.land.ship) { const sp = edge(X(S.land.ship.x), Y(S.land.ship.y)); x.save(); x.translate(sp[0], sp[1]); x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -11); x.lineTo(7, 6); x.lineTo(-7, 6); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#ff8a3d'; x.fillRect(-7, 6, 14, 3); x.restore(); x.font = '700 11px system-ui'; x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; const nl = LANG === 'es' ? 'Nave' : 'Ship'; x.strokeText(nl, sp[0], sp[1] - 13); x.fillText(nl, sp[0], sp[1] - 13); }
         const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y));
         x.save(); x.translate(rp[0], rp[1]); x.rotate(rp[2] ? Math.atan2(Y(R0.y) - CH / 2, X(R0.x) - CW / 2) : R0.a); x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-9, -6, 18, 12); x.strokeRect(-9, -6, 18, 12); x.fillStyle = '#fff'; x.fillRect(3, -3, 5, 6); x.restore();
         x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; x.strokeText('Rover', rp[0], rp[1] - 10); x.fillText('Rover', rp[0], rp[1] - 10);
@@ -7562,6 +8005,7 @@ const Game = (function () {
   function selectTool(k) { ex().tool = k; exHud(); }
   function exPrompt(n) {
     const E = ex(), T = { 'x:board': XT('Subir al rover', 'Board the rover'), 'x:exit': XT('Bajar del rover', 'Leave the rover'), 'x:store': XT('Abrir compartimento', 'Open compartment'), 'x:poi': XT('Investigar · ', 'Investigate · ') + (n.p ? xt(n.p.n) : ''), 'x:rep': (E.rep[n.q && n.q.id] ? XT('Repetidor activo', 'Relay online') : XT('Activar repetidor de radio', 'Activate radio relay')), 'x:shel': XT('Entrar al refugio', 'Enter the shelter'), 'x:shelx': XT('Salir del refugio', 'Leave the shelter') };
+    T['x:ship'] = XT('Revisar la nave', 'Inspect the ship');
     return n.id === 'x:site' ? XT('Recoger · ', 'Collect · ') + xt(n.s.name) : T[n.id];
   }
   function exCard(n) {
@@ -7580,6 +8024,7 @@ const Game = (function () {
     else if (n.id === 'x:shel') body = h('div', null, h('b', null, '🛡️ ' + XT('Refugio blindado ', 'Shielded shelter ') + n.q.id.slice(1)), h('div', { class: 'small' }, XT('Dentro la radiación baja un 92 % y hay un depósito de emergencia (+40 % de O₂ y energía, 1 vez por salida).', 'Inside, radiation drops 92% and there is an emergency cache (+40% O₂ and power, once per outing).')));
     else if (n.id === 'x:store') body = h('div', null, h('b', null, '📦 ' + XT('Compartimento del rover', 'Rover compartment')), h('div', { class: 'small' }, Ex.storage(S).list.length + '/' + Ex.CAP.slots + XT(' muestras guardadas. E para abrir.', ' samples stored. E to open.')));
     else if (n.id === 'x:board') body = h('div', null, h('b', null, '🚙 ' + XT('Rover explorador R-1', 'Explorer rover R-1')), h('div', { class: 'small' }, XT('Batería ', 'Battery ') + Math.round(S.sys.rover.batt) + '% · ' + (E.suit.on ? XT('E para subir.', 'E to board.') : XT('Necesitas el traje puesto.', 'You need the suit on.'))));
+    else if (n.id === 'x:ship') body = shipCard();
     else { cardEl.classList.add('hidden'); return; }
     cardEl.replaceChildren(body); cardEl.classList.remove('hidden');
   }
@@ -7601,6 +8046,7 @@ const Game = (function () {
       case 'x:rep': { const r = Ex.activateRepeater(S, n.q.id); if (r === 'on') toast(XT('Ya está activo', 'Already online'), '', 'info'); else Sfx.play('ok'); lastCard = ''; break; }
       case 'x:shel': { if (!E.suit.on) return; if (World.enterShelter(n.q.id)) shelterPanel(n.q); break; }
       case 'x:shelx': World.leaveShelter(); lastCard = ''; break;
+      case 'x:ship': shipPanel(); break;
     }
   }
   function shelterPanel(q) {
@@ -7953,6 +8399,296 @@ const Game = (function () {
   }
   function elAttach() { if (erEl) { ELK.open = false; erEl.classList.add('hidden'); $('#app').classList.remove('er-on'); cancelAnimationFrame(ELK.raf); } ELK.sub = null; ELK.last = ''; if (S) elHudBadge(); }
   const elDebug = { attach: elAttach, toggle: elToggle, send: elSend, render: elRender, speak: elSpeak, frame: elFrame, hud: elHudBadge, accept: (id) => { const r = EL.accept(S, id); if (r.ok) elAfterSend(r.msg); return r; }, get open() { return ELK.open; }, get sub() { return ELK.sub; }, get el() { return erEl; }, logToRadio: elLogToRadio };
+  /* =====================================================================
+     LLEGADA Y ATERRIZAJE: aproximación → zona → revisión de la nave →
+     descenso → despliegue de la base. El jugador decide (zona, secuencia,
+     reparación, nivelado, prioridad) y las decisiones tienen consecuencias
+     pequeñas que nunca bloquean la campaña. "Omitir" acelera la animación
+     (solo disponible tras verla una vez); las decisiones siguen esperando.
+     ===================================================================== */
+  const LS = { on: false, sp: 1, ph: null, t: 0, replay: false, S: null, done: null, sel: null };
+  let landEl = null, landCv = null, landCx = null, landUi = null, landSkipB = null, landRaf = 0, landLast = 0;
+  const lt = (es, en) => (LANG === 'es' ? es : en);
+  const lsay = (text) => { if (LS.sp <= 3) narrate(text); };
+  const landSkippable = () => !!settings.landSeen || LS.replay;
+  function landMount() {
+    if (landEl) return;
+    landCv = h('canvas', { id: 'landcv', 'aria-label': 'Llegada y aterrizaje' });
+    landUi = h('div', { id: 'landui' });
+    landSkipB = h('button', { id: 'landSkip', class: 'btn sm', type: 'button', onclick: () => { Sfx.play('click'); LS.sp = 10; Voice.stop(); landSkipB.classList.add('hidden'); } }, '⏩ ' + lt('Omitir (acelerar)', 'Skip (fast-forward)'));
+    landEl = h('div', { id: 'landw', class: 'hidden' }, landCv, landUi, landSkipB);
+    document.getElementById('app').append(landEl); landCx = landCv.getContext('2d');
+    window.addEventListener('resize', landResize);
+    document.addEventListener('keydown', (e) => { if (!LS.on || !LS.ph) return; if (e.key === 'Escape' && landSkippable() && LS.ph.skippable) { landSkipB.click(); e.preventDefault(); } else if (LS.ph.key) LS.ph.key(e); });
+  }
+  function landResize() { if (!landCv) return; landCv.width = Math.floor(innerWidth * dpr); landCv.height = Math.floor(innerHeight * dpr); }
+  function landTick(ts) {
+    if (!LS.on) return;
+    const dt = Math.min(0.05, (ts - (landLast || ts)) / 1000) * LS.sp; landLast = ts; LS.t += dt;
+    if (LS.ph) { LS.ph.update && LS.ph.update(dt); const c = landCx, w = landCv.width, hh = landCv.height; c.setTransform(1, 0, 0, 1, 0, 0); LS.ph.draw(c, w, hh, LS.t); }
+    landRaf = requestAnimationFrame(landTick);
+  }
+  /** Cambia de fase: limpia la interfaz y arranca la nueva. */
+  function landGo(ph) {
+    LS.ph = ph; LS.t = 0; landUi.innerHTML = ''; ph.enter && ph.enter();
+    landSkipB.classList.toggle('hidden', !(landSkippable() && ph.skippable));
+  }
+  const lpanel = (...kids) => { const p = h('div', { class: 'lpanel' }, ...kids); landUi.append(p); return p; };
+  const lcard = (cls, ...kids) => { const p = h('div', { class: 'lcard ' + (cls || '') }, ...kids); landUi.append(p); return p; };
+  const dots = (n, max) => h('span', { class: 'dots', 'aria-label': n + '/' + max }, Array.from({ length: max }, (_, i) => h('i', { class: i < n ? 'on' : '' })));
+  const eff = (S, z) => Land.effects(z, LANG === 'es', MODE === 'adv');
+
+  /** Inicia la secuencia. replay=true: vista previa sin cambiar la partida. */
+  function startLanding(S, o) {
+    o = o || {}; landMount(); landResize();
+    LS.on = true; LS.S = S; LS.replay = !!o.replay; LS.sp = 1; LS.after = o.after || null; LS.sel = null; LS.lev = null; LS.d = null; LS.sum = null;
+    if (!LS.replay) { S.land = Land.fresh(S); } else { Land.ensure(S); }
+    landEl.classList.remove('hidden'); $('#hud').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#mini').classList.add('hidden');
+    landLast = 0; cancelAnimationFrame(landRaf); landRaf = requestAnimationFrame(landTick);
+    landGo(phArrive());
+  }
+  function landClose() { LS.on = false; cancelAnimationFrame(landRaf); Voice.stop(); if (landEl) { landEl.classList.add('hidden'); landUi.innerHTML = ''; } LS.ph = null; }
+  function landAbort() { landClose(); mainMenu(); }
+
+  /* ---------- 1 · Aproximación ---------- */
+  function phArrive() {
+    const S = LS.S, sc = S.scen, D = Land.DEST[sc], zs = Land.zoneList(sc);
+    const zref = LS.replay && Land.zone(S) ? Land.zone(S) : zs[0], mark = [-0.1 + (zref.x - 60) / 400, -0.74 + (zref.y - 110) / 300];
+    const DUR = 17;
+    return {
+      skippable: true,
+      enter() {
+        const es = LANG === 'es';
+        lcard('', h('b', null, '🛰️ ' + tr(D.n)), h('div', { class: 'small muted' }, tr(D.sub)),
+          h('table', null, h('tbody', null, D.facts.map((f) => h('tr', null, h('th', null, tr(f[0])), h('td', null, typeof f[1] === 'string' ? f[1] : tr(f[1])))))),
+          h('p', { class: 'small' }, (MODE === 'adv' ? tr(D.brief) : (es ? 'Llegamos. Vas a elegir dónde instalar la colonia, bajar la nave y montar la base.' : 'We have arrived. You will choose where to build the colony, land the ship and set up the base.'))));
+        this.btn = btn('🗺️ ' + lt('Elegir zona de aterrizaje', 'Choose landing zone'), () => { LS.replay ? landGo(phDescent()) : landGo(phZone()); }, 'primary lbtn hidden', { autofocus: true });
+        landUi.append(this.btn);
+        lsay(tr(D.brief)); Sfx.play('info');
+      },
+      update() { if (LS.t > 5 && this.btn.classList.contains('hidden')) this.btn.classList.remove('hidden'); if (LS.t > DUR && !LS.replay && LS.sp > 3) this.btn.click(); },
+      draw(c, w, hh, t) { LandArt.approach(c, w, hh, t, Math.min(1, t / DUR), sc, mark); landTitle(c, w, hh, lt('Aproximación', 'Approach')); const alt = Math.round(Math.max(0, 1 - t / DUR) * 380 + 20); hud(c, w, hh, [[lt('Distancia a la superficie', 'Distance to surface'), alt + ' km'], [lt('Velocidad', 'Speed'), (Math.max(0.3, 1.6 * (1 - t / DUR * 0.7))).toFixed(1) + ' km/s']]); }
+    };
+  }
+  function landTitle(c, w, hh, s) { c.lineJoin = 'round'; c.font = 'bold ' + Math.round(Math.min(hh * 0.034, w * 0.04)) + 'px system-ui'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.85)'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 4; c.strokeText(s.toUpperCase(), w / 2, hh * 0.07); c.fillText(s.toUpperCase(), w / 2, hh * 0.07); }
+  function hud(c, w, hh, rows) {
+    const fs = Math.round(hh * 0.024); c.font = '600 ' + fs + 'px ui-monospace,monospace'; c.textAlign = 'left';
+    const lw = Math.max(...rows.map((r) => c.measureText(r[0] + ': ').width)), vw = Math.max(...rows.map((r) => c.measureText(String(r[1])).width));
+    rows.forEach((r, i) => { const y = hh * 0.13 + i * fs * 1.5; c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(w * 0.03 - 8, y - fs, lw + vw + 20, fs * 1.4); c.fillStyle = '#9fe8ff'; c.fillText(r[0] + ': ', w * 0.03, y); c.fillStyle = '#fff'; c.fillText(String(r[1]), w * 0.03 + lw, y); });
+  }
+
+  /* ---------- 2 · Selección de la zona ---------- */
+  function phZone() {
+    const S = LS.S, sc = S.scen, zs = Land.zoneList(sc), mars = sc === 'mars';
+    const P = { x: (x) => x, y: (y) => y };
+    let panel0 = null;
+    const pick = (id) => { LS.sel = id; Sfx.play('click'); build(); };
+    const build = () => {
+      const z = LS.sel && Land.zoneOf(sc, LS.sel), es = LANG === 'es';
+      panel0.innerHTML = '';
+      panel0.append(h('h3', { style: { margin: '0 0 4px' } }, '🗺️ ' + lt('Zonas de aterrizaje', 'Landing zones')),
+        h('p', { class: 'small muted' }, MODE === 'adv' ? lt('Compara terreno, pendiente, rocas, exposición, recursos, comunicaciones y espacio libre. Ninguna opción bloquea la campaña: cada una cambia el reparto de riesgos.', 'Compare terrain, slope, rocks, exposure, resources, comms and free space. No option blocks the campaign: each one shifts the trade-offs.') : lt('Toca una zona del mapa. Cada una tiene ventajas y problemas. No hay una “mala” elección.', 'Tap a zone on the map. Each has pros and cons. There is no “wrong” choice.')),
+        h('div', { class: 'row', style: { flexWrap: 'wrap', gap: '6px' } }, zs.map((q, i) => h('button', { class: 'choice', type: 'button', 'aria-pressed': LS.sel === q.id ? 'true' : 'false', style: { flex: '1 1 160px' }, onclick: () => pick(q.id) }, h('b', null, (i + 1) + ' · ' + tr(q.n)), h('div', { class: 'small muted' }, tr(q.t))))));
+      if (z) {
+        panel0.append(h('p', null, tr(z.d)),
+          h('table', null, h('tbody', null, Land.ATTR.map(([k, nm, ic]) => h('tr', null, h('th', null, ic + ' ' + tr(nm)), h('td', null, dots(z.c[k] + 1, 4)), h('td', { class: 'small' }, tr(Land.ATTR_LBL[k][z.c[k]])))))),
+          h('div', { class: 'small', style: { margin: '8px 0' } }, eff(S, z).map((l) => h('div', null, l))),
+          btn('✔ ' + lt('Confirmar zona', 'Confirm zone'), () => confirm0(z), 'primary', { autofocus: true }));
+      } else panel0.append(h('p', { class: 'tag info' }, lt('Elige una zona para ver sus detalles.', 'Pick a zone to see its details.')));
+    };
+    const confirm0 = (z) => { Land.pick(S, z.id); S.land.stage = 'check'; Sfx.play('ok'); lsay(lt('Zona confirmada: ' + tr(z.n) + '.', 'Zone confirmed: ' + tr(z.n) + '.')); landGo(phCheck()); };
+    const X0 = -14, X1 = 146, Y0 = 84, Y1 = 134;
+    const narrow = () => innerWidth < 700, mapR = (w, hh) => (narrow() ? { x: w * 0.06, y: hh * 0.16, w: w * 0.88, h: hh * 0.3 } : { x: w * 0.03, y: hh * 0.14, w: w - Math.min(450 * dpr, w * 0.46) - w * 0.06, h: hh * 0.74 });
+    const at = (w, hh, x, y) => { const m = mapR(w, hh); return [m.x + ((x - X0) / (X1 - X0)) * m.w, m.y + ((y - Y0) / (Y1 - Y0)) * m.h]; };
+    return {
+      key(e) { const n = +e.key; if (n >= 1 && n <= zs.length) pick(zs[n - 1].id); },
+      enter() { panel0 = lpanel(); build(); lsay(MODE === 'adv' ? lt('Elige la zona de aterrizaje. Compara pendiente, rocas, exposición, comunicaciones y recursos.', 'Choose the landing zone. Compare slope, rocks, exposure, comms and resources.') : lt('Elige dónde aterrizar. Toca una zona del mapa.', 'Choose where to land. Tap a zone on the map.')); },
+      draw(c, w, hh, t) {
+        c.fillStyle = mars ? '#7c3e22' : '#4a4b52'; c.fillRect(0, 0, w, hh);
+        for (let i = 0; i < 240; i++) { const x = LandArt.hs(i) * w, y = LandArt.hs(i * 2 + 1) * hh; c.fillStyle = 'rgba(' + (mars ? '220,150,100' : '200,200,210') + ',' + (0.04 + 0.08 * LandArt.hs(i * 3)) + ')'; c.beginPath(); c.arc(x, y, 3 + LandArt.hs(i * 5) * 16 * dpr, 0, 7); c.fill(); }
+        const b0 = at(w, hh, 0, Y0), b1 = at(w, hh, 136, Y0 - 12), bt = mapR(w, hh).y - hh * 0.05; c.fillStyle = 'rgba(30,40,70,.9)'; c.fillRect(b0[0], bt, b1[0] - b0[0], b0[1] - bt); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.strokeRect(b0[0], bt, b1[0] - b0[0], b0[1] - bt);
+        c.fillStyle = '#9fe8ff'; c.font = 'bold ' + Math.round(hh * 0.024) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🏗 ' + lt('Zona de la base', 'Base area'), (b0[0] + b1[0]) / 2, bt + (b0[1] - bt) / 2 + 5);
+        const ant = at(w, hh, 68, Y0); c.strokeStyle = 'rgba(111,255,160,.4)'; c.setLineDash([6, 6]); for (const z of zs) { const a = at(w, hh, z.x, z.y); c.beginPath(); c.moveTo(ant[0], ant[1]); c.lineTo(a[0], a[1]); c.stroke(); } c.setLineDash([]);
+        landTitle(c, w, hh, lt('Mapa de zonas de aterrizaje', 'Landing zone map'));
+        zs.forEach((z, i) => {
+          const [x, y] = at(w, hh, z.x, z.y), sel = LS.sel === z.id, mr = mapR(w, hh), R = Math.min(hh * 0.085, mr.h * 0.2, mr.w * 0.09), f = Land.fx(z.c), fs = Math.min(hh * 0.026, w * 0.032);
+          c.fillStyle = sel ? 'rgba(111,255,160,.22)' : 'rgba(255,255,255,.1)'; c.beginPath(); c.arc(x, y, R, 0, 7); c.fill(); c.strokeStyle = sel ? '#6fffa0' : 'rgba(255,255,255,.55)'; c.lineWidth = sel ? 4 : 2; c.stroke();
+          for (let k = 0; k < z.c.rocks * 3 + 2; k++) { const a = LandArt.hs(i * 31 + k) * 6.28, d = R * (0.2 + 0.7 * LandArt.hs(i * 13 + k * 7)); c.fillStyle = 'rgba(0,0,0,.55)'; c.beginPath(); c.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 2 + dpr * LandArt.hs(k + i), 0, 7); c.fill(); }
+          if (z.c.slope) { c.strokeStyle = 'rgba(255,214,90,.6)'; c.lineWidth = 1.5; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(x - R * 0.7, y + k * R * 0.28); c.lineTo(x + R * 0.7, y + k * R * 0.28 - z.c.slope * 4); c.stroke(); } }
+          if (z.c.res) { c.fillStyle = '#7fd4ff'; c.font = Math.round(R * 0.5) + 'px system-ui'; c.textAlign = 'center'; c.fillText('💧'.repeat(z.c.res), x, y + R * 0.2); }
+          if (z.c.expo >= 2) { c.strokeStyle = 'rgba(255,170,40,.8)'; c.setLineDash([3, 4]); c.beginPath(); c.arc(x, y, R * 1.18, 0, 7); c.stroke(); c.setLineDash([]); }
+          c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 4; c.font = 'bold ' + Math.round(fs) + 'px system-ui'; c.textAlign = 'center'; const up = i % 2 === 1, ly = up ? y - R - fs * 0.9 - fs * 1.2 : y + R + fs * 1.3, lb = (i + 1) + ' · ' + tr(z.n); c.strokeText(lb, x, ly); c.fillText(lb, x, ly);
+          c.font = Math.round(fs * 0.8) + 'px system-ui'; c.fillStyle = '#cfe9ff'; c.strokeText('📡 ' + Math.round(f.sig * 100) + '%', x, ly + fs * 1.1); c.fillText('📡 ' + Math.round(f.sig * 100) + '%', x, ly + fs * 1.1);
+        });
+        c.font = Math.round(Math.min(hh * 0.02, w * 0.028)) + 'px system-ui'; c.textAlign = 'left'; c.fillStyle = '#fff'; if (!narrow()) c.fillText('💧 ' + lt('recursos', 'resources') + '   ⚠ ' + lt('línea discontinua naranja: expuesta', 'dashed orange: exposed') + '   ═ ' + lt('rayas amarillas: pendiente', 'yellow lines: slope') + '   ● ' + lt('rocas', 'rocks'), w * 0.03, hh * 0.96);
+      },
+      click(e) { /* selección por el mapa */ }
+    };
+  }
+
+  /* ---------- 3 · Revisión de la nave ---------- */
+  function phCheck() {
+    const S = LS.S, L = S.land, z = Land.zone(S), es = LANG === 'es';
+    let scan = 0, p0 = null;
+    const render = () => {
+      p0.innerHTML = '';
+      const warn = Land.warnParts(S);
+      p0.append(h('h3', { style: { margin: '0 0 4px' } }, '🔧 ' + lt('Revisión de la nave', 'Ship check')),
+        h('p', { class: 'small muted' }, MODE === 'adv' ? lt('Diagnóstico previo al descenso. Una pieza en observación no impide aterrizar, pero deja secuelas medibles. Valores didácticos.', 'Pre-descent diagnostics. A part under watch does not prevent landing but leaves measurable effects. Educational values.') : lt('Revisamos la nave antes de bajar. Si algo está en amarillo, puedes arreglarlo ahora.', 'We check the ship before going down. If something is yellow you can fix it now.')),
+        h('table', null, h('tbody', null, Land.PARTS.map((k, i) => { const st = scan > i ? L.parts[k] : null; return h('tr', null, h('th', null, tr(Land.PART_T[k])), h('td', null, st ? tag(st === 'ok' ? '✔ ' + lt('Correcto', 'OK') : '⚠ ' + lt('En observación', 'Under watch'), st === 'ok' ? 'ok' : 'warn') : h('span', { class: 'muted small' }, '…')), h('td', null, st === 'warn' ? btn('🔧 ' + lt('Reajustar', 'Adjust'), () => { Land.repair(S, k); Sfx.play('ok'); lsay(lt('Pieza reajustada: ' + tr(Land.PART_T[k]) + '.', 'Part adjusted: ' + tr(Land.PART_T[k]) + '.')); render(); }, 'sm') : null)); }))),
+        ...warn.map((k) => h('p', { class: 'small tag warn' }, '⚠ ' + tr(Land.PART_FAULT[k]))),
+        scan >= 5 ? h('div', null, h('p', { class: 'small' }, warn.length ? lt('Puedes continuar con la pieza en observación: el aterrizaje será posible, pero con consecuencias.', 'You may continue with the part under watch: landing is possible, but with consequences.') : lt('Todo en verde. La nave está lista.', 'All green. The ship is ready.')),
+          MODE === 'adv' ? h('p', { class: 'small muted' }, lt('Perfil del descenso (didáctico): Δv ≈ ', 'Descent profile (educational): Δv ≈ ') + (S.scen === 'mars' ? '0,6 km/s + paracaídas' : '1,9 km/s') + ' · ' + lt('combustible de reserva ', 'reserve propellant ') + (warn.length ? '8 %' : '12 %')) : null,
+          btn('🚀 ' + lt('Confirmar secuencia de descenso', 'Confirm descent sequence'), () => { Sfx.play('ok'); landGo(phDescent()); }, 'primary', { autofocus: true })) : h('p', { class: 'small muted' }, lt('Ejecutando diagnóstico…', 'Running diagnostics…')));
+    };
+    return {
+      skippable: false,
+      enter() { p0 = lpanel(); render(); L.parts[L.flag || 'engine'] = 'warn'; lsay(lt('Diagnóstico de la nave en curso.', 'Ship diagnostics running.')); },
+      update(dt) { const n = Math.min(5, Math.floor(LS.t * 1.4 / 1)); if (n !== scan) { scan = n; Sfx.play('click'); render(); } },
+      draw(c, w, hh, t) { c.fillStyle = '#060a1a'; c.fillRect(0, 0, w, hh); const g = c.createRadialGradient(w * 0.3, hh * 0.5, 10, w * 0.3, hh * 0.5, hh * 0.7); g.addColorStop(0, 'rgba(56,214,255,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, w, hh);
+        const sc = hh / 190; LandArt.shipSide(c, w * 0.3, hh * 0.85, sc, { t, scen: S.scen, legs: 1, lights: true, parts: scan >= 5 ? L.parts : null, beacon: scan >= 5 ? L.parts.beacon : 'ok' });
+        c.strokeStyle = 'rgba(111,255,160,.55)'; c.lineWidth = 2; const sy = hh * (0.85 - ((t * 0.5) % 1) * 0.65); c.beginPath(); c.moveTo(w * 0.3 - 90 * sc / 2, sy); c.lineTo(w * 0.3 + 90 * sc / 2, sy); c.stroke();
+        landTitle(c, w, hh, lt('Revisión antes del descenso', 'Pre-descent check')); }
+    };
+  }
+
+  /* ---------- 4 · Descenso ---------- */
+  function phDescent() {
+    const S = LS.S, sc = S.scen, mars = sc === 'mars', z = Land.zone(S) || Land.zoneList(sc)[0], f = Land.fx(z.c), L = LS.replay ? JSON.parse(JSON.stringify(S.land)) : S.land;
+    const side = LandArt.hs(z.x * 3 + z.y) > 0.5 ? 1 : -1, tx = 0.5;
+    const d = { st: 'A', T: 0, a: 1, ign: null, igT: 0, burn: 0, flame: 0, heat: 0, chute: 0, comp: 0, shake: 0, P: LandArt.dustNew(), wind: mars ? 40 : 0, touchT: 0, said: {}, gY: 0, ring: null, thrT: 0, done: false };
+    LS.d = d; const A_DUR = mars ? 9 : 7, WIN = 3.2, X0 = () => landCv.width * 0.2 * side, ref = { cr: z.c };
+    const say = (k, txt) => { if (!d.said[k]) { d.said[k] = 1; lsay(txt); } };
+    const ignite = (q) => { if (d.ign) return; d.ign = q; L.ign = q; d.igT = d.T; d.st = 'B'; Sfx.play(q === 'late' ? 'warn' : 'ok'); if (d.ring) d.ring.remove(); say('ig', q === 'late' ? lt('Encendido tardío: motores activados.', 'Late ignition: engines on.') : lt('Motores de descenso encendidos.', 'Descent engines ignited.')); };
+    return {
+      skippable: true,
+      enter() { lsay(mars ? lt('Entrada atmosférica. El escudo térmico se calienta.', 'Atmospheric entry. The heat shield is heating.') : lt('Iniciamos el descenso. No hay aire: solo los motores nos frenan.', 'Starting descent. There is no air: only the engines slow us.')); Sfx.play('info'); },
+      update(dt) {
+        d.T += dt; const w = landCv.width, hh = landCv.height;
+        if (d.st === 'A') {
+          d.a = 1 - 0.48 * LandArt.ease(d.T / A_DUR); if (mars) { d.heat = Math.max(0, 1 - d.T / (A_DUR * 0.55)); d.chute = LandArt.ease(LandArt.sub(d.T, A_DUR * 0.5, A_DUR * 0.8)); if (d.chute > 0.1) say('ch', lt('Paracaídas desplegado.', 'Parachute deployed.')); }
+          if (d.T >= A_DUR) { d.st = 'W'; d.wT = 0; ring(); }
+        } else if (d.st === 'W') { // ventana de ignición
+          d.wT += dt; d.a -= (mars ? 0.01 : 0.032) * dt; if (d.ringEl) d.ringEl.style.setProperty('--p', Math.min(1, d.wT / WIN)); if (d.wT >= WIN || (landSkippable() && LS.sp > 3)) ignite(landSkippable() && LS.sp > 3 ? 'ok' : 'late');
+        } else if (d.st === 'B') {
+          d.burn += dt; d.chute = Math.max(0, d.chute - dt * 1.4); d.heat = 0; d.flame = Math.min(1, d.burn / 0.7);
+          const a0 = d.a0 == null ? (d.a0 = d.a) : d.a0; d.a = 0.06 + (a0 - 0.06) * (1 - LandArt.ease(d.burn / 8.5));
+          if (d.burn > 8.5) { d.st = 'C'; d.touchT = 0; Sfx.play('thump'); d.comp = 1; d.shake = 10 + f.shake * 5 + (L.ign === 'late' ? 4 : 0) + (L.parts.legs === 'warn' ? 3 : 0); LandArt.dustEmit(d.P, sc, w * tx, d.gY || hh * 0.82, 2.2, mars ? 90 : 160); say('c', lt('Contacto con la superficie.', 'Touchdown.')); }
+        } else if (d.st === 'C') {
+          d.touchT += dt; d.a = 0.06 * Math.max(0, 1 - d.touchT / 0.9); d.comp = Math.max(0, d.comp - dt * 1.2); d.shake = Math.max(0, d.shake - dt * 18); d.flame = Math.max(0, d.flame - dt * 1.3);
+          if (d.touchT > 1.4 && d.flame <= 0) { d.st = 'D'; d.dT = 0; Sfx.play('ok'); }
+        } else if (d.st === 'D') {
+          d.dT += dt; if (d.dT > 0.5 && !d.card) { d.card = true; card(); say('d', lt('Aterrizaje completado. Motores apagados. Todos los sistemas confirmados.', 'Landing complete. Engines off. All systems confirmed.')); }
+        }
+        const wind = d.wind, gY = d.gY || hh * 0.82;
+        if (d.flame > 0.3 && d.a < 0.34) LandArt.dustEmit(d.P, sc, w * tx + (landCv.width * 0.2 * side) * Math.pow(Math.max(0, (d.a - 0.06) / 0.46), 1.3), gY, 1 + (0.34 - d.a) * 3, Math.round((mars ? 5 : 9) * (0.34 - d.a) * 10));
+        LandArt.dustStep(d.P, sc, dt, wind, gY);
+        if (d.flame > 0.05 && (d.thrT += dt) > 0.14) { d.thrT = 0; Sfx.play('thrust'); }
+      },
+      draw(c, w, hh, t) {
+        const lat = d.st === 'B' || d.st === 'W' || d.st === 'A' ? Math.pow(Math.max(0, (d.a - 0.06) / 0.46), 1.3) : 0, x = w * tx + w * 0.2 * side * Math.min(1, lat) + Math.sin(t * 1.3) * 5 * Math.min(1, d.a * 2);
+        const r = LandArt.descent(c, w, hh, { scen: sc, a: d.a, x, flame: d.flame, heat: d.heat, chute: d.chute, comp: d.comp, shake: d.shake, cr: z.c, tx, parts: L.parts, t, P: d.P, wind: d.wind, legs: 1 });
+        d.gY = r.gY; d.x = x; d.w = w;
+        const stage = { A: lt('A · Aproximación', 'A · Approach'), W: lt('B · Descenso', 'B · Descent'), B: lt('B · Descenso', 'B · Descent'), C: lt('C · Contacto', 'C · Touchdown'), D: lt('D · Aterrizaje completado', 'D · Landing complete') }[d.st];
+        landTitle(c, w, hh, stage); const altm = Math.round(d.a * 1800), vel = d.st === 'D' || d.st === 'C' ? 0 : d.st === 'B' ? Math.max(0.6, 38 * (d.a / 0.5)) : d.st === 'W' ? 88 : 120 - 60 * (1 - d.a);
+        hud(c, w, hh, [[lt('Altura', 'Altitude'), altm + ' m'], [lt('Velocidad', 'Speed'), vel.toFixed(1) + ' m/s'], [lt('Motor', 'Engine'), d.flame > 0.05 ? lt('ENCENDIDO', 'ON') : lt('apagado', 'off')]]);
+        if (d.st === 'D' || d.st === 'C') { c.font = 'bold ' + Math.round(hh * 0.03) + 'px system-ui'; c.textAlign = 'center'; const col = ['#6fffa0', L.parts.legs === 'ok' ? '#6fffa0' : '#ffc857', '#6fffa0']; ['✔ ' + lt('Contacto', 'Contact'), (L.parts.legs === 'ok' ? '✔ ' : '⚠ ') + lt('Patas', 'Legs'), '✔ ' + lt('Motor apagado', 'Engine off')].forEach((s, i) => { if (d.st === 'D' || i === 0) { c.fillStyle = col[i]; c.strokeStyle = '#000'; c.lineWidth = 4; c.strokeText(s, w * 0.5, hh * 0.13 + i * hh * 0.045); c.fillText(s, w * 0.5, hh * 0.13 + i * hh * 0.045); } }); }
+      }
+    };
+    function ring() {
+      d.ringEl = h('button', { class: 'btn primary ign', type: 'button', style: { '--p': 0 }, onclick: () => ignite(d.wT / WIN > 0.5 ? 'perfect' : 'ok'), 'aria-label': lt('Encender motores de descenso', 'Ignite descent engines') }, '🔥 ' + lt('Encender motores', 'Ignite engines'));
+      d.ring = h('div', { class: 'lcen' }, h('p', { class: 'small' }, MODE === 'adv' ? lt('Pulsa cuando el anillo pase de la mitad: enciende a tiempo para frenar. Si no pulsas, se encenderá solo, pero tarde.', 'Press once the ring passes halfway: ignite in time to brake. If you do not, it fires automatically but late.') : lt('Pulsa el botón para encender los motores y frenar la nave.', 'Press the button to fire the engines and brake the ship.')), d.ringEl);
+      landUi.append(d.ring); say('rg', lt('Atención: encienda los motores de descenso.', 'Attention: ignite the descent engines.')); Sfx.play('warn'); if (d.ringEl) d.ringEl.focus();
+    }
+    function card() {
+      const when = L.ign === 'perfect' ? lt('encendido a tiempo', 'on-time ignition') : L.ign === 'ok' ? lt('encendido correcto', 'good ignition') : lt('encendido tardío', 'late ignition');
+      lcard('lcen', h('b', null, '📋 ' + lt('Registro de llegada', 'Arrival log')), h('table', null, h('tbody', null,
+        [[lt('Destino', 'Destination'), tr(Land.DEST[sc].n)], [lt('Zona', 'Zone'), tr(z.n)], [lt('Descenso', 'Descent'), when], [lt('Patas', 'Legs'), L.parts.legs === 'ok' ? lt('en buen estado', 'sound') : lt('en observación', 'under watch')], [lt('Posición', 'Position'), Field.coord(z.x, z.y, LANG === 'es')]].map((r) => h('tr', null, h('th', null, r[0]), h('td', null, r[1]))))),
+        btn('🏗 ' + lt('Desplegar la base', 'Deploy the base'), () => landGo(phDeploy()), 'primary', { autofocus: true }));
+    }
+  }
+
+  /* ---------- 5 · Despliegue ---------- */
+  function phDeploy() {
+    const S = LS.S, sc = S.scen, L = S.land, z = Land.zone(S) || Land.zoneList(sc)[0], f = Land.fx(z.c), steps = Land.STEPS;
+    const dd = { prog: steps.map(() => 0), k: -1, wait: null, ready: false, P: LandArt.dustNew(), side: null, said: {} };
+    LS.dd = dd; const DUR = 3.4;
+    let p0 = null, decided = LS.replay;
+    const list = () => {
+      if (!p0) return; p0.innerHTML = '';
+      p0.append(h('b', null, '🏗 ' + lt('Despliegue de la base', 'Base deployment')), h('ol', { class: 'dsteps' }, steps.map((k, i) => h('li', { class: dd.prog[i] >= 1 ? 'done' : dd.k === i ? 'act' : '' }, h('span', null, (dd.prog[i] >= 1 ? '✔ ' : dd.k === i ? '⏳ ' : '○ ') + tr(Land.STEP_T[k])), dd.k === i && MODE !== 'adv' ? h('div', { class: 'small muted' }, tr(Land.STEP_D[k])) : null, dd.k === i && MODE === 'adv' ? h('div', { class: 'small muted' }, tr(Land.STEP_D[k]) + ' (' + Math.round(dd.prog[i] * 100) + ' %)') : null))));
+    };
+    const ask = (key, title, body, opts) => { // decisión: la animación espera
+      dd.wait = key; const el = h('div', { class: 'lcen' }, h('b', null, title), h('p', { class: 'small' }, body), h('div', { class: 'row', style: { flexWrap: 'wrap', gap: '6px' } }, opts.map((o, i) => btn((i + 1) + ' · ' + o[0], () => { el.remove(); dd.wait = null; o[1](); Sfx.play('ok'); }, o[2] || '', { autofocus: i === 0 }))));
+      landUi.append(el); Sfx.play('warn'); dd.keyOpts = opts;
+    };
+    const next = () => {
+      dd.k++; if (dd.k >= steps.length) { finish(); return; }
+      const k = steps[dd.k]; list(); Sfx.play(k === 'power' || k === 'verify' ? 'ok' : 'deployclk'); if (LS.sp <= 3) narrate(tr(Land.STEP_T[k]) + '.');
+      if (k === 'unload') LandArt.dustEmit(dd.P, sc, landCv.width * 0.5, landCv.height * 0.78, 0.6, 24);
+      if (k === 'power' && !decided && !L.prio) askPrio();
+    };
+    const askPrio = () => ask('prio', '⚡ ' + lt('¿Qué activas primero?', 'What do you switch on first?'),
+      MODE === 'adv' ? lt('Todo se activará, pero el primero recibe una ventaja inicial pequeña (≈ +6 % de reserva, o más alcance de radio).', 'Everything will be activated, but the first gets a small head start (≈ +6 % reserve, or extra radio range).') : lt('Todo se encenderá, pero lo que elijas primero tendrá un poquito de ventaja.', 'Everything will be switched on, but what you choose first gets a small head start.'),
+      [['⚡ ' + lt('Energía', 'Power'), () => { L.prio = 'power'; }], ['🫁 ' + lt('Soporte vital', 'Life support'), () => { L.prio = 'life'; }], ['📡 ' + lt('Comunicaciones', 'Comms'), () => { L.prio = 'comms'; }]]);
+    const finish = () => {
+      dd.ready = true; list();
+      lcard('lcen', h('b', null, '✅ ' + lt('Base verificada', 'Base verified')), h('p', { class: 'small' }, lt('Presión, energía, aire y comunicaciones en orden. La nave queda en la plataforma como baliza y relé de radio.', 'Pressure, power, air and comms are in order. The ship stays on the pad as a beacon and radio relay.')),
+        btn(LS.replay ? '↩ ' + lt('Volver', 'Back') : '🚀 ' + lt('Comenzar la misión', 'Start the mission'), () => landFinish(), 'primary', { autofocus: true })); lsay(lt('Verificación completa. La colonia está operativa.', 'Verification complete. The colony is operational.')); Sfx.play('ok');
+    };
+    return {
+      skippable: true,
+      key(e) { if (dd.wait && dd.keyOpts) { const n = +e.key; if (n >= 1 && n <= dd.keyOpts.length) { const el = landUi.querySelector('.lcen .btn:nth-child(' + n + ')'); el && el.click(); } } },
+      enter() {
+        p0 = h('div', { class: 'lcard dep' }); landUi.append(p0); list();
+        if (!decided && f.rough >= 3) ask('lev', '🧱 ' + lt('Terreno difícil', 'Rough terrain'), MODE === 'adv' ? lt('Nivelar la plataforma cuesta ' + Land.LEVEL_MAT + ' de materiales y evita daño en las patas. Sin nivelar, las patas quedan en observación (reparación posterior: ' + Land.REPAIR_MAT + ' de materiales).', 'Levelling the pad costs ' + Land.LEVEL_MAT + ' materials and avoids leg damage. Without it the legs stay under watch (later repair: ' + Land.REPAIR_MAT + ' materials).') : lt('El suelo es irregular. Puedes nivelarlo (gasta materiales) o seguir sin nivelar (las patas quedarán en observación).', 'The ground is uneven. You can level it (costs materials) or continue unlevelled (legs will stay under watch).'),
+          [['🔧 ' + lt('Nivelar (−' + Land.LEVEL_MAT + ' materiales)', 'Level (−' + Land.LEVEL_MAT + ' materials)'), () => { LS.lev = true; dd.k = -1; next(); }, 'primary'], ['⏭ ' + lt('Seguir sin nivelar', 'Continue unlevelled'), () => { LS.lev = false; dd.k = -1; next(); }]]);
+        else next();
+      },
+      update(dt) {
+        if (dd.wait || dd.ready || dd.k < 0 || dd.k >= steps.length) { LandArt.dustStep(dd.P, sc, dt, sc === 'mars' ? 30 : 0, landCv.height * 0.78); return; }
+        const slow = steps[dd.k] === 'bays' && L.flag === 'hatch' && L.parts.hatch !== 'ok' ? 1.8 : 1;
+        dd.prog[dd.k] = Math.min(1, dd.prog[dd.k] + dt / (DUR * slow)); if (slow > 1 && dd.prog[dd.k] > 0.4 && !dd.said.h) { dd.said.h = 1; lsay(lt('Una compuerta responde lenta: el despliegue se retrasa.', 'A hatch is slow: deployment is delayed.')); }
+        if (steps[dd.k] === 'rover' && Math.random() < 0.2) LandArt.dustEmit(dd.P, sc, landCv.width * (0.5 + 0.12 * dd.prog[dd.k]), landCv.height * 0.8, 0.3, 2);
+        LandArt.dustStep(dd.P, sc, dt, sc === 'mars' ? 30 : 0, landCv.height * 0.78);
+        if (dd.prog[dd.k] >= 1) { list(); next(); }
+      },
+      draw(c, w, hh, t) { LandArt.deploy(c, w, hh, { scen: sc, t, prog: dd.prog, parts: L.parts, cr: z.c, P: dd.P }); landTitle(c, w, hh, lt('Despliegue de la base', 'Base deployment')); }
+    };
+  }
+  /** Fin del despliegue: aplica las consecuencias y empieza la campaña (o vuelve de la repetición). */
+  function landFinish() {
+    const S = LS.S; Voice.stop();
+    if (LS.replay) { landClose(); (LS.after || mainMenu)(); return; }
+    World.init(S.scen, Land.pad(S));
+    LS.sum = Land.complete(S, { lev: LS.lev });
+    Sim.log(S, 'ok', 'land.arr', { zone: S.land.zone, mat: LS.sum.mat, rev: LS.sum.reveal.length });
+    settings.landSeen = true; Store.set('settings', settings);
+    landClose(); finishNewRun(S.scen, true);
+  }
+  /** Repite la secuencia (vista previa, sin cambiar la partida) desde el menú de archivos de misión. */
+  function replayArrival() {
+    const sc = S ? S.scen : settings.scen || 'moon', Sx = S && S.land && S.land.done ? S : (() => { const q = Sim.create({ scen: sc, diff: 'engineer', mode: settings.mode || 'junior', seed: 7 }); Land.ensure(q); return q; })();
+    const back = running ? () => { $('#hud').classList.remove('hidden'); $('#zoomc').classList.remove('hidden'); if (isTouch) $('#touch').classList.remove('hidden'); pauseMenu(); } : mainMenu;
+    popAll(); const prevRun = running, prevS = S; startLanding(Sx, { replay: true, after: back });
+  }
+  /** Panel de la nave en el mapa exterior: piezas, estado y reparación. */
+  function shipPanel() {
+    const L = Land.ensure(S), z = Land.zone(S), es = LANG === 'es', adv = MODE === 'adv';
+    const s = push(panel('🚀 ' + lt('Nave de llegada', 'Arrival ship'), h('div')), { sticky: false });
+    const build = () => {
+      const bd = h('div', null, h('p', { class: 'small' }, lt('Zona: ', 'Zone: ') + tr(z.n) + ' · ' + Field.coord(L.ship.x, L.ship.y, es)),
+        h('p', { class: 'small' }, L.relay && L.parts.beacon === 'ok' ? '📡 ' + lt('La baliza actúa como relé: amplía la señal de radio alrededor de la nave.', 'The beacon works as a relay: it extends radio signal around the ship.') : '📡 ' + lt('Sin relé de radio: la baliza no está activa.', 'No radio relay: the beacon is not active.')),
+        h('table', null, h('tbody', null, Land.PARTS.map((k) => { const st = L.parts[k]; return h('tr', null, h('th', null, tr(Land.PART_T[k])), h('td', null, tag(st === 'ok' ? '✔ ' + lt('Correcto', 'OK') : st === 'warn' ? '⚠ ' + lt('En observación', 'Under watch') : '⛔ ' + lt('Averiada', 'Down'), st === 'ok' ? 'ok' : st === 'warn' ? 'warn' : 'crit')), h('td', null, st !== 'ok' ? btn('🔧 ' + lt('Reparar', 'Repair') + ' (' + Land.REPAIR_MAT + ')', () => { if (S.r.mat.v < Land.REPAIR_MAT) { Sfx.play('bad'); return toast(lt('Faltan materiales', 'Not enough materials'), '', 'warn'); } S.r.mat.v -= Land.REPAIR_MAT; Land.repair(S, k); if (k === 'beacon') L.relay = true; Sfx.play('ok'); Sim.log(S, 'info', 'land.rep', { part: k }); const nb = build(); s.firstChild.replaceChild(nb, s.firstChild.lastChild); }, 'sm') : null)); }))),
+        adv ? h('p', { class: 'small muted' }, lt('Relé: radio 34 baldosas · reparación: ', 'Relay: 34-tile radius · repair: ') + Land.REPAIR_MAT + lt(' de materiales (', ' materials (') + Math.round(S.r.mat.v) + lt(' disponibles)', ' available)')) : null,
+        h('p', { class: 'small muted' }, lt('La nave se queda aquí: marca el sitio de llegada y conecta la base con la plataforma por una ruta de rover.', 'The ship stays here: it marks the arrival site and links the base to the pad by a rover route.')));
+      return bd;
+    };
+    s.firstChild.append(build());
+  }
+  /** Tarjeta de la nave cuando está cerca. */
+  function shipCard() { const L = Land.ensure(S); return h('div', null, h('b', null, '🚀 ' + lt('Nave de llegada', 'Arrival ship')), h('div', { class: 'small' }, Land.PARTS.map((k) => (L.parts[k] === 'ok' ? '🟢' : L.parts[k] === 'warn' ? '🟡' : '🔴') + ' ' + tr(Land.PART_T[k])).join(' · ')), h('div', { class: 'small' }, '👉 ' + lt('Pulsa E para revisar la nave.', 'Press E to inspect the ship.'))); }
+  const landDebug = { get ph() { return LS.ph; }, get on() { return LS.on; }, get st() { return LS.d && LS.d.st; }, get dd() { return LS.dd; }, get d() { return LS.d; }, drawMs: (n) => { const c = landCx, w = landCv.width, hh = landCv.height, t0 = performance.now(); for (let i = 0; i < n; i++) LS.ph.draw(c, w, hh, LS.t + i / 60); return (performance.now() - t0) / n; }, speed: (v) => { LS.sp = v; }, sel: () => LS.sel, S: () => LS.S, close: landClose };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });
@@ -8289,7 +9025,7 @@ const Game = (function () {
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();
 

@@ -43,6 +43,7 @@ jobs:
           node tests/expo.js --shots capturas
           node tests/earthlink.js --shots capturas
           node tests/camera.js --shots capturas
+          node tests/landing.js --shots capturas
 
       - name: Guardar capturas
         if: always()

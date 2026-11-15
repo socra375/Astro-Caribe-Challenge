@@ -176,6 +176,7 @@ const Sim = (function () {
   function campDone() { return { i: CAMP.length, unlocked: Object.assign({}, ALLROOMS), f: {}, cnt: {}, visited: { bridge: 1, life: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1 }, done: { c1: 1, c2: 1, c3: 1, c4: 1, x1: 1, x2: 1, x3: 1, x4: 1, x5: 1 }, basicDone: true, hold: 0, inc: 0, xi: EXP.length }; }
   /** Adapta partidas guardadas con versiones anteriores (camas de un solo cultivo, sin campaña). */
   function migrate(S) {
+    if (typeof Land !== 'undefined') Land.ensure(S);
     if (!S.camp) S.camp = campDone();
     { const C = S.camp; C.unlocked.med = 1; if (C.xi == null) { C.xi = 0; if (C.basicDone) { C.unlocked.food = 1; } } }
     if (!S.pant) S.pant = { fresh: 0, cold: true, ration: 'normal', mealT: -99, log: [] };
