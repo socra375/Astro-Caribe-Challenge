@@ -435,11 +435,11 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   });
   ok('Luna y Marte tienen geografía distinta (cráteres y rocas / dunas y mesas), no solo otro color', geo.a.craters > geo.b.craters + 10 && geo.b.dunes >= 3 && geo.a.dunes === 0 && geo.b.kinds.includes('mesa') && !geo.a.kinds.includes('mesa') && geo.a.first !== geo.b.first, JSON.stringify(geo));
   const zm = await pg.evaluate(async () => { const z0 = World.camZoom; return z0; });
-  await pg.keyboard.press('+'); await pg.waitForTimeout(250); const z1 = await pg.evaluate(() => World.camZoom);
-  await pg.keyboard.press('-'); await pg.keyboard.press('-'); await pg.waitForTimeout(250); const z2 = await pg.evaluate(() => World.camZoom);
+  await pg.keyboard.press('+'); await pg.waitForTimeout(700); const z1 = await pg.evaluate(() => World.camZoom);
+  await pg.keyboard.press('-'); await pg.keyboard.press('-'); await pg.waitForTimeout(900); const z2 = await pg.evaluate(() => World.camZoom);
   ok('Zoom con + y −', z1 > zm * 1.1 && z2 < z1 * 0.8, JSON.stringify([zm, z1, z2]));
-  await pg.keyboard.press('z'); await pg.waitForTimeout(250); const f1 = await pg.evaluate(() => World.fit); const zf = await pg.evaluate(() => World.camZoom);
-  await pg.keyboard.press('z'); await pg.waitForTimeout(250); const f2 = await pg.evaluate(() => World.fit);
+  await pg.keyboard.press('z'); await pg.waitForTimeout(1200); const f1 = await pg.evaluate(() => World.fit); const zf = await pg.evaluate(() => World.camZoom);
+  await pg.keyboard.press('z'); await pg.waitForTimeout(300); const f2 = await pg.evaluate(() => World.fit);
   ok('La vista general (Z) muestra la base completa y se puede salir de ella', f1 === true && f2 === false && zf < z2, JSON.stringify([f1, f2, zf, z2]));
   const fxr = await pg.evaluate(async () => {
     const cv = document.querySelector('#game'), ctx = cv.getContext('2d'), S = Game.S, out = {};

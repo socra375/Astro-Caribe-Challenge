@@ -393,7 +393,7 @@ const Game = (function () {
   }
   function beginPlay() {
     clearLayer(); running = true; paused = false;
-    $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden'); $('#zoomc').classList.remove('hidden');
+    $('#hud').classList.remove('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
