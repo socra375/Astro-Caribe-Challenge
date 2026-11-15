@@ -27,7 +27,7 @@
     if (!S || !isAdv()) return '';
     const es = LANG === 'es', pw = S.pw, d = S.d, f1 = (v) => fmt(v, 1);
     const L = {
-      solar_storm: () => (es ? 'Flujo modelado ' : 'Modeled flux ') + f1((inc && inc.data.rate) || 0) + ' mSv/h ' + (es ? 'sin blindaje' : 'unshielded') + ' · ' + (es ? 'eficacia del blindaje ' : 'shield effectiveness ') + Math.round(d.rad * 100) + ' % · ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(d.dose, 2) + '/' + S.limit + ' mSv',
+      solar_storm: () => (es ? 'Flujo modelado ' : 'Modeled flux ') + f1((inc && inc.data && inc.data.rate) || 0) + ' mSv/h ' + (es ? 'sin blindaje' : 'unshielded') + ' · ' + (es ? 'eficacia del blindaje ' : 'shield effectiveness ') + Math.round(d.rad * 100) + ' % · ' + (es ? 'refugio ' : 'shelter ') + S.sys.shield.cap + '/' + S.N + ' · ' + (es ? 'dosis máx. ' : 'max dose ') + fmt(d.dose, 2) + '/' + S.limit + ' mSv',
       power_drop: () => (es ? 'Generación ' : 'Generation ') + f1(pw.gen) + ' kW (' + (es ? 'solar ' : 'solar ') + f1(pw.sol) + ', ' + (es ? 'reactor ' : 'reactor ') + f1(pw.rea) + ') · ' + (es ? 'demanda ' : 'demand ') + f1(pw.demand) + ' kW · ' + (es ? 'batería ' : 'battery ') + fmt(S.r.power.v, 0) + ' kWh' + (pw.demand > pw.gen ? ' · ' + (es ? 'autonomía ≈ ' : 'endurance ≈ ') + fmt(S.r.power.v / (pw.demand - pw.gen), 0) + ' h' : ''),
       water_fail: () => (es ? 'Reciclaje efectivo ' : 'Effective recycling ') + Math.round(d.rec * 100) + ' % · ' + (es ? 'alimentación del reciclador ' : 'recycler supply ') + Math.round(((S.lf && S.lf.rec) == null ? 1 : S.lf.rec) * 100) + ' % · ' + (es ? 'agua ' : 'water ') + fmt(S.r.water.v, 0) + ' L (' + f1(S.r.water.prod - S.r.water.cons) + ' L/h)',
       pressure_leak: () => (es ? 'Presión ' : 'Pressure ') + f1(S.sys.press.P) + ' kPa · ' + (es ? 'caída ' : 'drop ') + '0,6 kPa/h · ' + (es ? 'compresor alimentado ' : 'compressor supplied ') + Math.round(((S.lf && S.lf.press) == null ? 1 : S.lf.press) * 100) + ' %',
@@ -68,7 +68,7 @@
     const T = DATA.EVT[type]; if (!T) return;
     const es = LANG === 'es', inc = S && S.inc.find((i) => i.type === type && !i.res);
     const sysK = inc ? inc.sys : null;
-    const donki = type === 'solar_storm' && inc && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
+    const donki = type === 'solar_storm' && inc && inc.data && inc.data.donki != null ? DATA.DONKI[inc.data.donki] : null;
     const live = type === 'solar_storm' && donkiLive && donkiLive.items.length ? h('p', { class: 'small' }, _('liveData') + ': ' + donkiLive.items.slice(0, 3).map((x) => x.cls + ' ' + x.date).join(' · ') + ' (' + donkiLive.fetched + ')') : null;
     const why = (n, t, kids) => h('div', { class: 'why' }, h('h3', null, (n ? n + '. ' : '') + t), kids);
     const kind = h('p', { class: 'small muted' }, es ? 'Tipo de dato: el hecho científico citado es real; los números del juego son un modelo simplificado.' : 'Data type: the cited science fact is real; the game numbers are a simplified model.');

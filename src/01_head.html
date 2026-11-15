@@ -57,6 +57,56 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
 select{background:var(--surface-2);border:2px solid var(--border-input);border-radius:var(--radius);padding:8px;min-height:44px}
 
 /* ===== HUD ===== */
+/* ===== EARTHLINK RADIO ===== */
+.er{position:absolute;right:8px;top:112px;bottom:8px;width:min(420px,calc(100vw - 16px));z-index:30;display:flex;flex-direction:column;pointer-events:auto}
+.er.hidden{display:none}
+.er-dev{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden;background:linear-gradient(160deg,#1a2342,#0c1228 60%,#131a36);border:2px solid #3b4a86;border-radius:22px;padding:14px 12px 10px;box-shadow:0 10px 40px rgba(0,0,0,.6),inset 0 0 0 2px rgba(127,211,255,.08)}
+.er.er-in .er-dev{animation:erOpen .45s cubic-bezier(.2,.9,.3,1)}
+@keyframes erOpen{0%{transform:translate(40px,-30px) scale(.55);opacity:0;filter:brightness(2)}60%{opacity:1}100%{transform:none;filter:none}}
+.er-ant{position:absolute;right:26px;top:-22px;width:10px;height:30px;border-radius:5px 5px 0 0;background:linear-gradient(#cfd5e3,#6a7390);border:2px solid #3b4a86;border-bottom:none}
+.er-head{display:flex;align-items:center;gap:8px;padding-right:2px}
+.er-led{width:12px;height:12px;border-radius:50%;background:#6fffa0;flex:0 0 auto}
+.er-brand{letter-spacing:.14em;font-size:14px}
+.er-freq{flex:1;min-width:0;font:600 11px ui-monospace,Menlo,Consolas,monospace;color:#9fe8ff;background:#050a1c;border:1px solid #2b3a70;border-radius:6px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.er-bars{display:inline-flex;gap:2px;align-items:flex-end;height:18px} .er-bars i{width:4px;background:#3a4570;display:block;border-radius:1px} .er-bars i.on{background:var(--success)}
+.er-top{display:flex;gap:8px;align-items:stretch}
+.er-dev>*{flex:none}.er-dev>.er-mid{flex:1 1 auto;min-height:90px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.er-earth{width:170px;height:120px;border-radius:12px;border:1px solid #2b3a70;flex:0 0 auto;image-rendering:auto}
+.er-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:11px}
+.er-center{font-weight:700;font-size:12px}
+.er-state{font-weight:700;border:1px solid;border-radius:8px;padding:1px 6px;align-self:flex-start;font-size:11px}
+.er-row{color:var(--text-muted);line-height:1.25}
+.er-chs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.er-ch{display:flex;align-items:center;gap:5px;justify-content:center;position:relative;min-height:36px;padding:3px 4px;border-radius:10px;border:1px solid #2b3a70;background:#10183a;color:var(--text);font:600 12px system-ui;cursor:pointer}
+.er-ch.on{background:#1d3470;border-color:#7fd3ff;box-shadow:0 0 0 1px #7fd3ff inset}
+.er-ic{display:inline-flex;width:16px;height:16px} .er-badge{position:absolute;right:-3px;top:-5px;background:#ff6b6b;color:#fff;border-radius:9px;min-width:17px;height:17px;font:700 11px/17px system-ui;text-align:center;font-style:normal}
+.er-sub{display:flex;align-items:center;gap:8px;background:#050a1c;border:1px solid #2b3a70;border-radius:10px;padding:6px 8px;min-height:50px}
+.er-who{font-size:12px;min-width:62px} .er-txled{width:9px;height:9px;border-radius:50%;background:#3a4570;flex:0 0 auto} .er-txled.on{background:#ff6b6b;box-shadow:0 0 8px #ff6b6b}
+.er-subtxt{flex:1;font-size:13px;line-height:1.35;min-height:18px}
+.er-props{display:flex;flex-direction:column;gap:4px} .er-prop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;font-size:12px;border:1px dashed #ffc24a;border-radius:10px;padding:5px 8px;background:rgba(255,194,74,.07)}
+.er-opts{display:flex;flex-direction:column;gap:5px}
+.er .er-opt{display:flex;justify-content:flex-start;text-align:left;flex-direction:column;align-items:flex-start;gap:1px;min-height:40px;font-size:13px;padding:6px 10px}
+.er-opt.off{opacity:.55}
+.er-hh{display:flex;justify-content:space-between;align-items:center;font-size:12px;border-top:1px solid #2b3a70;padding-top:6px}
+.er-hist{display:flex;flex-direction:column;gap:5px}
+.er-msg{border-radius:10px;padding:5px 8px;font-size:12px;border:1px solid #2b3a70;background:#0e1633}
+.er-msg.out{border-color:#3e6fb8;background:#12224a} .er-msg.in{border-color:#2f8f62;background:#0f2a24} .er-msg.sys{border-style:dashed;color:var(--text-muted)}
+.er-mh{display:flex;justify-content:space-between;align-items:center;gap:6px} .er-mt{line-height:1.35;margin-top:2px}
+.er-foot{display:flex;flex-direction:column;gap:6px;border-top:1px solid #2b3a70;padding-top:6px}
+.er-scale{display:flex;align-items:center;gap:6px;flex-wrap:wrap} .er-scbtns{display:inline-flex;gap:4px}
+.er-vol{display:flex;align-items:center;gap:8px} .er-vol input{flex:1;min-height:28px}
+#bRadio{position:relative} #bRadio.on{outline:2px solid #7fd3ff} #bRadio .er-hb{position:absolute;right:-5px;top:-6px;min-width:17px;height:17px;border-radius:9px;color:#fff;font:700 11px/17px system-ui;text-align:center;font-style:normal}
+#bRadio.pulse{animation:pulse 1s infinite}
+#app.er-on #eva,#app.er-on #mini,#app.er-on #zoomc{display:none}
+@media (max-width:600px){
+  .er{left:6px;right:6px;top:auto;bottom:6px;width:auto;height:min(78vh,640px)}
+  .er-dev{border-radius:18px;padding:12px 10px 8px}
+  .er-earth{width:128px;height:90px}
+  .er-info{font-size:10px}.er-opt{min-height:36px}
+  #app.er-on #touch,#app.er-on #xtools,#app.er-on #prompt,#app.er-on #xcard{display:none}
+}
+@media (prefers-reduced-motion:reduce){.er.er-in .er-dev{animation:none}}
+.rm .er.er-in .er-dev{animation:none}
 #hud{position:absolute;left:0;right:0;top:0;padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left));display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;pointer-events:none}
 #hud .meters{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
 .meter{background:rgba(10,16,36,.88);border:1px solid var(--border);border-radius:12px;padding:5px 8px;min-width:104px;cursor:pointer}
@@ -194,6 +244,7 @@ html.rm *,html.rm *::before,html.rm *::after{animation:none!important;transition
       <button class="chip btn" id="bSpeed" title="Velocidad" aria-label="Velocidad">x1</button>
       <button class="chip btn" id="bAlerts" title="Alertas" aria-label="Alertas"></button>
       <button class="chip btn" id="bPause" title="Pausa (P)" aria-label="Pausa"></button>
+      <button class="chip btn" id="bRadio" title="Radio EarthLink (R)" aria-label="Radio EarthLink"></button>
       <button class="chip btn" id="bCom" title="Comunicaciones" aria-label="Comunicaciones"></button>
       <button class="chip btn" id="bMap" title="Mapa (M)" aria-label="Mapa"></button>
       <button class="chip btn" id="bCrew" title="Tripulación (C)" aria-label="Tripulación"></button>

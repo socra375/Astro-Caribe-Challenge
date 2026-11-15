@@ -16,7 +16,7 @@ const newPage = async (browser, vp, touch) => {
   return { ctx, pg, errors };
 };
 // velocidad 0: el reloj de la simulación no avanza solo (sin incidentes aleatorios ni paneles inesperados); las pruebas lo avanzan con Sim.step
-const start = async (pg, scen, mode) => { await pg.evaluate(([s, m]) => { Game._debug.newRun(s, 'x', { skipCamp: true, mode: m }); Game._debug.setSpeed(0); }, [scen, mode || 'junior']); await pg.waitForTimeout(250); await pg.evaluate(() => { Game._debug.radio.q = []; Game._debug.radio.cur = null; }); };
+const start = async (pg, scen, mode) => { await pg.evaluate(([s, m]) => { Game._debug.newRun(s, 'x', { skipCamp: true, mode: m }); Game._debug.setSpeed(0); for (const k in NPCDATA.TALK) Game.S.camp.visited[k] = 1; }, [scen, mode || 'junior']); await pg.waitForTimeout(250); await pg.evaluate(() => { Game._debug.radio.q = []; Game._debug.radio.cur = null; }); };
 const TP = (pg, x, y) => pg.evaluate(([a, b]) => { World.player.x = a; World.player.y = b; }, [x, y]);
 // salida al exterior sin pasar por el procedimiento (la esclusa se prueba aparte)
 const OUTSIDE = (pg) => TP(pg, 70, 90);
@@ -201,7 +201,7 @@ const OUTSIDE = (pg) => TP(pg, 70, 90);
   // evacuación real (a través del bucle del juego)
   const t0 = await pg.evaluate(() => { const S = Game.S, E = S.ex; Ex.equip(S); E.cond = null; E.rover.occ = false; E.rover.x = 120; E.rover.y = 150; World.player.x = 100; World.player.y = 140; E.suit.o2 = 0.05; E.hand = []; return S.t; });
   await pg.waitForTimeout(1500);
-  const ev = await pg.evaluate((t) => { const S = Game.S, E = S.ex, p = World.player; return { rec: E.recalls, o2: E.suit.o2, d: Math.hypot(p.x - Field.PAD[0], p.y - Field.PAD[1]), free: World._test.canStand(p.x, p.y, 0.3), dt: S.t - t, rov: [E.rover.x, E.rover.y], ended: S.ended, dlg: document.querySelectorAll('[role=dialog]').length, z: World.zone(), occ: E.rover.occ, shel: World.inShelter }; }, t0);
+  const ev = await pg.evaluate((t) => { const S = Game.S, E = S.ex, p = World.player; return { rec: E.recalls, o2: E.suit.o2, d: Math.hypot(p.x - Field.PAD[0], p.y - Field.PAD[1]), free: World._test.canStand(p.x, p.y, 0.3), dt: S.t - t, rov: [E.rover.x, E.rover.y], ended: S.ended, dlg: document.querySelectorAll('[role=dialog]').length, dtxt: (document.querySelector('[role=dialog]') || { innerText: '' }).innerText.slice(0, 120), par: Game.S.mode, z: World.zone(), occ: E.rover.occ, shel: World.inShelter }; }, t0);
   ok('Evacuación de emergencia: la base recoge al astronauta junto a la esclusa, con aire y sin quedar atrapado', ev.rec === 1 && ev.o2 >= 15 && ev.d < 8 && ev.free && ev.dt >= 1.2, JSON.stringify(ev));
   ok('Tras la evacuación el rover vuelve remolcado a la plataforma', Math.hypot(ev.rov[0] - 74, ev.rov[1] - 89.6) < 0.5);
   ok('La evacuación se avisa por radio (comandante, crítico)', await pg.evaluate(() => { const r = Game._debug.radio; return [r.cur].concat(r.q).filter(Boolean).some((c) => c.who === 'commander' && c.sev === 'crit'); }));

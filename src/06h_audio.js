@@ -5,10 +5,10 @@
      ===================================================================== */
   function applyAudio() {
     const c = Voice.cfg;
-    Sfx.setSfx(c.sfx); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
   }
   let subEl = null, subT = 0;
-  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' } };
+  const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' }, earth_control: { es: 'Control Tierra', en: 'Earth Control' } };
   function ensureSubs() {
     if (subEl) return subEl;
     subEl = h('div', { id: 'subs', class: 'hidden', role: 'status', 'aria-live': 'polite' });
@@ -32,7 +32,7 @@
     if (!c) return;
     const es = LANG === 'es';
     const txt = [c.title, c.desc, c.loc, c.act, (c.sev === 'crit' || isAdv()) && c.cons ? (es ? 'Si lo ignoras: ' : 'If ignored: ') + c.cons : ''].filter(Boolean).join('. ');
-    Voice.speak(Voice.profileFor(c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
+    Voice.speak(Voice.profileFor(c.voice || c.who || 'control', LANG), txt, { level: lvlOfSev(c.sev), silent: true });
   }
   function repeatVoice() { if (radio.cur) { Voice.stop(); narrateCall(radio.cur); } else if (!Voice.repeat()) toast(LANG === 'es' ? 'No hay ningún mensaje que repetir' : 'No message to repeat', '', 'info'); }
 
@@ -65,6 +65,7 @@
         sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
         sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
         sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Radio EarthLink' : 'EarthLink radio', () => c.vRadio, (v) => { c.vRadio = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Velocidad de narración' : 'Narration speed', () => c.rate, (v) => { c.rate = v; Voice.persist(); }, 0.6, 1.5, 0.05, (v) => '×' + (+v).toFixed(2)),
         h('h3', null, es ? 'Activar o desactivar' : 'Switches'),

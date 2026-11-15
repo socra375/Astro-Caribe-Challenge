@@ -7,10 +7,10 @@
    Si no hay síntesis de voz, el juego sigue funcionando con subtítulos.
    ===================================================================== */
 const Voice = (function () {
-  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator'];
+  const ROLES = ['commander', 'engineer', 'medic', 'scientist', 'agronomist', 'narrator', 'earth_control'];
   const LANGS = ['es', 'en'];
-  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0] };
-  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator' };
+  const BASE = { commander: [0.94, 0.85], engineer: [1.02, 0.95], medic: [0.98, 1.15], scientist: [1.04, 1.05], agronomist: [0.96, 1.2], narrator: [0.92, 1.0], earth_control: [0.9, 0.9] };
+  const GAME2ROLE = { commander: 'commander', engineer: 'engineer', medic: 'medic', scientist: 'scientist', agri: 'agronomist', control: 'narrator', earth: 'earth_control' };
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance !== 'undefined';
   const profiles = {};
   for (const role of ROLES) for (const lang of LANGS) {
@@ -18,7 +18,7 @@ const Voice = (function () {
     profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
   }
   // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
-  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
   for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
   function persist() { Store.set('audio', cfg); }
 
@@ -54,12 +54,17 @@ const Voice = (function () {
     if (cur || !pend.length) return;
     const it = pend.shift(), p = profiles[it.profileId], r = resolve(it.profileId);
     if (!it.silent) emitSub(p, it.text, it.level);
-    if (!supported || !cfg.tts || !armed || !r.voice) { pend = []; return; } // solo texto (subtítulos)
+    if (!supported || !cfg.tts || !armed || !r.voice) { // solo texto (subtítulos)
+      if (it.onstart) { cur = it; try { it.onstart(); } catch (e) { /* ignore */ } setTimeout(() => { if (cur === it) { cur = null; try { it.onend && it.onend(); } catch (e) { /* ignore */ } startNext(); } }, Math.max(1200, it.text.split(/\s+/).length * 330 / Math.max(0.6, cfg.rate))); return; }
+      pend = []; return;
+    }
     try {
       const u = new window.SpeechSynthesisUtterance(it.text);
       u.voice = r.voice.v; u.lang = r.voice.lang || p.language; u.rate = Math.max(0.5, Math.min(2, p.rate * cfg.rate)); u.pitch = p.pitch;
-      u.volume = Math.max(0, Math.min(1, p.volume * cfg.vVoice * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
-      cur = it; u.onend = u.onerror = () => { if (cur === it) { cur = null; startNext(); } };
+      u.volume = Math.max(0, Math.min(1, p.volume * (it.chan === 'radio' ? cfg.vRadio : cfg.vVoice) * (it.level === 'crit' || it.level === 'warn' ? Math.max(0.4, cfg.vAlert) : 1)));
+      cur = it; u.onstart = () => { try { it.onstart && it.onstart(); } catch (e) { /* ignore */ } }; u.onboundary = (ev) => { try { it.onboundary && it.onboundary(ev.charIndex || 0); } catch (e) { /* ignore */ } };
+      u.onend = u.onerror = () => { if (cur === it) { cur = null; try { it.onend && it.onend(); } catch (e) { /* ignore */ } startNext(); } };
+      if (it.onstart && !it.started) { it.started = true; }
       window.speechSynthesis.speak(u);
     } catch (e) { cur = null; }
   }
@@ -68,7 +73,7 @@ const Voice = (function () {
     o = o || {}; text = clean(text); if (!text || !profiles[profileId]) return false;
     const level = o.level || 'info';
     last = { profileId, text, level };
-    const it = { profileId, text, level, silent: !!o.silent };
+    const it = { profileId, text, level, silent: !!o.silent, chan: o.chan, onstart: o.onstart, onend: o.onend, onboundary: o.onboundary };
     if (level === 'crit') { stop(true); pend = [it]; } else { pend = pend.filter((x) => x.level !== 'info' || level !== 'info'); pend.push(it); if (pend.length > 3) pend.shift(); }
     startNext(); return true;
   }

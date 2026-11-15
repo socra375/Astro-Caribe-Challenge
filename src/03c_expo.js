@@ -114,6 +114,7 @@ const Ex = (function () {
   function tick(S, dt, c) {
     const e = ensure(S), su = e.suit, out = [];
     if (e.scanCd > 0) e.scanCd = Math.max(0, e.scanCd - dt);
+    if (c.outside) e.pos = [c.x, c.y];
     if (e.cond) { e.cond.age += dt; if (e.cond.age >= e.cond.dur && !e.cond.done) { e.cond.done = true; out.push('cond.end'); } }
     if (!su.on || !c.outside) { return out.concat(missionStep(S, dt, c)); }
     const ev = env(S, c.x, c.y), r = role(S), integ = su.integ;
