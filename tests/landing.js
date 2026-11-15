@@ -81,7 +81,7 @@ async function fly(pg, scen, o) {
   /* ---- Luna: recorrido completo, primera vez ---- */
   let skipFirst = null, subs = null;
   const moon = await fly(A.pg, 'moon', {
-    zone: 2, lev: true, prio: 1, ring: 'perfect',
+    zone: 2, lev: true, prio: 1, ring: 'perfect', repair: true, // la pieza «en observación» sale al azar: se reajusta para que la baliza (relé) no dependa de la semilla
     onD: async () => { skipFirst = await A.pg.evaluate(() => getComputedStyle(document.getElementById('landSkip')).display); subs = await A.pg.evaluate(() => Voice.last && Voice.last.text); }
   });
   ok('Luna: la nave aterriza centrada en la plataforma elegida', Math.abs(moon.x - moon.w / 2) < 2 && moon.a === 0, JSON.stringify({ x: moon.x, w: moon.w }));
