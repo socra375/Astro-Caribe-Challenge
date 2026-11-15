@@ -312,8 +312,9 @@ const Game = (function () {
     if (mgRun && mgRun.g && !mgRun.g.done && mgRun.tick) mgRun.tick(dt);
     if (running && S) tickRadio(dt);
     if (running && S && !paused && !S.ended && S.station) Station.step(S, dt); // el elevador sigue su trayecto aunque haya un panel abierto
+    if (running && S) rideFrame(dt); // el cambio de piso lo completa este controlador, no el panel
     if (running && S) {
-      const live = !paused && !modalOpen() && !S.ended;
+      const live = !paused && !modalOpen() && !S.ended && !rideOn();
       if (live) {
         World.update(dt, S, scaleIn(inputVec()));
         Sim.setPlayerZone(S, World.zone());
@@ -374,7 +375,7 @@ const Game = (function () {
     } else p.classList.add('hidden');
   }
   function interact() {
-    if (!running || modalOpen()) return;
+    if (!running || modalOpen() || rideOn()) return;
     if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
     Sfx.play('click'); if (near.id.startsWith('x:')) { exInteract(near); return; } openConsole(near);
   }
@@ -410,7 +411,7 @@ const Game = (function () {
     return true;
   }
   function newRun(scen, diff, opts) {
-    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; survReset(); // «Reintentar» repite esta misma configuración desde cero
+    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; rideAbort(); survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
@@ -432,7 +433,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
-  function stopPlay() { survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { rideAbort(); survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */

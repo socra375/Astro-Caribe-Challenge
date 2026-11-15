@@ -91,15 +91,38 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   await pg.click('[data-act="elev-1"]'); await sleep(pg, 2500);
   const mv = await pg.evaluate(() => ({ st: Game.S.station.elev.crew.st, lv: Station.level(Game.S, 'crew'), floor: World.floor, occ: Game.S.station.elev.crew.occ.slice() }));
   ok('El trayecto es real: el elevador se mueve entre pisos con el jugador a bordo y aún no se ha cambiado de piso', mv.st === 'moving' && mv.lv < 3 && mv.lv > 1 && mv.floor === 3 && mv.occ.includes('player'), JSON.stringify(mv));
-  await pg.waitForFunction(() => World.floor === 1 && !document.querySelector('[data-act="elev-1"]'), null, { timeout: 15000 }); await sleep(pg, 200);
+  await pg.waitForFunction(() => World.floor === 1 && !document.getElementById('elride'), null, { timeout: 20000 }); await sleep(pg, 200);
   const ar = await pg.evaluate(() => ({ floor: World.floor, room: World.roomName(World.player.x, World.player.y), occ: Game.S.station.elev.crew.occ.length, at: Game.S.station.elev.crew.at }));
   ok('Al llegar, el jugador sale en el piso 1 junto al elevador y la cabina queda libre', ar.floor === 1 && ar.room === 'elc1' && ar.occ === 0 && ar.at === 1, JSON.stringify(ar));
+  /* ---- Animación del trayecto y viaje que no depende del panel ---- */
+  await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 400);
+  await pg.keyboard.press('e'); await sleep(pg, 300); await pg.click('[data-act="elev-3"]'); await sleep(pg, 300);
+  const r1 = await pg.evaluate(() => ({ fx: !!document.getElementById('elride'), panel: !!document.querySelector('[data-act="elev-3"]'), arrow: (document.querySelector('.elr-arrow') || {}).textContent, msg: (document.querySelector('.elr-msg') || {}).textContent, floor: World.floor }));
+  ok('Al elegir piso el panel se cierra y empieza la animación del trayecto (flecha ▲ al subir)', r1.fx && !r1.panel && r1.arrow === '▲' && r1.floor === 1, JSON.stringify(r1));
+  const seen = new Set(); let sawClosed = false, sawUp = false;
+  for (let i = 0; i < 9; i++) { await sleep(pg, 600); const q = await pg.evaluate(() => (document.getElementById('elride') ? { n: document.querySelector('.elr-num').textContent, sh: document.querySelector('.elr-shaft').className, door: document.querySelector('.elr-door.l').style.transform, msg: document.querySelector('.elr-msg').textContent } : null)); if (!q) break; seen.add(q.n); if (/Subiendo/.test(q.msg) && /^translateX\(-?0(\.0+)?%\)$/.test(q.door)) sawClosed = true; if (/up/.test(q.sh)) sawUp = true; if (seen.size >= 2 && sawClosed && sawUp) break; }
+  ok('Durante el trayecto las puertas están cerradas, las líneas del hueco se desplazan y el número de piso cambia', sawClosed && sawUp && seen.size >= 2, JSON.stringify([...seen, sawClosed, sawUp]));
+  // pausar a mitad de camino y reanudar: el cambio de piso se completa igualmente y el elevador coincide con el piso del jugador
+  await pg.keyboard.press('Escape'); await sleep(pg, 400);
+  const midR = await pg.evaluate(() => ({ ride: !!Game._debug.floors.ride, floor: World.floor }));
+  await pg.click('text=Reanudar'); await pg.waitForFunction(() => World.floor === 3 && !document.getElementById('elride'), null, { timeout: 20000 }); await sleep(pg, 200);
+  const r4 = await pg.evaluate(() => { const e = Game.S.station.elev.crew; return { floor: World.floor, at: e.at, st: e.st, occ: e.occ.length, room: World.roomName(World.player.x, World.player.y) }; });
+  ok('Pausar a mitad del trayecto no lo pierde: al reanudar llegas y el elevador está en el mismo piso que tú, libre', midR.ride && midR.floor === 1 && r4.floor === 3 && r4.at === 3 && r4.st === 'idle' && r4.occ === 0 && r4.room === 'elc3', JSON.stringify([midR, r4]));
+  await pg.evaluate(() => { const e = Game.S.station.elev.crew; Station.call(Game.S, 'crew', 1); for (let i = 0; i < 400; i++) Station.step(Game.S, 0.05); World.arrive(1); });
+  // cerrar el panel antes de que acabe el trayecto ya no deja al jugador en otro piso
+  await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 400);
+  await pg.keyboard.press('e'); await sleep(pg, 300); await pg.click('[data-act="elev-2"]'); await sleep(pg, 200);
+  const down = await pg.evaluate(() => (document.querySelector('.elr-arrow') || {}).textContent);
+  await pg.waitForFunction(() => World.floor === 2 && !document.getElementById('elride'), null, { timeout: 20000 });
+  const r5 = await pg.evaluate(() => { const e = Game.S.station.elev.crew; return { floor: World.floor, at: e.at, occ: e.occ.length }; });
+  ok('Piso 1 → 2: flecha ▲ (el número sube) y la cabina termina en el piso del jugador', down === '▲' && r5.floor === 2 && r5.at === 2 && r5.occ === 0, JSON.stringify([down, r5]));
+  await pg.evaluate(() => { World.arrive(1); const e = Game.S.station.elev.crew; e.at = 1; e.st = 'idle'; e.occ = []; });
   await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', true); const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
   await pg.keyboard.press('e'); await sleep(pg, 300);
   const br = await pg.evaluate(() => ({ warn: /averiado/.test(document.querySelector('.panel').innerText), btn: !!document.querySelector('[data-act="elev-2"]') }));
   ok('Con el elevador averiado se avisa y se ofrece la escalera de emergencia (no se bloquea la campaña)', br.warn && br.btn, JSON.stringify(br));
   await pg.click('[data-act="elev-2"]'); await sleep(pg, 1000);
-  const stp = await pg.evaluate(() => ({ txt: document.querySelector('.panel').innerText, floor: World.floor }));
+  const stp = await pg.evaluate(() => ({ txt: document.getElementById('elride').innerText, floor: World.floor }));
   ok('La escalera tarda (7 s por piso) y mientras tanto no se cambia de piso', /Escalera de emergencia/.test(stp.txt) && stp.floor === 1, JSON.stringify(stp));
   await pg.waitForFunction(() => World.floor === 2, null, { timeout: 15000 });
   ok('Tras la escalera se llega al piso 2, delante de la puerta del elevador', await pg.evaluate(() => World.floor === 2 && World.roomName(World.player.x, World.player.y) === 'rad'));

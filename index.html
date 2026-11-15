@@ -195,6 +195,26 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
 .choice{border:2px solid var(--border-input);background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;text-align:left;cursor:pointer;min-height:44px}
 .choice[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,214,255,.25)}
+/* ===== Trayecto del elevador ===== */
+#elride{position:fixed;inset:0;z-index:19;display:flex;align-items:center;justify-content:center;background:#05070f;overflow:hidden}
+.elr-shaft{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(120,150,255,.0) 0 46px,rgba(120,150,255,.22) 46px 50px),radial-gradient(ellipse at center,rgba(40,60,130,.35),rgba(3,5,12,.95) 70%);background-size:100% 100%}
+.elr-shaft.up{animation:elrup .35s linear infinite}.elr-shaft.down{animation:elrdown .35s linear infinite}
+@keyframes elrup{from{background-position:0 0,0 0}to{background-position:0 50px,0 0}}
+@keyframes elrdown{from{background-position:0 0,0 0}to{background-position:0 -50px,0 0}}
+.elr-cab{position:relative;width:min(440px,84vw);height:min(560px,70vh);border-radius:18px;border:3px solid #8fa3d9;background:linear-gradient(180deg,#1b2447,#0d1330);box-shadow:0 0 60px rgba(100,140,255,.35),inset 0 0 40px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.elr-disp,.elr-name{position:relative;z-index:2}
+.elr-disp{display:flex;align-items:center;gap:14px;padding:6px 22px;border-radius:12px;background:#02050c;border:2px solid #38d6ff;box-shadow:0 0 22px rgba(56,214,255,.45)}
+.elr-num{font-size:clamp(64px,16vw,110px);font-weight:900;line-height:1;color:#7fe6ff;text-shadow:0 0 18px rgba(56,214,255,.8);font-variant-numeric:tabular-nums}
+.elr-arrow{font-size:clamp(34px,8vw,56px);color:#ffd36b;text-shadow:0 0 14px rgba(255,211,107,.8);animation:elrpulse .6s ease-in-out infinite alternate}
+@keyframes elrpulse{from{opacity:.45}to{opacity:1}}
+.elr-name{font-size:19px;font-weight:700;color:#cfe0ff;text-align:center;padding:0 12px}
+.elr-door{position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(90deg,#9aa8d0,#6e7ca8);border:2px solid #3c4a78;box-sizing:border-box;transition:transform .08s linear}
+.elr-door.l{left:0;border-right-width:3px}.elr-door.r{right:0;border-left-width:3px}
+.elr-col{position:absolute;right:max(14px,calc(50% - 300px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+.elr-f{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#8fa3d9;border:2px solid #3c4a78;background:#0b1130}
+.elr-f.on{color:#04101f;background:#7fe6ff;border-color:#fff;box-shadow:0 0 16px rgba(56,214,255,.9)}
+.elr-msg{position:absolute;left:0;right:0;bottom:6vh;text-align:center;font-size:22px;font-weight:700;color:#e8f0ff;text-shadow:0 0 12px rgba(0,0,0,.8)}
+@media (max-width:640px){.elr-col{right:auto;left:50%;top:auto;bottom:13vh;transform:translateX(-50%);flex-direction:row}.elr-f{width:36px;height:36px}}
 /* ===== Supervivencia y Game Over ===== */
 #survfx{position:fixed;inset:0;z-index:15;pointer-events:none}
 #survbar{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:30;min-width:min(320px,86vw);padding:6px 12px;border-radius:12px;background:rgba(8,12,28,.9);border:2px solid var(--warning);font-weight:700;font-size:15px;text-align:center}
@@ -7026,8 +7046,9 @@ const Game = (function () {
     if (mgRun && mgRun.g && !mgRun.g.done && mgRun.tick) mgRun.tick(dt);
     if (running && S) tickRadio(dt);
     if (running && S && !paused && !S.ended && S.station) Station.step(S, dt); // el elevador sigue su trayecto aunque haya un panel abierto
+    if (running && S) rideFrame(dt); // el cambio de piso lo completa este controlador, no el panel
     if (running && S) {
-      const live = !paused && !modalOpen() && !S.ended;
+      const live = !paused && !modalOpen() && !S.ended && !rideOn();
       if (live) {
         World.update(dt, S, scaleIn(inputVec()));
         Sim.setPlayerZone(S, World.zone());
@@ -7088,7 +7109,7 @@ const Game = (function () {
     } else p.classList.add('hidden');
   }
   function interact() {
-    if (!running || modalOpen()) return;
+    if (!running || modalOpen() || rideOn()) return;
     if (!near) { if (World.lockedNear()) openCmd('missions'); return; }
     Sfx.play('click'); if (near.id.startsWith('x:')) { exInteract(near); return; } openConsole(near);
   }
@@ -7124,7 +7145,7 @@ const Game = (function () {
     return true;
   }
   function newRun(scen, diff, opts) {
-    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; survReset(); // «Reintentar» repite esta misma configuración desde cero
+    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; rideAbort(); survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
@@ -7146,7 +7167,7 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
-  function stopPlay() { survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { rideAbort(); survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
@@ -9623,19 +9644,68 @@ const Game = (function () {
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
     const go = (to) => {
-      if (e.broken) { mode = 'stairs'; const r = Station.stairs(S, World.floor, to); stairsT = r.s; dest = to; Sfx.play('step'); paint(); return; }
+      const from = World.floor; if (to === from) return;
+      if (e.broken) { const r = Station.stairs(S, from, to); pop(); startRide('stairs', from, to, r.s); return; }
       const b = Station.board(S, 'crew', 'player'); if (!b.ok) return toast(tr(Station.WHY[b.why]), '', 'warn');
-      const r = Station.call(S, 'crew', to); if (!r.ok) return toast(tr(Station.WHY[r.why]), '', 'warn');
-      dest = to; mode = 'ride'; Sfx.play('door'); paint();
+      const r = Station.call(S, 'crew', to); if (!r.ok) { Station.leave(S, 'crew', 'player'); return toast(tr(Station.WHY[r.why]), '', 'warn'); }
+      pop(); startRide('lift', from, to, r.s); // el panel se cierra y empieza la animación del trayecto
     };
-    timer = setInterval(() => {
-      if (!s.isConnected) return clearInterval(timer);
-      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest, true); toast('🪜 ' + fname(dest), '', 'info'); return; } }
-      if (mode === 'ride' && e.st === 'idle' && e.at === dest) { clearInterval(timer); Station.leave(S, 'crew', 'player'); pop(); arriveFloor(dest); Sfx.play('ok'); toast('🛗 ' + fname(dest), '', 'ok'); return; }
-      paint();
-    }, 100);
+    // una ocupación que quedó de un viaje interrumpido no debe dejar la cabina «ocupada» ni en un piso que no es
+    if (!ride && e.st === 'idle' && e.occ.includes('player')) Station.leave(S, 'crew', 'player');
+    timer = setInterval(() => { if (!s.isConnected) return clearInterval(timer); paint(); }, 100);
     paint();
   }
+
+  /* ---------- Trayecto del elevador: animación a pantalla completa ----------
+     El cambio de piso lo completa este controlador (no el panel): cerrar el panel o pausar no deja al jugador
+     en un piso distinto al de la cabina. Mientras dura el viaje el juego queda quieto. */
+  let ride = null;
+  const rideOn = () => !!ride;
+  function startRide(kind, from, to, secs) {
+    rideEnd(true);
+    const es = LANG === 'es', up = to > from;
+    const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
+    const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
+    const col = h('div', { class: 'elr-col' }, Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const shaft = h('div', { class: 'elr-shaft' });
+    const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
+      shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
+    document.getElementById('app').append(el);
+    ride = { kind, from, to, up, t: 0, total: Math.max(1, secs || 1), el, num, arrow, name, msg, doorL, doorR, shaft, col, e: 0, last: '', engine: 0 };
+    Sfx.play(kind === 'stairs' ? 'step' : 'door'); rideFrame(0);
+  }
+  function rideEnd(abort) {
+    if (!ride) return; const r = ride; ride = null; r.el.remove();
+    if (abort || !S) return;
+    if (r.kind === 'lift') Station.leave(S, 'crew', 'player');
+    arriveFloor(r.to, r.kind === 'stairs'); Sfx.play('ok');
+    toast((r.kind === 'stairs' ? '🪜 ' : '🛗 ') + fname(r.to), '', 'ok');
+  }
+  /** Se llama en cada fotograma del juego (también con paneles abiertos; con el juego en pausa no avanza). */
+  function rideFrame(dt) {
+    if (!ride || !S) return; const r = ride, e = Station.ensure(S).elev.crew, es = LANG === 'es';
+    let lvl, open, state;
+    if (r.kind === 'stairs') {
+      if (!paused) r.t += dt; const u = Math.min(1, r.t / r.total); lvl = r.from + (r.to - r.from) * u; open = 0; state = 'moving';
+      if (u >= 1) return rideEnd();
+    } else {
+      lvl = Station.level(S, 'crew'); open = Station.door(S, 'crew'); state = e.st; r.t += dt;
+      if (e.st === 'idle' && e.at === r.to) return rideEnd();
+      if (e.st === 'idle' && e.at !== r.to && r.t > 2) return rideEnd(true); // seguridad: el trayecto no empezó; no se deja la pantalla bloqueada
+    }
+    const lv = Math.round(lvl);
+    r.num.textContent = String(lv); r.name.textContent = (es ? 'Piso ' : 'Floor ') + lv + ' · ' + fname(lv).replace(/^[^·]*·\s*/, '');
+    r.doorL.style.transform = 'translateX(' + (-open * 100).toFixed(1) + '%)'; r.doorR.style.transform = 'translateX(' + (open * 100).toFixed(1) + '%)';
+    r.shaft.className = 'elr-shaft' + (state === 'moving' ? (r.up ? ' up' : ' down') : '');
+    for (const c of r.col.children) c.classList.toggle('on', +c.dataset.f === lv);
+    const txt = r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s' : 'Emergency stairs… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s')
+      : { closing: es ? 'Cerrando puertas…' : 'Closing doors…', moving: r.up ? (es ? 'Subiendo…' : 'Going up…') : (es ? 'Bajando…' : 'Going down…'), opening: es ? 'Abriendo puertas…' : 'Opening doors…', idle: es ? 'Puertas abiertas' : 'Doors open' }[state];
+    r.msg.textContent = txt;
+    if (r.last !== state) { if (r.last && state === 'opening') Sfx.play('door'); r.last = state; }
+    if (state === 'moving') { r.engine -= dt; if (r.engine <= 0) { r.engine = 0.7; Sfx.play(r.kind === 'stairs' ? 'step' : 'engine'); } }
+  }
+  /** Para volver al menú o empezar otra partida mientras se viaja. */
+  const rideAbort = () => rideEnd(true);
 
   /* ---------- Elevador del rover (plataforma exterior ↔ garaje) ---------- */
   /** ¿Puede moverse la plataforma? El rover tiene que estar bien colocado encima (o ya en el garaje). */
@@ -9672,7 +9742,7 @@ const Game = (function () {
     }, 100);
     paint();
   }
-  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel };
+  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };
 /* =================== SUPERVIVENCIA Y GAME OVER ===================
    Efectos progresivos (frío, hambre), avisos, animaciones cortas de derrota y pantalla de GAME OVER con «Reintentar».
    La lógica de cada causa está en Surv / Sim.endings / Rover.update; aquí solo se muestra. */
