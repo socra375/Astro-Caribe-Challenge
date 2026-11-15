@@ -369,6 +369,16 @@ const Chars = (function () {
    * Dibuja un astronauta. o: { dir, t, pose, moving, scale, rm (reducir movimiento), shadow }
    * Pivote: pies en (x,y). Altura visual ≈ 64 * scale px.
    */
+  /** Equipo de salida exterior: casco sellado con visor reflectante, mochila de soporte vital, depósito de oxígeno, antena y luces de estado. */
+  function evaOverlay(c, D, t, rm) {
+    const blink = rm || Math.sin(t * 4) > 0;
+    if (D === 0) { rr(c, -9, -47, 18, 20, 4); fillOl(c, '#cfd5e3', 1.4); rr(c, -6.5, -44, 5, 13, 2); fillOl(c, '#4fb3ff', 0.8); rr(c, 1.5, -44, 5, 13, 2); fillOl(c, '#ff9a4f', 0.8); dot(c, 0, -29.5, 1.3, blink ? '#6fffa0' : '#2c6b48'); }
+    else if (D === 1) { rr(c, -13, -48, 8, 21, 3); fillOl(c, '#cfd5e3', 1.3); rr(c, -11.5, -45, 4.2, 12, 1.6); fillOl(c, '#4fb3ff', 0.7); dot(c, -9, -29.5, 1.2, blink ? '#6fffa0' : '#2c6b48'); }
+    else { c.strokeStyle = '#8c93a3'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(8, -47); c.lineTo(11, -61); c.stroke(); dot(c, 11, -62, 1.5, blink ? '#ffc24a' : '#6b4f1f'); rr(c, -5.5, -40, 11, 6, 1.6); fillOl(c, '#2b3550', 0.8); dot(c, -3, -37, 1, '#6fffa0'); dot(c, 0, -37, 1, blink ? '#ffc24a' : '#6b4f1f'); dot(c, 3, -37, 1, '#38d6ff'); }
+    c.save(); c.beginPath(); c.arc(0, -54, D === 1 ? 11.8 : 12.4, 0, Math.PI * 2); c.fillStyle = 'rgba(180,225,255,.2)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.5; c.stroke();
+    if (D !== 0) { c.beginPath(); c.ellipse(D === 1 ? 3.2 : 0, -54, D === 1 ? 5.6 : 8.2, 6.3, 0, 0, Math.PI * 2); c.fillStyle = 'rgba(212,168,60,.6)'; c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(D === 1 ? 4.4 : -3, -57, 2.3, 1.2, -0.5, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+  }
   function draw(c, role, x, y, o) {
     const R = ROLES[role] || ROLES.commander, P = R.pal, B = R.body;
     o = o || {};
@@ -431,6 +441,7 @@ const Chars = (function () {
       if (pose === 'carry') { box(c, near.hx + 1.5, near.hy - 1.5); dot(c, near.hx, near.hy, B.arm * 0.66, P.glove, true); }
       else if (pose !== 'celebrate') accessory(c, R, near.hx, near.hy, pose, t, 1);
     }
+    if (o.eva) evaOverlay(c, D, t, rm);
     c.restore();
     if (pose === 'alert') { c.save(); c.font = 'bold ' + Math.round(14 * s * 1.1) + 'px system-ui'; c.textAlign = 'center'; c.fillStyle = '#ffc24a'; c.strokeStyle = OL; c.lineWidth = 3; const yy = y + (-76 + bob) * s; c.strokeText('!', x, yy); c.fillText('!', x, yy); c.restore(); }
   }

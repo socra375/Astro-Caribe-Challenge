@@ -378,7 +378,7 @@ const Sim = (function () {
     S.pw = { gen: G, sol: solKw, rea: reaKw, demand, served, sun };
     S.st.eGen += G * h; S.st.eUsed += served * h;
     if (lf.o2 < 0.999 || lf.rec < 0.999 || lf.therm < 0.999) S.st.brownH += h;
-    if (sy.rover.batt < 100) sy.rover.batt = clamp(sy.rover.batt + 6 * h * (lf.rover || 0), 0, 100);
+    if (sy.rover.batt < 100 && (!S.ex || S.ex.rover.docked !== false)) sy.rover.batt = clamp(sy.rover.batt + 6 * h * (lf.rover || 0), 0, 100);
 
     /* --- Temperatura y presión --- */
     const tEff = clamp(lf.therm * (sy.thermal.h / 100) * M.thermMul, 0, 1);
@@ -448,7 +448,7 @@ const Sim = (function () {
       const Pn = S.pant; Pn.fresh = Math.max(0, Pn.fresh - fUse * h);
       const cf = Pn.cold && !S.emergency ? (lf.cold == null ? 1 : lf.cold) : 0, spoil = Math.min(Pn.fresh, r.food.v) * (0.01 - 0.0092 * cf) * h;
       if (spoil > 0) { Pn.fresh -= spoil; r.food.v -= spoil; S.st.spoiled += spoil; }
-      for (const e of S.sampleList) if (e.state === 'new' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
+      for (const e of S.sampleList) if (e.state === 'new' && e.loc !== 'hand' && e.loc !== 'rover' && S.t - e.t > 24) e.state = 'degraded'; // muestras sin almacenar en 24 h
     }
     r.waste.prod = S.N * (P.WASTE_PER_PERSON_DAY / 24); r.waste.v += r.waste.prod * h; // envases y residuos sólidos
 
@@ -600,7 +600,7 @@ const Sim = (function () {
     if (j.kind === 'analyze') {
       const e = S.sampleList.find((x) => x.id === j.sid);
       const sci = e ? (e.state === 'degraded' ? 7 : 12) + (e.ok ? 3 : 0) : 12;
-      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; }
+      if (e) { e.an = 'done'; e.sci = sci; e.tDone = S.t; if (typeof Ex !== 'undefined') Ex.onAnalyzed(S, e); }
       S.science += sci; S.pts += 15; campCnt(S, 'analyze'); log(S, 'ok', 'job.analyze', {});
     }
     if (j.kind === 'cook') { S.morale = Math.min(100, S.morale + j.mor); S.r.well.v = Math.min(100, S.r.well.v + 2); S.st.meals++; log(S, 'ok', 'job.cook', {}); }
@@ -659,7 +659,7 @@ const Sim = (function () {
       S.jobs.push({ kind: 'cook', h: 2, kw: 0.6, mor: salad ? 6 : 3 }); campCnt(S, 'cook');
     },
     sstore: (S, p) => {
-      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e)) return 'err';
+      const e = S.sampleList.find((x) => x.id === p.id); if (!e || !sampleFresh(e) || (e.loc && e.loc !== 'base')) return 'err';
       if (!SAMPLE_CATS.includes(p.label)) return 'err';
       const sl = freeSlot(S); if (!sl) return 'noslot';
       e.label = p.label; e.ok = p.label === e.cat; e.slot = sl; e.tStore = S.t; if (e.state === 'new') e.state = 'stored'; else e.state = 'degraded'; campCnt(S, 'sstore');
@@ -672,7 +672,7 @@ const Sim = (function () {
     analyze: (S, p) => {
       if (S.samples < 1) return 'nosample';
       if (S.jobs.some((j) => j.kind === 'analyze')) return 'busy';
-      const pend = S.sampleList.filter((x) => x.an === 'pending');
+      const pend = S.sampleList.filter((x) => x.an === 'pending' && (!x.loc || x.loc === 'base'));
       const e = (p && p.id ? pend.find((x) => x.id === p.id) : null) || pend.find((x) => x.state === 'stored') || pend[0];
       if (!e) return 'nosample';
       e.an = 'inlab'; S.samples--; S.jobs.push({ kind: 'analyze', h: S.playerRole === 'scientist' ? 2 : 3, kw: 0, sid: e.id });
@@ -1031,7 +1031,7 @@ const Sim = (function () {
     };
   }
 
-  return { EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
+  return { log, campCnt, EXP, expStatus, SAMPLE_CATS, SAMPLE_SLOTS, RATION, addSamples, DIAG_OK, PRIO_IDS, diagnose, CAMP, SLOTS, stageOf, migrate, campFlag, campStatus, setPlayerRole, plantsList, P, SC, DIFFS, CROPS, EV, ROLES, LIMIT, create, step, decide, preview, harvest, mini, repair, send, oneWay, startMission, abortMission,
     finishMission, reportSite, reportQuiz, finishRun, setPlayerZone, report, status, pct, shieldEff, addInc, activeInc, clamp };
 })();
 if (typeof module !== 'undefined') module.exports = Sim;

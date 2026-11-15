@@ -66,7 +66,7 @@ const Icons = (function () {
     '💬': 'chat', '♻': 'loop', '🧺': 'basket', '✂': 'scissors', '🔍': 'search', '🌡': 'thermo', '🕒': 'clock', '⛔': 'crit', '⚠': 'warn', 'ℹ': 'info', '✔': 'check',
     '✖': 'cross', '🏅': 'star', '📚': 'book', '🌈': 'chart', '🌰': 'seed', '🗺️': 'map', '🛡️': 'shield', '☀️': 'sun', '⚛️': 'bolt', '⚖️': 'scale', '⚙️': 'gear',
     '🛠️': 'wrench', '🌡️': 'thermo', '🛏️': 'bed', '♻️': 'loop', '✂️': 'scissors', '⏸️': 'pause', '▶️': 'play', 'ℹ️': 'info', '✔️': 'check', '⚠️': 'warn', '✖️': 'cross',
-    '🖥': 'chart', '🖥️': 'chart', '🏠': 'home'
+    '🖥': 'chart', '🖥️': 'chart', '🏠': 'home', '🔭': 'search', '🪨': 'cube', '📦': 'cube', '🧰': 'cube', '📥': 'basket', '📤': 'door', '☢': 'warn', '☢️': 'warn', '✅': 'check', '⭐': 'star'
   };
   const RX = /(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2139}\u{2190}-\u{21FF}]️?(?:‍[\u{1F300}-\u{1FAFF}]️?)*)/gu;
   const KEEP = new Set(['★', '☆', '→', '←', '↑', '↓', '↔', '✕']);

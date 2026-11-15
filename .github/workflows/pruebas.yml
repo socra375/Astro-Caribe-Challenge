@@ -40,6 +40,7 @@ jobs:
         run: |
           mkdir -p capturas
           node tests/e2e.js --shots capturas
+          node tests/expo.js --shots capturas
 
       - name: Guardar capturas
         if: always()
