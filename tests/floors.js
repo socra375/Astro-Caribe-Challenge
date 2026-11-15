@@ -162,6 +162,38 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   await sleep(pg, 400);
   const ld = await pg.evaluate(() => ({ at: Game.S.station && Game.S.station.elev.crew.at, rv: Game.S.station && Game.S.station.elev.rover.at, fl: World.floor, running: Game._debug.running }));
   ok('Al cargar la partida se conservan el piso del jugador y la posición de los elevadores', ld.running && ld.at === 3 && ld.rv === 2 && ld.fl === 1, JSON.stringify(ld));
+  /* ---- Migración de partidas anteriores a los pisos, con copia de seguridad ---- */
+  const legacy = await pg.evaluate(() => {
+    const S = JSON.parse(JSON.stringify(Game.S)); delete S.station; delete S.trip; delete S.land; // formato anterior a viaje, llegada y pisos
+    const rc = World.roomCenterOn('reactor'); const run = { S, w: { role: 'commander', px: rc[0], py: rc[1], shel: null, lock: 'in' }, speed: 1, at: 12345 };
+    return run;
+  });
+  await pg.close(); // el juego en marcha se autoguarda: se continúa en una página nueva
+  const p2 = await ctx.newPage(); p2.on('pageerror', (e) => errors.push(e.message)); await p2.goto(FILE); await sleep(p2, 300);
+  await p2.evaluate((run) => { const cur = JSON.parse(localStorage.getItem('jamt.v1') || '{}'); cur.run = run; delete cur.runBackup; localStorage.setItem('jamt.v1', JSON.stringify(cur)); }, legacy);
+  await p2.reload(); await sleep(p2, 500);
+  ok('Se prepara una partida con el formato anterior (sin versión, sin estación ni piso) con el jugador en el reactor', legacy.sv === undefined && !legacy.S.station && legacy.w.fl === undefined);
+  await p2.reload(); await sleep(p2, 500);
+  for (const b of await p2.$$('.menu-grid .btn')) { if (/Continuar|Continue/.test(await b.textContent())) { await b.click(); break; } }
+  await sleep(p2, 1500);
+  const mg = await p2.evaluate(() => { const bk = Store.get('runBackup', null); return { floor: World.floor, room: World.roomName(World.player.x, World.player.y), station: !!Game.S.station, land: Game.S.land && Game.S.land.done, bak: bk && { at: bk.run.at, kind: bk.kind, madeAt: bk.madeAt, oldFmt: bk.run.sv === undefined && bk.run.S.station === undefined }, toast: /Copia de seguridad/.test(document.body.innerText) }; });
+  ok('Cargar una partida anterior la coloca en el piso de su posición guardada (reactor → piso 3), con estación y aterrizaje ya completados', mg.floor === 3 && mg.room === 'reactor' && mg.station && mg.land === true, JSON.stringify(mg));
+  ok('Antes de migrar se guarda una copia de seguridad intacta del formato anterior y se avisa', mg.bak && mg.bak.at === 12345 && mg.bak.kind === 'v1' && mg.bak.oldFmt && mg.toast, JSON.stringify(mg.bak));
+  await p2.evaluate(() => Game._debug.saveNow());
+  const sv2 = await p2.evaluate(() => ({ sv: Store.get('run').sv, fl: Store.get('run').w.fl, bak: Store.get('runBackup').madeAt }));
+  ok('Al guardar de nuevo la partida queda en el formato nuevo (versión 2, con piso) y la copia no se toca', sv2.sv === 2 && sv2.fl === 3 && sv2.bak === mg.bak.madeAt, JSON.stringify(sv2));
+  await p2.reload(); await sleep(p2, 500);
+  for (const b of await p2.$$('.menu-grid .btn')) { if (/Continuar|Continue/.test(await b.textContent())) { await b.click(); break; } }
+  await sleep(p2, 1200);
+  const again = await p2.evaluate(() => ({ floor: World.floor, bak: Store.get('runBackup').madeAt }));
+  ok('Una partida ya migrada no genera otra copia', again.floor === 3 && again.bak === mg.bak.madeAt, JSON.stringify(again));
+  await p2.evaluate(() => Game._debug.setSpeed(0)); await p2.keyboard.press('Escape'); await sleep(p2, 300);
+  for (const b of await p2.$$('.panel .btn')) { if (/Menú principal|Main menu/.test(await b.textContent())) { await b.click(); break; } }
+  await sleep(p2, 400);
+  const btnOk = await p2.evaluate(() => !!document.querySelector('[data-act="backup-menu"]'));
+  await p2.click('[data-act="backup-menu"]'); await sleep(p2, 300); await p2.click('[data-act="restore-backup"]'); await sleep(p2, 1500);
+  const rs = await p2.evaluate(() => ({ floor: World.floor, run: Game._debug.running, sv: Store.get('run').sv }));
+  ok('El menú principal ofrece restaurar la copia: la restaura, la vuelve a migrar y deja al jugador en su piso', btnOk && rs.run && rs.floor === 3, JSON.stringify([btnOk, rs]));
   ok('Sin errores de página', errors.length === 0, errors.join(' | '));
   await browser.close();
   for (const r of results) console.log(r[0], '-', r[1], r[2] && r[0] === 'FAIL' ? '(' + r[2] + ')' : '');

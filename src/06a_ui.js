@@ -374,11 +374,26 @@ const Game = (function () {
   function saveRun() {
     if (!S) return;
     if (S.ended) { Store.del('run'); return; }
-    Store.set('run', { S, w: World.state(), speed, at: Date.now() });
+    Store.set('run', { sv: 2, S, w: World.state(), speed, at: Date.now() });
+  }
+  /** Copia de seguridad de una partida guardada con un formato anterior (antes de los pisos): una sola vez por partida, sin sobrescribir otra copia distinta. */
+  function backupLegacyRun(r) {
+    const b = Store.get('runBackup', null);
+    if (b && b.run && b.run.at === r.at) return false;
+    Store.set('runBackup', { kind: 'v1', madeAt: Date.now(), run: JSON.parse(JSON.stringify(r)) });
+    return true;
+  }
+  function restoreBackupPanel() {
+    const b = Store.get('runBackup', null); if (!b) return;
+    const es = LANG === 'es', d = new Date(b.run.at || b.madeAt).toLocaleString(es ? 'es-DO' : 'en-US');
+    push(panel('💾 ' + lt('Copia de seguridad', 'Backup'), h('div', null,
+      h('p', null, lt('Se guardó una copia de tu partida anterior (' + d + ') antes de adaptarla a los pisos. Restaurarla sustituye la partida actual.', 'A copy of your earlier game (' + d + ') was saved before adapting it to floors. Restoring it replaces the current game.')),
+      h('div', { class: 'row' }, btn('♻ ' + lt('Restaurar la copia', 'Restore the copy'), () => { Store.set('run', JSON.parse(JSON.stringify(b.run))); popAll(); if (!loadRun()) mainMenu(); }, 'primary', { 'data-act': 'restore-backup' }), btn(_('close'), () => pop())))), { sticky: false });
   }
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
+    if ((r.sv || 1) < 2 && backupLegacyRun(r)) setTimeout(() => toast('💾 ' + lt('Copia de seguridad creada', 'Backup created'), lt('Tu partida anterior se adaptó a los pisos y se guardó una copia.', 'Your earlier game was adapted to floors and a copy was saved.'), 'info'), 600);
     S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; if (!S.land.done) { Store.del('run'); return false; } World.init(S.scen, Land.pad(S)); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
     beginPlay();
     return true;
@@ -419,6 +434,7 @@ const Game = (function () {
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
+        Store.get('runBackup', null) ? btn('💾 ' + lt('Restaurar copia de seguridad', 'Restore backup'), restoreBackupPanel, '', { 'data-act': 'backup-menu' }) : null,
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('🛰️ ' + lt('Archivo de misión: ver la llegada', 'Mission file: watch the arrival'), replayArrival), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),

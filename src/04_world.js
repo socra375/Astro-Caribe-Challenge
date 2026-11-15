@@ -110,6 +110,12 @@ const World = (function () {
     const to = b.ride.to, p = withFloor(to, () => spot('elc' + to, 0));
     b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.path = []; b.wait = 1.5; b.dir = 2;
   }
+  /** Piso al que pertenece un punto (coordenadas originales de la base): el piso donde esa celda es sala o puerta; si no, la planta baja (exterior). */
+  function floorOfPoint(x, y) {
+    const tx = Math.floor(x), ty = Math.floor(y);
+    if (ty >= 0 && ty < H && tx >= 0 && tx < W) for (let i = 0; i < FL.length; i++) { const c = FL[i].grid[ty][tx]; if (c === FLOOR || c === DOOR) return i + 1; }
+    const g = FL.findIndex((o) => o.D.ground); return g >= 0 ? g + 1 : 1;
+  }
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
   function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
@@ -816,7 +822,9 @@ const World = (function () {
   function state() { return { role: player.role, fl: fidx + 1, px: player.x, py: player.y, shel: shelIn, lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
-    if (o.fl && o.fl !== fidx + 1) setFloor(o.fl); // partidas anteriores no traen piso: se quedan en el 1
+    // partidas anteriores a los pisos no traen piso: se deduce de la posición guardada (así no pierden dónde estaba el jugador)
+    const f = Number.isInteger(o.fl) && o.fl >= 1 && o.fl <= FL.length ? o.fl : (Number.isFinite(o.px) && Number.isFinite(o.py) ? floorOfPoint(o.px, o.py) : 1);
+    if (f !== fidx + 1) setFloor(f);
     if (Number.isFinite(o.px) && Number.isFinite(o.py) && canStand(o.px, o.py, 0.3)) { player.x = o.px; player.y = o.py; }
     shelIn = o.shel || null; camInit = false;
     airlock.st = o.lock === 'out' ? 'out' : 'in';
@@ -830,7 +838,7 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
