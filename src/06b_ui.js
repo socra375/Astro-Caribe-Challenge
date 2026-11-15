@@ -5,6 +5,7 @@
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
+    tele: { es: 'Teletransporte de pisos', en: 'Floor teleporter' }, elev1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev3: { es: 'Elevador de tripulación', en: 'Crew elevator' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
     lock: { es: 'Esclusa', en: 'Airlock' }, suit: { es: 'Traje y expedición', en: 'Suit & expedition' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
@@ -20,7 +21,7 @@
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
-    const map = { cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
+    const map = { tele: teleportPanel, elev1: () => elevatorPanel(1), elev2: () => elevatorPanel(2), elev3: () => elevatorPanel(3), cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
       shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
@@ -220,7 +221,7 @@
   function logTab() {
     const act = S.inc.filter((i) => !i.res);
     return h('div', null,
-      h('h3', null, _('alerts')), act.length ? act.map((i) => h('div', { class: 'row', style: { margin: '4px 0' } }, tag(SEVI[i.sev] + ' ' + _(i.sev), i.sev), h('b', null, tr(DATA.EVT[i.type].t)), h('span', { class: 'small muted' }, tr(DATA.ROOMS[i.room])), S.t < i.from ? h('span', { class: 'small' }, '⏳ ' + fmt(i.from - S.t) + ' h') : null, btn('❓ ' + _('why'), () => whyPanel(i.type), 'sm'))) : h('p', { class: 'muted' }, _('none')),
+      h('h3', null, _('alerts')), act.length ? act.map((i) => h('div', { class: 'row', style: { margin: '4px 0' } }, tag(SEVI[i.sev] + ' ' + _(i.sev), i.sev), h('b', null, tr(DATA.EVT[i.type].t)), h('span', { class: 'small muted' }, floorOfRoom(i.room) + ' · ' + tr(DATA.ROOMS[i.room])), S.t < i.from ? h('span', { class: 'small' }, '⏳ ' + fmt(i.from - S.t) + ' h') : null, btn('❓ ' + _('why'), () => whyPanel(i.type), 'sm'))) : h('p', { class: 'muted' }, _('none')),
       h('div', { class: 'legend', style: { margin: '8px 0' } }, tag('⛔ ' + _('crit'), 'crit'), tag('⚠ ' + _('warn'), 'warn'), tag('ℹ ' + _('info'), 'info')),
       h('h3', null, _('logT')), h('table', null, h('tbody', null, S.log.slice(-40).reverse().map((e) => { const [t, b] = logText(e); return h('tr', null, h('td', { class: 'small' }, 'D' + (Math.floor(e.t / 24) + 1) + ' ' + fmt(e.t % 24, 0) + 'h'), h('td', null, SEVI[e.sev] || ''), h('td', null, h('b', null, t), ' ', h('span', { class: 'small muted' }, b))); }))));
   }

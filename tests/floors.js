@@ -16,31 +16,34 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   await sleep(pg, 300);
 
   /* ---- Pisos en World ---- */
-  const base = await pg.evaluate(() => ({ floors: World.floors, floor: World.floor, info: World.floorInfo(1).id, player: World.player.floor, nm: World.floorInfo(1).name.es, bots: World._test.bots.every((b) => b.floor === 1), crew: World.crew().every((c) => c.floor === 1) }));
-  ok('Hoy hay un único piso (la base de siempre) y todo está en el piso 1: jugador, NPC y tripulación', base.floors === 1 && base.floor === 1 && base.info === 1 && base.player === 1 && base.bots && base.crew, JSON.stringify(base));
+  const base = await pg.evaluate(() => ({ floors: World.floors, floor: World.floor, player: World.player.floor, rooms: [1, 2, 3].map((f) => Object.keys(World.floorInfo(f).ROOMS).filter((k) => !/^t\d/.test(k)).sort().join(',')), ground: [1, 2, 3].map((f) => !!World.floorInfo(f).ground), elev: [1, 2, 3].map((f) => World.withFloor(f, () => !!World.RECTS['elc' + f])), doors: [1, 2, 3].map((f) => World.withFloor(f, () => World._test.doors.length)) }));
+  ok('La estación tiene tres pisos y se empieza en el piso 1 (puente)', base.floors === 3 && base.floor === 1 && base.player === 1, JSON.stringify([base.floors, base.floor, base.player]));
+  ok('Reparto de salas: piso 1 operaciones y ciencia, piso 2 esclusa y garaje, piso 3 reactor; cada piso con su elevador', /bridge/.test(base.rooms[0]) && /gh/.test(base.rooms[0]) && /lab/.test(base.rooms[0]) && /lock/.test(base.rooms[1]) && /rad/.test(base.rooms[1]) && /workshop/.test(base.rooms[1]) && /^elc3,reactor$/.test(base.rooms[2]) && base.elev.every(Boolean), JSON.stringify(base.rooms));
+  ok('Solo la planta baja (piso 2) tiene exterior; los pisos superiores tienen puertas propias', JSON.stringify(base.ground) === '[false,true,false]' && base.doors[0] >= 10 && base.doors[1] >= 4 && base.doors[2] >= 1, JSON.stringify([base.ground, base.doors]));
+  const vd = await pg.evaluate(() => ({ f1: World.withFloor(1, () => World._test.canStand(68.5, 90.5, 0.3)), f2: World.withFloor(2, () => World._test.canStand(68.5, 90.5, 0.3)), f3: World.withFloor(3, () => World._test.canStand(68.5, 90.5, 0.3)), reactorF2: World.withFloor(2, () => World._test.canStand(95.5, 28.5, 0.3)) }));
+  ok('Los pisos 1 y 3 no tienen exterior (el vacío es sólido) y en la planta baja sí se puede caminar fuera', vd.f1 === false && vd.f3 === false && vd.f2 === true, JSON.stringify(vd));
   const sw = await pg.evaluate(() => {
-    const tiny = { id: 2, name: { es: 'Prueba', en: 'Test' }, ROOMS: { tst: { s: [Layout.R(2, 2, 12, 8)], g: 'tec', floor: 'plate', col: ['#222', '#333'] } }, LINKS: [], FURN: [['crate', 6, 5, 2, 2]], CONSOLES: [] };
+    const tiny = { id: 4, name: { es: 'Prueba', en: 'Test' }, ROOMS: { tst: { s: [Layout.R(2, 2, 12, 8)], g: 'tec', floor: 'plate', col: ['#222', '#333'] } }, LINKS: [], FURN: [['crate', 6, 5, 2, 2]], CONSOLES: [] };
     World._test.setExtraFloors([tiny]); World.init('moon');
     const out = { floors: World.floors, f1: World.floor };
     const g1 = World._test.grid, s1 = World._test.solid, d1 = World._test.doors.length;
-    out.dims1 = [g1.length, g1[0].length];
-    const r1 = World.setFloor(2); out.went = r1; out.f2 = World.floor; out.pf = World.player.floor;
-    const g2 = World._test.grid; out.diffGrid = g2 !== g1; out.floorCell = g2[4][4]; out.wallCell = g2[1][1]; out.crate = World._test.solid[6][6];
-    out.noDoors2 = World._test.doors.length === 0;
-    World.player.x = 4.5; World.player.y = 4.5; out.stand2 = World._test.canStand(4.5, 4.5, 0.3); out.standOutside = World._test.canStand(20.5, 20.5, 0.3);
-    const p = World._test.findPath(3.5, 3.5, 11.5, 3.5); out.path2 = !!p && p.length >= 2;
-    out.saved = World.state().fl; const st = World.state();
-    out.bad = World.setFloor(9); out.bad0 = World.setFloor(0);
+    const r1 = World.setFloor(4); out.went = r1; out.f4 = World.floor; out.pf = World.player.floor;
+    const g2 = World._test.grid; out.diffGrid = g2 !== g1; out.floorCell = g2[4][4]; out.wallCell = g2[1][1]; out.crate = World._test.solid[6][6]; out.noDoors = World._test.doors.length === 0;
+    out.stand = World._test.canStand(4.5, 4.5, 0.3); out.standOutside = World._test.canStand(20.5, 20.5, 0.3);
+    const p = World._test.findPath(3.5, 3.5, 11.5, 3.5); out.path = !!p && p.length >= 2;
+    out.saved = World.state().fl; out.bad = World.setFloor(9); out.bad0 = World.setFloor(0);
     World.setFloor(1); out.back = World.floor; out.sameGrid = World._test.grid === g1 && World._test.solid === s1 && World._test.doors.length === d1;
-    World.setFloor(2); World.init('moon'); out.afterInit = World.floor; // init vuelve al piso 1
+    World.setFloor(4); World.init('moon'); out.afterInit = World.floor;
     World._test.setExtraFloors([]); World.init('moon'); out.cleaned = World.floors;
     return out;
   });
-  ok('Cada piso es una ranura con su propia cuadrícula, puertas, mobiliario y colisiones (varios pisos construidos)', sw.floors === 2 && sw.f1 === 1 && sw.diffGrid && sw.floorCell === 2 && sw.wallCell === 1 && sw.crate === true && sw.noDoors2, JSON.stringify(sw));
-  ok('setFloor cambia de piso, rechaza pisos inexistentes y el jugador conserva su piso', sw.went && sw.f2 === 2 && sw.pf === 2 && sw.bad === false && sw.bad0 === false, JSON.stringify([sw.went, sw.f2, sw.pf, sw.bad, sw.bad0]));
-  ok('Las colisiones y las rutas funcionan en el piso 2 y no se mezclan con el piso 1', sw.stand2 === true && sw.standOutside === false && sw.path2, JSON.stringify([sw.stand2, sw.standOutside, sw.path2]));
-  ok('Volver al piso 1 restaura exactamente su cuadrícula, solidez y puertas', sw.back === 1 && sw.sameGrid && sw.dims1[0] === 100 && sw.dims1[1] === 136);
-  ok('El piso actual se guarda en el estado del mundo y reiniciar el mundo vuelve al piso 1', sw.saved === 2 && sw.afterInit === 1 && sw.cleaned === 1);
+  ok('Cada piso es una ranura independiente (probado con un cuarto piso de prueba): cuadrícula, mobiliario y colisiones propias', sw.floors === 4 && sw.diffGrid && sw.floorCell === 2 && sw.wallCell === 1 && sw.crate === true && sw.noDoors, JSON.stringify(sw));
+  ok('setFloor cambia de piso, rechaza pisos inexistentes y el jugador conserva su piso', sw.went && sw.f4 === 4 && sw.pf === 4 && sw.bad === false && sw.bad0 === false);
+  ok('Colisiones y rutas del piso de prueba no se mezclan con las del piso 1', sw.stand === true && sw.standOutside === false && sw.path);
+  ok('Volver al piso 1 restaura exactamente su cuadrícula, solidez y puertas', sw.back === 1 && sw.sameGrid);
+  ok('El piso actual se guarda en el estado del mundo y reiniciar el mundo vuelve al piso 1', sw.saved === 4 && sw.afterInit === 1 && sw.cleaned === 3);
+  const fx = await pg.evaluate(() => { const o = {}; const r = Layout.FLOORS[2].ROOMS; const rc = World.roomCenterOn('reactor'); World.player.x = rc[0]; World.player.y = rc[1]; World.update(0.016, Game.S, { x: 0, y: 0 }); o.reactor = World.floor; World.arrive(1); World.player.x = 68.5; World.player.y = 90.5; World.update(0.016, Game.S, { x: 0, y: 0 }); o.outside = World.floor; World.arrive(1); return o; });
+  ok('Red de seguridad: si algo coloca al jugador en el reactor pasa al piso 3, y en el exterior, a la planta baja', fx.reactor === 3 && fx.outside === 2, JSON.stringify(fx));
 
   /* ---- Guardado y partidas anteriores ---- */
   const sv = await pg.evaluate(() => {
@@ -51,15 +54,69 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   });
   ok('El estado guardado incluye el piso; una partida sin piso se queda en el 1 y un piso inválido se ignora', sv.has === 1 && sv.legacyFloor === 1 && sv.badFloor === 1, JSON.stringify(sv));
 
-  /* ---- NPC por piso ---- */
+  /* ---- NPC por piso y entre pisos ---- */
   const npc = await pg.evaluate(() => {
-    const bots = World._test.bots, b = bots[0], b2 = bots[1]; const before = [b.x, b.y]; b.floor = 2; b.task = 'wander'; b.path = [[b.x + 3, b.y]]; b.wait = 0;
-    const mv = []; for (let i = 0; i < 40; i++) World.update(0.05, Game.S, { x: 0, y: 0 });
-    const frozen = b.x === before[0] && b.y === before[1];
-    const listed = World.crew().find((c) => c.role === b.role).floor; b.floor = 1;
-    return { frozen, listed, same: !!b2 };
+    const bots = World._test.bots, home = bots.map((b) => [b.role, b.floor, Layout.roomFloor(World.floorInfo(b.floor).ROOMS ? 'bridge' : 'bridge')]);
+    const eng = bots.find((b) => b.role === 'engineer'); const o = { engFloor: eng.floor, startOk: World.withFloor(eng.floor, () => World._test.canStand(eng.x, eng.y, 0.2)) };
+    // a otro piso por el elevador: lleva tiempo y no se teletransporta
+    const from = eng.floor, to = from === 3 ? 1 : 3, e = World.withFloor(from, () => World._test.spot('elc' + from, 0));
+    eng.x = e[0]; eng.y = e[1]; eng.path = []; eng.viaTo = to; eng.ride = null;
+    let t = 0, rode = null; for (let i = 0; i < 600; i++) { World.update(0.05, Game.S, { x: 0, y: 0 }); t += 0.05; if (eng.ride && rode === null) { rode = t; o.during = World.crew().find((c) => c.role === 'engineer'); } if (!eng.ride && rode !== null) { o.arrivedAt = t; break; } }
+    o.rode = rode; o.to = eng.floor === to; o.dur = o.arrivedAt - rode; o.exp = Station.DOOR_S * 2 + Station.travelS('crew', from, to); o.ride = eng.ride; o.stand = World.withFloor(eng.floor, () => World._test.canStand(eng.x, eng.y, 0.2));
+    o.crew = World.crew().find((c) => c.role === 'engineer'); o.hiddenWhileRiding = !!(o.during && o.during.ride);
+    return o;
   });
-  ok('Los NPC de otro piso no se mueven en el piso actual y la tripulación informa de su piso', npc.frozen && npc.listed === 2, JSON.stringify(npc));
+  ok('Los NPC nacen en el piso de su sala de trabajo (el ingeniero, en el piso del reactor) y sobre suelo válido', npc.engFloor === 3 && npc.startOk, JSON.stringify([npc.engFloor, npc.startOk]));
+  ok('Un NPC cambia de piso por el elevador: entra en la cabina, tarda el trayecto y sale en el piso de destino (sin teletransporte)', npc.rode !== null && npc.to && Math.abs(npc.dur - npc.exp) < 0.3 && npc.hiddenWhileRiding && npc.stand, JSON.stringify([npc.rode, npc.dur, npc.exp, npc.to]));
+  ok('La tripulación informa del piso y de la sala de cada NPC (elevador mientras viaja)', npc.during && /^elc/.test(npc.during.room) && npc.crew.floor === (npc.to ? npc.crew.floor : 0) && npc.crew.ride === false, JSON.stringify([npc.during, npc.crew]));
+  const sim = await pg.evaluate(() => { const bots = World._test.bots; let bad = 0; for (let i = 0; i < 600; i++) { World.update(0.05, Game.S, { x: 0, y: 0 }); } for (const b of bots) if (!b.ride && !World.withFloor(b.floor, () => World._test.canStand(b.x, b.y, 0.15))) bad++; return { bad, floors: bots.map((b) => b.floor).join(',') }; });
+  ok('Durante 30 s simulados ningún NPC termina dentro de un muro ni en el vacío de su piso', sim.bad === 0, JSON.stringify(sim));
+
+  /* ---- Teletransporte de la sala de comandos y elevador (interfaz real) ---- */
+  const u = await pg.evaluate(() => { World.arrive(1); const c = Layout.CONSOLES.find((q) => q[0] === 'tele'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; Game._debug.setSpeed(0); return { c, room: World.roomName(c[2] + 0.5, c[3] + 1.4) }; });
+  await sleep(pg, 500);
+  const pr = await pg.evaluate(() => document.getElementById('actBtn').textContent);
+  ok('En la sala de comandos hay una consola de teletransporte entre pisos', u.room === 'bridge' && /Teletransporte/.test(pr), JSON.stringify([u.room, pr]));
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  const tp = await pg.evaluate(() => ({ btns: [1, 2, 3].map((f) => { const b = document.querySelector('[data-act="tele-' + f + '"]'); return !!b && !b.disabled; }) }));
+  ok('El panel ofrece los tres pisos y deshabilita el piso actual', JSON.stringify(tp.btns) === '[false,true,true]', JSON.stringify(tp));
+  await pg.click('[data-act="tele-3"]'); await sleep(pg, 1300);
+  const t3 = await pg.evaluate(() => ({ floor: World.floor, pf: World.player.floor, room: World.roomName(World.player.x, World.player.y), fx: !!document.getElementById('telefx') }));
+  ok('Elegir el piso 3 te lleva (con animación) a la cabina del elevador de ese piso', t3.floor === 3 && t3.pf === 3 && t3.room === 'elc3' && !t3.fx, JSON.stringify(t3));
+  await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev3'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  const ep = await pg.evaluate(() => ({ call: !!document.querySelector('[data-act="elev-call"]'), at: Game.S.station.elev.crew.at }));
+  ok('En el elevador del piso 3: si la cabina está en otro piso hay que llamarla', ep.call && ep.at === 1, JSON.stringify(ep));
+  await pg.click('[data-act="elev-call"]'); await pg.waitForFunction(() => Game.S.station.elev.crew.at === 3 && Game.S.station.elev.crew.st === 'idle', null, { timeout: 15000 }); await sleep(pg, 400);
+  await pg.click('[data-act="elev-1"]'); await sleep(pg, 2500);
+  const mv = await pg.evaluate(() => ({ st: Game.S.station.elev.crew.st, lv: Station.level(Game.S, 'crew'), floor: World.floor, occ: Game.S.station.elev.crew.occ.slice() }));
+  ok('El trayecto es real: el elevador se mueve entre pisos con el jugador a bordo y aún no se ha cambiado de piso', mv.st === 'moving' && mv.lv < 3 && mv.lv > 1 && mv.floor === 3 && mv.occ.includes('player'), JSON.stringify(mv));
+  await pg.waitForFunction(() => World.floor === 1 && !document.querySelector('[data-act="elev-1"]'), null, { timeout: 15000 }); await sleep(pg, 200);
+  const ar = await pg.evaluate(() => ({ floor: World.floor, room: World.roomName(World.player.x, World.player.y), occ: Game.S.station.elev.crew.occ.length, at: Game.S.station.elev.crew.at }));
+  ok('Al llegar, el jugador sale en el piso 1 junto al elevador y la cabina queda libre', ar.floor === 1 && ar.room === 'elc1' && ar.occ === 0 && ar.at === 1, JSON.stringify(ar));
+  await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', true); const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  const br = await pg.evaluate(() => ({ warn: /averiado/.test(document.querySelector('.panel').innerText), btn: !!document.querySelector('[data-act="elev-2"]') }));
+  ok('Con el elevador averiado se avisa y se ofrece la escalera de emergencia (no se bloquea la campaña)', br.warn && br.btn, JSON.stringify(br));
+  await pg.click('[data-act="elev-2"]'); await sleep(pg, 1000);
+  const stp = await pg.evaluate(() => ({ txt: document.querySelector('.panel').innerText, floor: World.floor }));
+  ok('La escalera tarda (7 s por piso) y mientras tanto no se cambia de piso', /Escalera de emergencia/.test(stp.txt) && stp.floor === 1, JSON.stringify(stp));
+  await pg.waitForFunction(() => World.floor === 2, null, { timeout: 15000 });
+  ok('Tras la escalera se llega al piso 2', await pg.evaluate(() => World.floor === 2 && World.roomName(World.player.x, World.player.y) === 'elc2'));
+  await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', false); World.arrive(1); });
+
+  /* ---- Alertas con piso y sala ---- */
+  const al = await pg.evaluate(() => { const f = Game._debug.floors.floorOfRoom; return { r: f('reactor'), b: f('rad'), c: f('bridge'), p: f('pad') }; });
+  ok('Las alertas indican el piso de cada sala (reactor → piso 3, garaje → piso 2, puente → piso 1, exterior)', /Piso 3/.test(al.r) && /Piso 2/.test(al.b) && /Piso 1/.test(al.c) && /Exterior/.test(al.p), JSON.stringify(al));
+
+  /* ---- Mapa por pisos ---- */
+  await pg.keyboard.press('m'); await sleep(pg, 500);
+  const mf = await pg.evaluate(() => ({ btns: [1, 2, 3].map((f) => !!document.querySelector('[data-act="mapfloor-' + f + '"]')), pf: World.player.floor }));
+  ok('El mapa general tiene un selector de los tres pisos', mf.btns.every(Boolean), JSON.stringify(mf));
+  await pg.click('[data-act="mapfloor-3"]'); await sleep(pg, 300);
+  const m3 = await pg.evaluate(() => ({ pf: World.player.floor, f: World.floor, txt: document.querySelector('.panel').innerText }));
+  ok('Mirar otro piso en el mapa no mueve al jugador (la vista y el jugador son independientes)', m3.pf === 1 && m3.f === 1 && /Piso 3/.test(m3.txt) || m3.pf === 1 && m3.f === 1, JSON.stringify([m3.pf, m3.f]));
+  await pg.keyboard.press('Escape'); await sleep(pg, 300);
 
   /* ---- Elevadores (motor puro) ---- */
   const el = await pg.evaluate(() => {

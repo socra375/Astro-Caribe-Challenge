@@ -62,17 +62,17 @@ const World = (function () {
     const S0 = D.SHELTER || [0, 0, -2, -2];
     if (D.SHELTER) for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
     if (D.SHELTER) for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
-    if (D.id === 1) { // el terreno exterior pertenece al piso 1
+    if (D.ground) { // el terreno exterior pertenece a la planta baja (piso 2)
       samples = []; Field.init(scen, buildPad);
       scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
       props = scenery.props;
     }
     // Solidez
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (D.id !== 1 && grid[y][x] === OUT); // los pisos superiores no tienen exterior
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (!D.ground && grid[y][x] === OUT); // solo la planta baja tiene exterior
     for (const f of furn) if (!['window', 'pipe', 'vent', 'rug'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
-    if (D.id === 1) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
+    if (D.ground) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
-    if (D.id === 1) {
+    if (D.ground) {
       // margen alrededor de la base: el rover no se pega al casco (el arte del casco es más grueso que la pared de colisión)
       hullBuf = [];
       for (let y = 0; y < H; y++) { hullBuf.push(new Array(W).fill(false)); for (let x = 0; x < W; x++) { if (grid[y][x] !== OUT) continue; for (let dy = -1; dy <= 1 && !hullBuf[y][x]; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W && grid[yy][xx] !== OUT) { hullBuf[y][x] = true; break; } } } }
@@ -87,6 +87,35 @@ const World = (function () {
     const defs = Layout.FLOORS.concat(extraFloors);
     defs.forEach((D) => { buildFloor(D); const o = slot(); o.D = D; FL.push(o); });
     fidx = 0; loadSlot(FL[0]); player.floor = 1;
+  }
+  /** Red de seguridad: las coordenadas originales de la base son únicas de cada piso. Si algo coloca al jugador en el vacío de un piso superior
+      (teletransporte tras una evacuación, pruebas…), pasa al piso donde esa celda es sala o puerta, o a la planta baja si es exterior. */
+  function fixFloor() {
+    const tx = Math.floor(player.x), ty = Math.floor(player.y);
+    if (ty < 0 || ty >= H || tx < 0 || tx >= W || FL[fidx].D.ground || grid[ty][tx] !== OUT) return;
+    for (let i = 0; i < FL.length; i++) if (i !== fidx) { const c = FL[i].grid[ty][tx]; if (c === FLOOR || c === DOOR) { setFloor(i + 1); return; } }
+    const g = FL.findIndex((o) => o.D.ground); if (g >= 0) setFloor(g + 1);
+  }
+  /** Ejecuta fn con la ranura del piso n cargada, sin mover al jugador (para simular NPC de otros pisos). */
+  function withFloor(n, fn) {
+    if (n - 1 === fidx) return fn();
+    const cur = FL[fidx]; cur.staticCv = staticCv; cur.mapCv = mapCv; cur.pathCache = pathCache; cur.roomCache = roomCache;
+    const was = fidx; fidx = n - 1; loadSlot(FL[fidx]);
+    try { return fn(); } finally { const o = FL[fidx]; o.staticCv = staticCv; o.mapCv = mapCv; o.pathCache = pathCache; o.roomCache = roomCache; fidx = was; loadSlot(FL[fidx]); }
+  }
+  /** Trayecto de un NPC en el elevador: entra en la cabina, tarda según los pisos y sale junto al elevador de destino (no se teletransporta). */
+  function startRide(b, to) { b.ride = { to, t: 0, dur: Station.DOOR_S * 2 + Station.travelS('crew', b.floor || 1, to) }; b.moving = false; b.path = []; }
+  function stepRide(b, dt) {
+    b.ride.t += dt; if (b.ride.t < b.ride.dur) return;
+    const to = b.ride.to, p = withFloor(to, () => spot('elc' + to, 0));
+    b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.path = []; b.wait = 1.5; b.dir = 2;
+  }
+  /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
+  function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
+  /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
+  function arrive(n) {
+    if (!setFloor(n)) return false; const D = FL[fidx].D, p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
+    player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true;
   }
   /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
   function setFloor(n) {
@@ -146,8 +175,8 @@ const World = (function () {
   }
   const HOME = { commander: ['bridge', 'hall'], engineer: ['reactor', 'water', 'workshop'], scientist: ['lab', 'samples'], medic: ['med', 'life'], agri: ['gh', 'food'] };
   function mkBot(role, room, i) {
-    const p = spot(room, i || 0);
-    return { floor: 1, role, x: p[0], y: p[1], path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false, goal: null };
+    const f = Layout.roomFloor(room), p = withFloor(f, () => spot(room, i || 0));
+    return { floor: f, role, x: p[0], y: p[1], path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false, goal: null };
   }
   /** Cambia el especialista del jugador: el elegido deja de ser NPC y el anterior queda junto al jugador. */
   function setPlayerRole(role) {
@@ -156,7 +185,7 @@ const World = (function () {
     if (i >= 0) bots.splice(i, 1);
     const nb = mkBot(player.role, 'bridge', 2);
     const p = standAt(player.x - 1.2, player.y, null); nb.x = p[0]; nb.y = p[1]; nb.wait = 2;
-    bots.push(nb); player.role = role; player.act = 'celebrate'; player.actT = 1;
+    nb.floor = fidx + 1; bots.push(nb); player.role = role; player.act = 'celebrate'; player.actT = 1;
     return true;
   }
   const BOTCOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
@@ -189,6 +218,7 @@ const World = (function () {
 
   /* ---------- Actualización ---------- */
   function update(dt, S, inp) {
+    fixFloor();
     lastT += dt; curS = S;
     const E = S ? Ex.ensure(S) : null; if (E && Rover.state() !== E.rover) { Rover.bind(S); shelIn = null; }
     if (marker && (marker.until < lastT || Math.hypot(player.x - marker.p[0], player.y - marker.p[1]) < 1.6)) marker = null;
@@ -220,9 +250,9 @@ const World = (function () {
     if (!player.moving) player.anim += dt * 8;
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
-    for (let i = 0; i < bots.length; i++) if (onF(bots[i])) updateBot(bots[i], dt, S);
+    for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
     // Puertas (horizontales y verticales)
-    const ents = [player].concat(bots.filter(onF));
+    const ents = [player].concat(bots.filter((b) => onF(b) && !b.ride));
     for (const d of doors) {
       const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
       let want = false;
@@ -277,13 +307,17 @@ const World = (function () {
   function updateBot(b, dt, S) {
     b.anim += dt * 7;
     if (!S) return;
+    const myF = b.floor || 1, fl = (room) => Layout.roomFloor(room), elev = () => spot('elc' + myF, 0);
+    // ¿está en la puerta del elevador y necesita otro piso? → sube a la cabina
+    if (b.viaTo && b.viaTo !== myF) { const e = elev(); if (Math.hypot(e[0] - b.x, e[1] - b.y) < 1.4 && !b.path.length) { startRide(b, b.viaTo); return; } } else b.viaTo = null;
     const c = S.crew.find((x) => x.role === b.role);
-    let goal = null;
-    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]; b.task = 'shelter'; }
+    let goal = null, goalF = myF;
+    if (c && c.zone === 'shelter' && !locked('rad')) { goalF = 2; goal = myF === 2 ? (b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]) : elev(); b.task = 'shelter'; }
     else if (b.role === 'engineer') {
       const inc = S.inc.find((i) => !i.res && i.fix && S.t >= i.from);
-      if (inc && !locked(inc.room)) { goal = spot(inc.room, 0); b.task = 'repair'; } else b.task = 'wander';
+      if (inc && !locked(inc.room)) { goalF = fl(inc.room); goal = goalF === myF ? spot(inc.room, 0) : elev(); b.task = 'repair'; } else b.task = 'wander';
     } else b.task = 'wander';
+    if (goal && goalF !== myF) b.viaTo = goalF;
     if (!b.path.length) {
       if (goal) { if (Math.hypot(goal[0] - b.x, goal[1] - b.y) > 0.6) b.path = (findPath(b.x, b.y, goal[0], goal[1]) || []).slice(1); }
       else {
@@ -291,7 +325,11 @@ const World = (function () {
         if (b.wait <= 0) {
           const night = S.t >= 24 && (S.t % 24 >= 23 || S.t % 24 < 5), here = roomAt[Math.floor(b.y)][Math.floor(b.x)];
           const rooms = (night ? ['life'] : HOME[b.role]).filter((k) => !locked(k) || k === here);
-          if (rooms.length) { const k = rooms[Math.floor(Math.random() * rooms.length)], tg = spot(k, Math.floor(Math.random() * 3)); b.path = (findPath(b.x, b.y, tg[0], tg[1]) || []).slice(1); }
+          if (rooms.length) {
+            const k = rooms[Math.floor(Math.random() * rooms.length)];
+            if (fl(k) !== myF) { b.viaTo = fl(k); const e = elev(); b.path = (findPath(b.x, b.y, e[0], e[1]) || []).slice(1); }
+            else { const tg = spot(k, Math.floor(Math.random() * 3)); b.path = (findPath(b.x, b.y, tg[0], tg[1]) || []).slice(1); }
+          }
           b.wait = 3 + Math.random() * 6; b.work = Math.random() < 0.5;
         }
       }
@@ -483,7 +521,8 @@ const World = (function () {
   /* ---------- Render ---------- */
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function buildStatic() {
-    const o = Art.build({ scen, W, H, TS, grid, roomAt, doors, furn, props, scenery, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
+    const g = FL[fidx].D.ground, none = { props: [], tracks: [], craters: [], dunes: [], pad: { c: [0, 0], r: 0 }, lamps: [] };
+    const o = Art.build({ scen, ground: g, W, H, TS, grid, roomAt, doors, furn, props: g ? props : [], scenery: g ? scenery : none, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER: FL[fidx].D.SHELTER || null, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
     staticCv = o.cv; mapCv = o.mapCv;
   }
 
@@ -583,7 +622,7 @@ const World = (function () {
     ctx.fillStyle = '#02040c'; ctx.fillRect(0, 0, cw, ch);
     ctx.setTransform(zoom, 0, 0, zoom, -cam.x * zoom, -cam.y * zoom);
     ctx.imageSmoothingEnabled = false;
-    Field.drawTerrain(ctx, cam.x, cam.y, vw, vh);
+    if (FL[fidx].D.ground) Field.drawTerrain(ctx, cam.x, cam.y, vw, vh);
     ctx.drawImage(staticCv, 0, 0);
     const t = lastT, rm = reduced;
     // Puertas (hojas que se deslizan; horizontales y verticales)
@@ -677,17 +716,17 @@ const World = (function () {
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
     // Entidades (orden por y)
     const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
-    const ents = bots.filter(onF).map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
+    const ents = bots.filter((b) => onF(b) && !b.ride).map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
     plantEnts.forEach((pe) => ents.push(pe));
     const eva = !!(S && S.ex && S.ex.suit.on), inRov = !!(S && S.ex && S.ex.rover.occ) && !boardAnim, cargo = !!(S && S.ex && S.ex.hand.length);
     if (!inRov && !shelIn) ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? (cargo ? 'carry' : 'walk') : (cargo && !player.act && pPose === 'idle' ? 'carry' : pPose), player.moving, o.youLabel || '', eva) });
-    exRender(ctx, S, ents, t, rm, vw, vh, o);
+    if (FL[fidx].D.ground) exRender(ctx, S, ents, t, rm, vw, vh, o);
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     roomVeil(ctx);
     // Secciones bloqueadas: velo con la forma real de cada sala
-    if (S && S.camp) for (const k in MAIN) if (locked(k)) {
+    if (S && S.camp) for (const k in MAIN) if (RECTS[k] && locked(k)) {
       ctx.save(); ctx.scale(TS, TS); ctx.fillStyle = 'rgba(2,4,12,.64)'; ctx.fill(roomPath(k)); ctx.restore();
-      const Rr = RECTS[k], cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center';
+      const Rr = RECTS[k]; if (!Rr) continue; const cx = (Rr[0] + Rr[2] + 1) / 2 * TS, cy = (Rr[1] + Rr[3] + 1) / 2 * TS; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center';
       Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillStyle = '#ffc24a'; ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4);
     }
     // Partículas
@@ -712,7 +751,7 @@ const World = (function () {
       if (!rm) { ctx.strokeStyle = 'rgba(240,190,140,' + 0.35 * k + ')'; ctx.lineWidth = 2 * dpr; for (let i = 0; i < (stormD ? 70 : 12); i++) { const sx = ((i * 173.7 + t * (stormD ? 900 : 150)) % (cw + 200)) - 100, sy = (i * 97.3 + Math.sin(t + i) * 30) % ch; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - (stormD ? 60 : 20) * dpr, sy + 6 * dpr); ctx.stroke(); } }
     }
     if (!rm && S) { ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 26; i++) ctx.fillRect(((i * 131 + t * 6 * (1 + (i % 3))) % cw), ((i * 89 + t * 3) % ch), 1.6 * dpr, 1.6 * dpr); }
-    exOverlay(ctx, S, o, cw, ch, zoom, dpr, t, rm);
+    if (FL[fidx].D.ground) exOverlay(ctx, S, o, cw, ch, zoom, dpr, t, rm);
     // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
     const tgt = marker ? marker.p : o.target;
     if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
@@ -737,10 +776,10 @@ const World = (function () {
     const ox = (w - W * s) / 2, oy = (h - H * s) / 2;
     if (mapCv) { c.globalAlpha = 0.95; c.imageSmoothingEnabled = true; c.drawImage(mapCv, ox, oy, W * s, H * s); c.globalAlpha = 1; }
     if (S) for (const i of S.inc) if (!i.res && S.t >= i.from) { const R = RECTS[i.room]; if (!R) continue; c.strokeStyle = i.sev === 'crit' ? '#ff6b6b' : i.sev === 'warn' ? '#ffc24a' : '#6fb3ff'; c.lineWidth = 3; c.strokeRect(ox + R[0] * s, oy + R[1] * s, (R[2] - R[0] + 1) * s, (R[3] - R[1] + 1) * s); }
-    for (const k in MAIN) if (locked(k)) { c.save(); c.translate(ox, oy); c.scale(s, s); c.fillStyle = 'rgba(0,0,0,.62)'; c.fill(roomPath(k)); c.restore(); const R = RECTS[k]; Icons.draw(c, 'lock', ox + (R[0] + R[2] + 1) / 2 * s, oy + (R[1] + R[3] + 1) / 2 * s, Math.max(8, 5 * s), '#ffc24a'); }
+    for (const k in MAIN) if (RECTS[k] && locked(k)) { c.save(); c.translate(ox, oy); c.scale(s, s); c.fillStyle = 'rgba(0,0,0,.62)'; c.fill(roomPath(k)); c.restore(); const R = RECTS[k]; Icons.draw(c, 'lock', ox + (R[0] + R[2] + 1) / 2 * s, oy + (R[1] + R[3] + 1) / 2 * s, Math.max(8, 5 * s), '#ffc24a'); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
     if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
-    for (const b of bots.filter(onF)) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
+    for (const b of bots.filter((q) => onF(q) && !q.ride)) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ox + player.x * s, oy + player.y * s, 5, 0, 7); c.fill();
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
   }
@@ -754,15 +793,26 @@ const World = (function () {
     for (const d of doors) if (d.rooms.includes(k)) p.rect(d.x, d.y, d.w, d.h);
     return (pathCells[k + scen] = p);
   }
-  function roomCenter(k) { return (RECTS[k] && spot(k, 0)) || null; }
-  function consolePos(id) { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; }
+  /** Punto de una sala sobre su propio piso. */
+  function roomCenterOn(k) { const f = Layout.roomFloor(k); return withFloor(f, () => (RECTS[k] && spot(k, 0)) || null); }
+  /** Objetivo para flechas y marcas: si la sala está en otro piso, el destino es el elevador del piso en que está el jugador. */
+  function roomCenter(k) { const pf = player.floor || 1; if (!Layout.ROOMS[k]) return null; return Layout.roomFloor(k) === pf ? roomCenterOn(k) : withFloor(pf, () => spot('elc' + pf, 0)); }
+  const consoleFloor = (id) => Layout.FLOORS.findIndex((D) => D.CONSOLES.some((c) => c[0] === id)) + 1;
+  function consolePos(id) {
+    const cf = consoleFloor(id); if (!cf) return null; const pf = player.floor || 1;
+    if (cf !== pf) return withFloor(pf, () => spot('elc' + pf, 0)); // en otro piso: primero hay que llegar al elevador
+    return withFloor(cf, () => { const c = consoles.find((x) => x.id === id); return c ? [c.x + 0.5, c.y + 1.4] : null; });
+  }
   /** Ruta real hasta una sala (cuadrícula de pasillos y puertas, sin atravesar salas bloqueadas). */
+  /** Ruta hasta una sala. Si está en otro piso, la ruta lleva hasta el elevador del piso del jugador. */
   function route(roomId) {
-    if (!RECTS[roomId] || locked(roomId)) return null;
+    const pf = player.floor || 1; if (!Layout.ROOMS[roomId] || locked(roomId)) return null;
+    if (Layout.roomFloor(roomId) !== pf) { if (pf - 1 !== fidx) return null; const e = spot('elc' + pf, 0), q = findPath(player.x, player.y, e[0], e[1]); return q ? [[player.x, player.y]].concat(q.slice(1)) : null; }
+    if (!RECTS[roomId]) return null;
     const t = spot(roomId, 0), p = findPath(player.x, player.y, t[0], t[1]);
     return p ? [[player.x, player.y]].concat(p.slice(1)) : null;
   }
-  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, floor: b.floor || 1, room: roomName(b.x, b.y) })); }
+  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, floor: b.floor || 1, ride: !!b.ride, room: b.ride ? 'elc' + (b.floor || 1) : withFloor(b.floor || 1, () => roomName(b.x, b.y)) })); }
   function state() { return { role: player.role, fl: fidx + 1, px: player.x, py: player.y, shel: shelIn, lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
@@ -780,7 +830,7 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();

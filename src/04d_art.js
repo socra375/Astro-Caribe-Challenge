@@ -29,6 +29,12 @@ const Art = (function () {
   function stripes(a, b, w) { const p = document.createElement('canvas'); p.width = p.height = 16; const c = p.getContext('2d'); c.fillStyle = a; c.fillRect(0, 0, 16, 16); c.fillStyle = b; c.beginPath(); c.moveTo(0, 8); c.lineTo(8, 0); c.lineTo(16, 0); c.lineTo(0, 16); c.closePath(); c.fill(); c.beginPath(); c.moveTo(16, 8); c.lineTo(8, 16); c.lineTo(16, 16); c.closePath(); c.fill(); return p; }
 
   /* ---------- Terreno ---------- */
+  /** Fondo de un piso superior: vacío técnico oscuro con una rejilla muy tenue (no hay exterior). */
+  function voidBg(c, d) {
+    const TS = d.TS, w = d.W * TS, h = d.H * TS;
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#05070f'); g.addColorStop(1, '#0a0e1c'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(80,100,160,.07)'; c.lineWidth = 1; for (let x = 0; x < w; x += TS * 4) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); } for (let y = 0; y < h; y += TS * 4) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+  }
   function terrain(c, d, rnd) {
     const mars = d.scen === 'mars', TS = d.TS, w = d.W * TS, h = d.H * TS;
     const P = mars ? { base: '#9a5230', dark: '#6e3820', light: '#c27a47', dust: '216,150,98', rock: ['#7a3d22', '#a85a35', '#4f2616'], track: '#5a2d18' } : { base: '#686970', dark: '#44454b', light: '#8d8e96', dust: '170,170,180', rock: ['#5a5b62', '#8a8b93', '#35363b'], track: '#3e3f45' };
@@ -171,7 +177,7 @@ const Art = (function () {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
     const rnd = rngOf(mars ? 777 : 313), rk = Object.keys(d.rooms);
     const sdx = mars ? 22 : 36, sdy = mars ? 28 : 46; // sombras: Luna, largas y marcadas; Marte, más suaves
-    terrain(c, d, rnd);
+    if (d.ground === false) voidBg(c, d); else terrain(c, d, rnd);
     // sombras de la base y de los elementos exteriores sobre el terreno
     { // sombras en un lienzo auxiliar de menor resolución (se escala suavizado: barato y sin filtros costosos)
       const k = mars ? 0.3 : 0.55, sh = document.createElement('canvas'); sh.width = Math.ceil(w * k); sh.height = Math.ceil(h * k);
@@ -223,10 +229,10 @@ const Art = (function () {
     for (const f of d.furn) if (f.kind === 'reactor') for (const q of d.furn) if (q.kind === 'battery') { c.beginPath(); c.moveTo((q.x + 2) * TS, (q.y + 1) * TS); c.quadraticCurveTo((q.x + 4) * TS, (q.y + 2.5) * TS, f.x * TS + 6, (f.y + f.h / 2) * TS); c.stroke(); }
     c.lineCap = 'butt';
     // refugio: franjas de advertencia
-    c.save(); c.globalAlpha = 0.2; c.fillStyle = '#ffc24a'; for (let x = d.SHELTER[0]; x <= d.SHELTER[2]; x++) for (let y = d.SHELTER[1]; y <= d.SHELTER[3]; y++) if ((x + y) % 2 === 0) c.fillRect(x * TS, y * TS, TS, TS); c.restore();
+    if (d.SHELTER) { c.save(); c.globalAlpha = 0.2; c.fillStyle = '#ffc24a'; for (let x = d.SHELTER[0]; x <= d.SHELTER[2]; x++) for (let y = d.SHELTER[1]; y <= d.SHELTER[3]; y++) if ((x + y) % 2 === 0) c.fillRect(x * TS, y * TS, TS, TS); c.restore(); }
     // exterior: paneles, antenas, contenedores, módulos auxiliares, vehículos y rocas
     for (const p of d.props) if (p.k !== 'pad') drawProp(c, d, p, rnd);
-    for (const l of d.scenery.lamps) { const x = l[0] * TS, y = l[1] * TS; const g = c.createRadialGradient(x, y, 2, x, y, 120); g.addColorStop(0, 'rgba(255,225,150,.35)'); g.addColorStop(1, 'rgba(255,225,150,0)'); c.fillStyle = g; c.fillRect(x - 120, y - 120, 240, 240); c.fillStyle = '#2a3042'; c.fillRect(x - 3, y - 3, 6, 6); c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(x, y - 6, 4, 0, 7); c.fill(); }
+    for (const l of (d.scenery.lamps || [])) { const x = l[0] * TS, y = l[1] * TS; const g = c.createRadialGradient(x, y, 2, x, y, 120); g.addColorStop(0, 'rgba(255,225,150,.35)'); g.addColorStop(1, 'rgba(255,225,150,0)'); c.fillStyle = g; c.fillRect(x - 120, y - 120, 240, 240); c.fillStyle = '#2a3042'; c.fillRect(x - 3, y - 3, 6, 6); c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(x, y - 6, 4, 0, 7); c.fill(); }
     // rótulos de sala (placas)
     c.textAlign = 'center';
     for (const k of rk) { const def = d.rooms[k]; if (def.g === 'tube') continue; const bb = bbox(def, TS), nm = (typeof tr === 'function' && DATA.ROOMS[k]) ? tr(DATA.ROOMS[k]) : k; c.font = 'bold 13px system-ui'; const tw = c.measureText(nm).width + 18, cx = (bb[0] + bb[2]) / 2, cy = bb[1] + TS * 0.9 + (k === 'bridge' ? TS * 2.2 : 0); c.fillStyle = 'rgba(5,8,20,.55)'; d.rr(c, cx - tw / 2, cy - 12, tw, 20, 8); c.fill(); c.fillStyle = d.ROOMCOL[k] || '#e8eefc'; c.fillText(nm, cx, cy + 3); }
