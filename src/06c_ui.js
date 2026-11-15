@@ -311,6 +311,7 @@
     $('#bSpeed').addEventListener('click', () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; updateHud(); Sfx.play('click'); });
     $('#bPause').addEventListener('click', () => togglePause());
     $('#bMute').addEventListener('click', () => toggleMute());
+    $('#bCom').addEventListener('click', () => { if (running && !modalOpen()) openConsole({ id: 'comms' }); });
     $('#bMap').addEventListener('click', () => toggleMap());
     miniCv.addEventListener('click', () => toggleMap());
     $('#bCrew').addEventListener('click', () => openCrew());

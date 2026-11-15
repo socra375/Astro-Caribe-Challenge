@@ -388,6 +388,17 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Las zonas nuevas empiezan bloqueadas y no se abren sin completar la misión introductoria', expn.start && expn.noKit, JSON.stringify(expn));
   ok('Cada zona nueva se abre al completar la anterior (almacén → cocina → muestras → taller → residuos)', expn.kit && expn.sam && expn.wk && expn.ws && expn.end, JSON.stringify(expn));
   ok('La ampliación es opcional: no bloquea las misiones', await pg.evaluate(() => { const X = Sim.create({ seed: 4, noEv: true, mode: 'adv', skipCamp: true }); X.camp.xi = 0; X.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1 }; return Sim.startMission(X, 1).ok === true; }));
+  // ---- HUD final y extra real del médico ----
+  await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  ok('El HUD muestra el personaje seleccionado', /Comandante/.test(await pg.locator('#bCrew').innerText()) || /Comandante/.test((await pg.locator('#bCrew').getAttribute('title')) || ''));
+  await pg.locator('#bCom').click();
+  ok('El botón de comunicaciones del HUD abre el panel de comunicaciones', await pg.locator('.panel h2').filter({ hasText: /Comunicaciones/ }).first().isVisible());
+  await closeAll(pg);
+  await pg.evaluate(() => Game._debug.openConsole('med'));
+  const medCmd = await pg.getByText(/Revisión detallada de la médica/).count(); await closeAll(pg);
+  await pg.evaluate(() => { World.setPlayerRole('medic'); Sim.setPlayerRole(Game.S, 'medic'); Game._debug.openConsole('med'); });
+  ok('La médica ve una revisión detallada de la tripulación que el comandante no ve', medCmd === 0 && (await pg.getByText(/Revisión detallada de la médica/).isVisible()));
+  await closeAll(pg); await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
   // ---- Rutinas de los NPC (día y noche) ----
   const rout = await pg.evaluate(() => {
     const X = Sim.create({ seed: 8, noEv: true, mode: 'adv', skipCamp: true }); X.t = 24 + 12; // día 2, 12:00

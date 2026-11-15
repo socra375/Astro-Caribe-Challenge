@@ -287,7 +287,13 @@
 
   /* ---------- Paneles de salas ---------- */
   function medPanel() {
-    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(),
+    const es = LANG === 'es', medic = S.playerRole === 'medic';
+    const worst = ['o2', 'water', 'food', 'power'].map((k) => ({ k, st: Sim.status(S, k) })).filter((x) => x.st !== 'ok').sort((a, b) => (b.st === 'crit') - (a.st === 'crit'));
+    const detail = medic ? h('div', { class: 'card', style: { borderColor: 'var(--accent)', marginTop: '10px' } }, h('h3', null, '🩺 ' + (es ? 'Revisión detallada de la médica' : 'Medic detailed review')),
+      h('table', null, h('tbody', null, S.crew.map((c) => { const rate = S.t > 1 ? c.dose / (S.t / 24) : 0, left = rate > 0.001 ? Math.max(0, (S.limit - c.dose) / rate) : null; return statRow(tr(Chars.ROLES[c.role].name), fmt(rate, 2) + ' mSv/' + (es ? 'día' : 'day') + (left == null ? '' : ' · ' + (es ? 'límite en ' : 'limit in ') + fmt(left, 0) + (es ? ' días' : ' days'))); }))),
+      h('p', { class: 'small' }, worst.length ? (es ? 'Lo que más afecta al ánimo ahora: ' : 'What hurts morale most right now: ') + worst.map((x) => _(x.k)).join(', ') + '.' : (es ? 'Ahora nada afecta mucho al ánimo.' : 'Nothing hurts morale much right now.')),
+      h('p', { class: 'small muted' }, es ? 'Estimación del modelo del juego a partir del promedio hasta ahora; no es un diagnóstico médico real.' : 'Game-model estimate from the average so far; not a real medical diagnosis.')) : (es ? null : null);
+    push(panel('🩺 ' + consoleName('med'), h('div', null, incHere(['life']), crewTab(), detail,
       h('table', { style: { marginTop: '10px' } }, h('tbody', null, sysRow('thermal'), sysRow('press'), statRow(LANG === 'es' ? 'Temperatura' : 'Temperature', fmt(S.sys.thermal.T) + ' °C'), statRow(LANG === 'es' ? 'Presión' : 'Pressure', fmt(S.sys.press.P) + ' kPa'))),
       h('p', { class: 'small muted' }, LANG === 'es' ? 'NASA OSDR reúne investigaciones sobre cómo el espacio afecta a seres vivos. No es un sistema médico en tiempo real: aquí las dosis son estimaciones del modelo.' : 'NASA OSDR gathers research on how space affects living things. It is not a real-time medical system: doses here are model estimates.'))));
   }

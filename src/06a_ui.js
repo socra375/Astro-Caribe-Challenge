@@ -40,7 +40,7 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     applyAudio();
     World.invalidate();
     Store.set('settings', settings);
@@ -196,6 +196,7 @@ const Game = (function () {
     Icons.setText($('#bAlerts'), (act.some((i) => i.sev === 'crit') ? '⛔ ' : act.length ? '⚠ ' : '🔔 ') + (act.length + warnSoon));
     $('#bSpeed').textContent = 'x' + speed;
     Icons.setText($('#bPause'), paused ? '▶' : '⏸');
+    { const bc = $('#bCrew'); Icons.setText(bc, '🧑‍🚀 ' + tr(Chars.ROLES[S.playerRole || 'commander'].name).split(' ')[0]); bc.title = (LANG === 'es' ? 'Tripulación (C) · juegas con ' : 'Crew (C) · you play as ') + tr(Chars.ROLES[S.playerRole || 'commander'].name); }
     const hint = $('#hint');
     const hi = settings.hints ? nextHint() : null;
     if (hi) { Icons.setText(hint, hi.t); hint.classList.remove('hidden'); } else hint.classList.add('hidden');

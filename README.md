@@ -26,6 +26,7 @@ No hace falta instalar nada. Si el navegador bloquea `localStorage` (modo privad
 | Pausa | P o botón ❚❚ | Botón ❚❚ |
 | Mapa completo (pausa el tiempo) | M o botón del mapa; minimapa | Botón del mapa o toque en el minimapa |
 | Elegir personaje (opcional) | C o botón de tripulación | Botón de tripulación |
+| Repetir último mensaje de voz | V o botón 🔁 de los subtítulos | Botón 🔁 |
 | Silenciar | N o botón 🔊 | Botón 🔊 |
 | Cerrar panel | Esc | ✕ |
 | Velocidad del tiempo | botón x1 / x2 / x4 | igual |
@@ -58,9 +59,10 @@ La modalidad avanzada añade sistemas (diagnóstico, cadenas, prioridades, datos
 Sin emojis decorativos: el juego usa iconografía propia en SVG (módulo `Icons`, también para el canvas). Las explicaciones largas están en paneles plegables «Más información». Los avisos repetidos se fusionan, y los gráficos solo aparecen en el modo Ingeniero.
 
 ### Mapa y exploración
-- Mapa original de 60 × 56 baldosas con 7 instalaciones conectadas en anillo por pasillos: Puente de mando, Módulo de vida, Invernadero, Reactor y energía, Reciclaje de agua y oxígeno, Protección radiológica y bahía del rover, Laboratorio científico.
+- Mapa original de 100 × 56 baldosas con **13 instalaciones** conectadas por pasillos, puertas y una esclusa: Puente de mando, Dormitorios, Enfermería, Reactor y energía, Soporte vital, Invernadero, Almacén de alimentos, Cocina y comedor, Laboratorio científico, Almacén de muestras, Taller de mantenimiento, Bahía del rover y esclusa, y Gestión de residuos.
 - Puertas automáticas animadas, esclusa con enclavamiento (nunca abre las dos puertas a la vez) y una superficie exterior con muestras para recoger.
 - Colisiones con paredes y mobiliario, cámara que sigue al jugador, minimapa, indicador de interacción por proximidad y flecha guía hacia el objetivo actual.
+- **Mapa completo (tecla M; Esc para cerrar; botón del HUD o toque en el minimapa):** zoom y desplazamiento, ficha de cada sala (función, estado de sistemas, quién está dentro), alertas, objetivo activo, destino marcado, puertas y esclusa, salas bloqueadas, tu posición y la de los NPC. La ruta se calcula sobre el grafo real de puertas y pasillos y respeta las salas bloqueadas. Con el mapa abierto el tiempo simulado queda en pausa. Usa la misma geometría y el mismo estado que el minimapa.
 - La distribución (salas, pasillos, consolas, puertas) está inspirada en el **género** de exploración cenital. No se reproducen mapas, personajes, logotipos ni recursos de ningún juego existente. No hay impostores, votaciones ni eliminaciones.
 
 ### Tripulación (bots)
@@ -109,23 +111,39 @@ Al empezar solo están abiertas tres secciones: **Puente de mando, Módulo de vi
 - Guías: Control de Misión (puente, mientras el jugador es el comandante), Sofía (médica: vida y agua/O₂), Ana (ingeniera: reactor y bahía del rover), Teo (agrónomo: invernadero) y Leo (científico: laboratorio). No hay un sexto personaje «de exploración»: la bahía del rover la presenta Ana, que opera el rover según la tabla de permisos.
 - Las **siete misiones avanzadas** se activan al terminar la familiarización. Antes de eso, los eventos aleatorios solo ocurren en secciones abiertas y con la mitad de frecuencia.
 
-### Vestuario y especialistas
-En el puente hay un **vestuario** 🧥. El jugador elige especialista y cambian el sprite, el traje, las animaciones, la especialidad y las acciones disponibles. El especialista anterior aparece como NPC junto al vestuario y el elegido deja de estar en el mapa (el jugador ocupa su puesto).
+### Tripulación y especialistas
+El **comandante** controla la partida y puede hacerlo todo: explorar, reparar, cultivar, administrar recursos, conducir el rover y resolver emergencias. Cambiar de personaje es **opcional**: botón de tripulación del HUD o tecla C (también el vestuario del puente). El cambio es inmediato, conserva la posición, las misiones y el progreso, y el personaje anterior sigue en la base como NPC.
 
-| Sección | Especialista |
+| Personaje | Ventaja real al jugar con él |
 |---|---|
-| Puente de mando (misiones, comunicaciones) | Comandante |
-| Módulo de vida (enfermería) | Médica |
-| Reactor y energía | Ingeniera |
-| Agua y oxígeno | Ingeniera o médica |
-| Invernadero y plantas | Agrónomo |
-| Laboratorio | Científico |
-| Blindaje y refugio | Científico o ingeniera |
-| Rover y extractor de hielo | Ingeniera |
+| Comandante | Puede hacer todo; coordina misiones y comunicaciones |
+| Ingeniera Ana | Repara mejor (+15 % en el cableado), fabrica repuestos más rápido y acelera obras un 30 % |
+| Médica Sofía | Sube la moral objetivo y ofrece una revisión detallada de la tripulación en la enfermería (estimación del modelo, no diagnóstico médico) |
+| Científico Leo | Analiza muestras más rápido (2 h en lugar de 3) |
+| Agrónomo Teo | Las plantas crecen un 15 % más rápido y se gastan menos nutrientes |
 
-- Los permisos solo se aplican **después** de la familiarización. Pasillos, cabinas, sala de bienestar, Conexión con la Tierra, esclusa y muestras exteriores son de uso común.
-- Sin el traje adecuado, el juego explica quién puede hacerlo y marca el vestuario. **Las emergencias nunca se bloquean**: cualquiera puede hacer una «reparación de emergencia» de los incidentes de esa sala o activar el protocolo de refugio durante una tormenta. Los indicadores del HUD siempre abren los recursos.
-- Ventajas al llevar cada traje: la ingeniera repara mejor (+15 % en el minijuego de cableado), el agrónomo gasta menos nutrientes, el científico analiza más rápido (2 h en lugar de 3) y la médica opera la enfermería.
+Los NPC no controlados trabajan en sus zonas (la médica en la enfermería, el científico en el laboratorio y el almacén de muestras, el agrónomo en el invernadero y el almacén de alimentos, la ingeniera en reactor, soporte vital y taller) y de noche (desde el día 2) se retiran a los dormitorios. Las emergencias nunca se bloquean.
+
+### Las 13 instalaciones y su progresión
+Al empezar están abiertos el puente, los dormitorios, la enfermería, el reactor y el soporte vital. La campaña de familiarización abre el invernadero, el laboratorio y la bahía. Después, una **ampliación opcional** abre en cadena las demás zonas, cada una con presentación por un NPC, explicación, misión introductoria, sistema interactivo y recompensa: almacén de alimentos → cocina → almacén de muestras → taller → gestión de residuos. No bloquea las misiones ni las emergencias.
+
+| Instalación | Qué se puede hacer (acciones reales de la simulación) |
+|---|---|
+| Almacén de alimentos | Ver reservas frescas y de reserva, autonomía y consumo; encender o apagar el frío (gasta 0,1 kW; sin frío lo fresco se estropea unas 10 veces más rápido); registro de entradas (cosechas) y salidas (cocina) |
+| Cocina y comedor | Plan de raciones (reducidas, normales, abundantes: cambian el consumo y el ánimo); preparar una ensalada fresca o una ración caliente (una cada 8 h) |
+| Almacén de muestras | Registro con identificador único, origen, fecha, categoría, estante y estado; clasificar, guardar (8 estantes), enviar al laboratorio y registrar el análisis; sin guardar se deterioran a las 24 h. Son muestras **ficticias de juego**, no muestras reales de NASA |
+| Taller de mantenimiento | Fabricar repuestos (6 kg de materiales) que acortan el mantenimiento y no gastan materiales; mantener los equipos |
+| Gestión de residuos | Separar un lote antes de reciclar (8 kg de materiales recuperados en lugar de 5) y reciclar |
+| Enfermería | Estado de la tripulación y condiciones de habitabilidad (datos del juego, no diagnósticos médicos reales) |
+
+El deterioro de alimentos, las raciones y las muestras son modelos educativos simplificados.
+
+### Voces, subtítulos y audio
+- **Texto a voz** con la Web Speech API. Perfiles internos del juego `npc_<rol>_<idioma>` (comandante, ingeniero, médico, científico, agrónomo y narrador, en español e inglés) con `profileId`, `characterRole`, `language`, `preferredVoiceURI`, `preferredVoiceName`, `fallbackLanguage`, `rate`, `pitch` y `volume`. Son identificadores propios del juego, no de ningún proveedor.
+- Las voces se detectan en el dispositivo con `getVoices()` y se actualizan con `voiceschanged`. Prioridad: `voiceURI` guardada, nombre exacto, voz del idioma, voz predeterminada del navegador y, si no hay nada, solo texto. Si el dispositivo tiene una sola voz para el idioma, el panel avisa de que todos los personajes la comparten (con tono y velocidad distintos): **no se afirma que sean voces diferentes**.
+- Se narran las llamadas de radio (con el NPC de la especialidad), las conversaciones, las nuevas misiones, las instrucciones de los minijuegos y los resúmenes de misión. No se narran los cambios pequeños de indicadores ni las confirmaciones. Cola sin solapes; las alertas críticas interrumpen. No suena nada antes de la primera interacción.
+- **Subtítulos** equivalentes (con botones de repetir y detener; tecla V repite el último mensaje). **Panel de audio** (menú ☰): volumen general, de voces, de música y de alertas, velocidad de narración, interruptores de voz, música, sonidos y subtítulos, idioma, y selección, prueba y guardado de la voz de cada personaje. La música ambiental es opcional y viene apagada.
+- Sin síntesis de voz, o con `localStorage` bloqueado, el juego sigue siendo completamente funcional con textos.
 
 ### Llamadas de radio de los NPC
 Las averías, eventos ambientales y umbrales de recursos generan una **llamada interna** en la parte inferior de la pantalla, sin mover a nadie por el mapa. Cada llamada incluye retrato, nombre, especialidad, tipo de alerta, descripción, ubicación exacta (por ejemplo, las jardineras con plaga), qué hacer y qué pasa si se ignora. Botones: **Entendido**, **Marcar ubicación** (marcador en el minimapa y flecha en pantalla), **Consultar sistema** (abre el panel de la instalación) y **Ver explicación** (panel «¿Por qué ocurrió?»).
@@ -280,7 +298,8 @@ Un solo archivo, organizado en módulos internos con responsabilidades separadas
 |---|---|
 | `DATA` | Textos bilingües, misiones, eventos, fuentes, fichas, sitios y preguntas |
 | `Store` | Almacenamiento seguro con respaldo en memoria |
-| `Sfx` | Sonidos originales sintetizados con Web Audio API |
+| `Sfx` | Sonidos y música ambiental originales sintetizados con Web Audio API |
+| `Voice` | Texto a voz (Web Speech API): perfiles internos, selección de voces, cola y subtítulos |
 | `Sim` | Motor de simulación puro (entre los marcadores `/*SIM-START*/` y `/*SIM-END*/`) |
 | `SelfTest` | 100 simulaciones automáticas sobre `Sim` |
 | `Icons` | Iconos SVG por rutas (DOM y canvas) y conversión de pictogramas |
@@ -315,11 +334,14 @@ También puedes abrir `index.html?selftest` o usar «Configuración → Ejecutar
 **Resultados obtenidos al construir esta versión:**
 - `run-selftest.js`: 100 simulaciones (Luna/Marte × 3 dificultades, 75 con una política activa y 25 pasivas), **0 errores**: sin NaN, sin valores negativos, todos los recursos y plantas dentro de sus límites y finales coherentes. La política activa completa la familiarización y gana las 75 partidas (50 en Junior y 25 en Ingeniero, con diagnóstico previo); la pasiva nunca gana (se agotan alimentos o quedan incidentes críticos sin resolver).
 - `contrast.js`: 14/14 pares de tokens cumplen WCAG AA.
-- `e2e.js` (Chromium, sin Internet): **113/113** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9. Además, la familiarización completa con acciones reales: solo 3 secciones al empezar, puertas bloqueadas, cada guía presentándose al entrar, desbloqueo de cada sección al terminar su misión y las 7 abiertas al final. Modalidades: la pantalla de inicio ofrece las dos, se guardan y se recuperan con la partida, Junior muestra 4 indicadores sin unidades y Ingeniero 5 con unidades, los textos de Junior no contienen jerga técnica en español ni en inglés (frases de 190 caracteres como máximo) y los de Ingeniero conservan los términos, las explicaciones cambian de nivel manteniendo el fenómeno, Junior no recibe sensores descalibrados ni fallos térmicos, las cadenas de eventos solo ocurren en Ingeniero, el diagnóstico bloquea la reparación hasta acertar (y el error cuesta 1 h), las llamadas y las conversaciones de los NPC cambian de nivel, hay preguntas distintas por nivel, el informe se adapta, la interfaz no contiene emojis y el móvil de 390 px no tiene scroll horizontal en ninguno de los dos modos. Plantas: selección individual, sembrar gasta semillas, regar gasta agua, los nutrientes gastan solución, subir el LED aumenta la demanda eléctrica, cosechar suma alimentos, la nutrición cambia el crecimiento (0,148 frente a 0,022 en 24 h), las cinco especies tienen siluetas distintas (solapamiento máximo 0,633) y las cinco etapas crecen en tamaño. Especialistas y alertas: el vestuario cambia de rol y deja al anterior como NPC, los permisos no bloquean las reparaciones de emergencia, cada fallo lo comunica el NPC adecuado, «Marcar ubicación» coloca el marcador, los mensajes repetidos no se acumulan y las alertas críticas tienen prioridad.
+- `e2e.js` (Chromium, sin Internet): **176/176** comprobaciones: inicio, escenario y dificultad, movimiento, colisiones, puertas, interacción, misiones, pausa con paneles abiertos, panel de consecuencias, minijuego que repara un incidente, comunicaciones con retraso y respuesta, evento con «¿Por qué ocurrió?», guardado y recuperación, ficha y pregunta, cambio de idioma, informe final, cero errores de consola, `localStorage` bloqueado, móvil de 390 × 844 px con joystick táctil y sin desplazamiento horizontal, SelfTest en el navegador y personajes: las 140 combinaciones de personaje × dirección × pose se dibujan sin errores, las piernas aparecen separadas y las siluetas (solo la máscara de forma, sin color) difieren entre especialidades: el solapamiento máximo entre dos personajes es 0,875 de frente y 0,877 de perfil, por debajo del umbral de 0,9. Además, la familiarización completa con acciones reales: cinco secciones al empezar, puertas bloqueadas, cada guía presentándose al entrar y desbloqueo de cada sección al terminar su misión. Fase de instalaciones: las 13 salas existen y son alcanzables por rutas reales transitables desde el puente; el almacén de alimentos, la cocina, el almacén de muestras, el taller y la gestión de residuos cambian el estado de la simulación como se describe; la cadena de ampliación se abre paso a paso sin bloquear misiones; las partidas guardadas antiguas se migran. Mapa: M abre y cierra, Esc cierra, botón del HUD, pausa del tiempo, ficha de sala, ruta y destino marcado. Audio con la Web Speech API **simulada** (Chromium sin voces reales): perfiles, detección con `voiceschanged`, prioridad de selección, sin solapes, volúmenes, subtítulos, TTS desactivado, ausencia total de TTS y `localStorage` bloqueado. Modalidades: la pantalla de inicio ofrece las dos, se guardan y se recuperan con la partida, Junior muestra 4 indicadores sin unidades y Ingeniero 5 con unidades, los textos de Junior no contienen jerga técnica en español ni en inglés (frases de 190 caracteres como máximo) y los de Ingeniero conservan los términos, las explicaciones cambian de nivel manteniendo el fenómeno, Junior no recibe sensores descalibrados ni fallos térmicos, las cadenas de eventos solo ocurren en Ingeniero, el diagnóstico bloquea la reparación hasta acertar (y el error cuesta 1 h), las llamadas y las conversaciones de los NPC cambian de nivel, hay preguntas distintas por nivel, el informe se adapta, la interfaz no contiene emojis y el móvil de 390 px no tiene scroll horizontal en ninguno de los dos modos. Plantas: selección individual, sembrar gasta semillas, regar gasta agua, los nutrientes gastan solución, subir el LED aumenta la demanda eléctrica, cosechar suma alimentos, la nutrición cambia el crecimiento (0,148 frente a 0,022 en 24 h), las cinco especies tienen siluetas distintas (solapamiento máximo 0,633) y las cinco etapas crecen en tamaño. Especialistas y alertas: el vestuario cambia de rol y deja al anterior como NPC, los permisos no bloquean las reparaciones de emergencia, cada fallo lo comunica el NPC adecuado, «Marcar ubicación» coloca el marcador, los mensajes repetidos no se acumulan y las alertas críticas tienen prioridad.
 
 **No probado:** Firefox, Edge y Safari reales, tablets o teléfonos físicos y lectores de pantalla. El código usa solo APIs estándar (Canvas 2D, Pointer Events, Web Audio, `fetch`), pero esas plataformas no se han verificado.
 
 ## Limitaciones conocidas
+- **Voz:** las pruebas de texto a voz usan una Web Speech API simulada; no se han probado voces reales de ningún sistema operativo ni navegador. Las voces disponibles, su calidad y la reproducción antes de interactuar dependen del dispositivo. La música ambiental generativa y las voces no se han probado con altavoces reales.
+- **Instalaciones:** el sistema transversal de «seguridad de instalaciones» y la organización de turnos de los dormitorios no están implementados como sistemas propios (hay descanso en las cabinas y los NPC duermen de noche desde el día 2). La médica «mejora diagnósticos» con una revisión detallada que es una estimación del modelo.
+- **Nombre del juego:** el juego se llama Space Explorer; el subtítulo «Astro Caribe Challenge» es el nombre del reto.
 - El modelo es educativo y simplificado; no sirve para diseñar una base real.
 - No es una PWA: no hay *service worker* ni manifiesto. Funciona sin conexión porque es un único archivo local.
 - Solo se integra DONKI en vivo. OSDR, RadLab, Mars Trek y CSA se citan como referencias con enlaces y datos incorporados, porque sus interfaces no ofrecen una consulta sencilla y útil desde un archivo local sin servidor.
