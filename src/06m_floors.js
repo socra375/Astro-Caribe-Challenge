@@ -54,4 +54,40 @@
     }, 100);
     paint();
   }
-  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom };
+
+  /* ---------- Elevador del rover (plataforma exterior ↔ garaje) ---------- */
+  /** ¿Puede moverse la plataforma? El rover tiene que estar bien colocado encima (o ya en el garaje). */
+  const roverLiftOk = () => Station.roverStored(S) || Station.roverOnPlatform(S.ex.rover);
+  function roverLiftCard() {
+    const e = Station.ensure(S).elev.rover, st = Station.roverStored(S), es = LANG === 'es';
+    return h('div', null, h('b', null, '🛗 ' + tr(Station.KINDS.rover.name)), h('div', { class: 'small' }, st ? lt('El rover está guardado en el garaje.', 'The rover is stored in the garage.') : roverLiftOk() ? lt('El rover está sobre la plataforma: listo para bajar.', 'The rover is on the platform: ready to go down.') : lt('Coloca el rover en el centro de la plataforma, alineado y parado.', 'Place the rover in the middle of the platform, aligned and stopped.')), h('div', { class: 'small' }, '👉 ' + lt('Pulsa E para abrir el panel.', 'Press E to open the panel.')));
+  }
+  function roverLiftPanel() {
+    const st0 = Station.ensure(S), e = st0.elev.rover, es = LANG === 'es';
+    let timer = 0, msg = null; const body = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), body), { sticky: true, onclose: () => clearInterval(timer) });
+    const paint = () => {
+      body.innerHTML = '';
+      const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle';
+      const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
+      body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-rlvl': lvl > 0.5 ? 'G' : '0' }, lvl > 0.5 ? 'G' : '0'), h('div', null, h('div', null, stN + ' · ' + (lvl > 0.5 ? lt('garaje', 'garage') : lt('superficie', 'surface'))), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round(d * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
+        h('p', { class: 'small' }, stored ? lt('El rover está guardado en el garaje, cargando.', 'The rover is stored in the garage, charging.') : roverLiftOk() ? '✔ ' + lt('El rover está bien colocado sobre la plataforma.', 'The rover is correctly placed on the platform.') : '⚠ ' + tr(Station.WHY.align)),
+        e.broken ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null,
+        msg ? h('p', { class: 'small tag warn', 'data-msg': 'warn' }, '⚠ ' + msg) : null,
+        idle ? (stored ? btn('⬆ ' + lt('Subir el rover a la superficie', 'Bring the rover up'), () => go(0), 'primary', { 'data-act': 'rlift-up' }) : btn('⬇ ' + lt('Bajar el rover al garaje', 'Send the rover down'), () => go(2), 'primary', { 'data-act': 'rlift-down' })) : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.'))].filter(Boolean));
+    };
+    const go = (to) => {
+      const r = Station.call(S, 'rover', to, { roverOn: roverLiftOk() });
+      if (!r.ok) { msg = tr(Station.WHY[r.why] || Station.WHY.rover); if (r.why === 'rover') msg = tr(Station.WHY.align); Sfx.play('bad'); return paint(); }
+      msg = null; Sfx.play('door'); paint();
+    };
+    let lastSt = e.st, tk = 0;
+    timer = setInterval(() => {
+      if (!s.isConnected) return clearInterval(timer);
+      if (e.st === 'moving' && ++tk % 4 === 0) Sfx.play('engine');
+      if (lastSt !== e.st) { Sfx.play(e.st === 'idle' ? 'ok' : 'deployclk'); lastSt = e.st; }
+      paint();
+    }, 100);
+    paint();
+  }
+  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel };

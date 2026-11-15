@@ -205,7 +205,7 @@ const World = (function () {
 
   /* ---------- Colisión ---------- */
   function roverBlocks(x, y) {
-    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov) return false;
+    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !Station.roverVisible(curS)) return false;
     for (const b of Rover.body(E.rover.x, E.rover.y, E.rover.a)) if (Math.hypot(b[0] - x, b[1] - y) < b[2] * 0.95) return true;
     return false;
   }
@@ -385,7 +385,7 @@ const World = (function () {
   function roverFree(x, y, a) { for (const b of Rover.body(x, y, a)) if (!circleFree(b[0], b[1], b[2])) return false; return true; }
   const standOK = (x, y) => { noRov = true; const v = canStand(x, y, 0.3); noRov = false; return v; };
   function boardRover() {
-    const E = curS && curS.ex; if (!E) return 'err'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
+    const E = curS && curS.ex; if (!E) return 'err'; if (!Station.roverVisible(curS)) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
     const sd = Rover.sides(), dl = Math.hypot(player.x - sd.left[0], player.y - sd.left[1]), dr = Math.hypot(player.x - sd.right[0], player.y - sd.right[1]), side = dl < dr ? sd.left : sd.right;
     boardAnim = { kind: 'in', t: 0, dur: 0.7, fx: player.x, fy: player.y, sx: side[0], sy: side[1] }; player.act = null; collect = null; Sfx.play('door'); return null;
   }
@@ -425,9 +425,10 @@ const World = (function () {
     if (shelIn) return { id: 'x:shelx', verb: 'leave', icon: '🚪', d: 0, q: Field.G.shel.find((z) => z.id === shelIn) };
     let best = null, bd = 9; const px = player.x, py = player.y, R = E.rover, sd = Rover.sides();
     const cons = (d, it) => { if (d < bd) { bd = d; best = Object.assign(it, { d }); } };
-    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y);
-    if (dh < 1.6) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
-    if (dr < 3.3) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
+    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = Station.roverVisible(curS);
+    if (dh < 1.6 && rv) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
+    if (dr < 3.3 && rv) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
+    { const P = Station.PLAT, dp = Math.hypot(px - P.panel[0], py - (P.panel[1] + 0.9)); if (dp < 2.2) cons(dp * 0.9, { id: 'x:rplat', verb: 'use', icon: '🛗' }); }
     for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; const d = Math.hypot(px - q.x, py - q.y); if (d < 1.5) cons(d, { id: 'x:site', verb: 'collect', icon: '🪨', s: q }); }
     for (const p of Field.G.pois) { const d = Math.hypot(px - p.x, py - p.y); if (d < Math.max(3.4, p.r * 0.55)) cons(d + 0.8, { id: 'x:poi', verb: 'investigate', icon: '🔭', p }); }
     for (const q of Field.G.rep) { const d = Math.hypot(px - q.x, py - q.y); if (d < 2.4) cons(d, { id: 'x:rep', verb: 'activate', icon: '📡', q }); }
@@ -447,7 +448,8 @@ const World = (function () {
     const R = E.rover, ev = Ex.env(S, R.x, R.y), nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.7 : 1);
     const seated = R.occ || (boardAnim && boardAnim.kind === 'in' && boardAnim.t / boardAnim.dur > 0.9);
     const bd = boardAnim ? Math.sin(Math.min(1, boardAnim.t / boardAnim.dur) * Math.PI) : 0;
-    ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
+    ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
+    if (Station.roverVisible(S)) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
     ents.push({ y: 1e6, f: () => {
       Rover.drawParts(c);
       if (collect) { const x = collect.x * TS, y = collect.y * TS, u = collect.t / collect.dur; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y - 6, 20, 0, 7); c.stroke(); c.strokeStyle = '#6fffa0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y - 6, 20, -Math.PI / 2, -Math.PI / 2 + u * 6.283); c.stroke(); }
@@ -490,7 +492,7 @@ const World = (function () {
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
-    const R = E.rover; c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore();
+    const R = E.rover; if (Station.roverVisible(curS)) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(X(player.x), Y(player.y), 4.5, 0, 7); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
     return true;
   }

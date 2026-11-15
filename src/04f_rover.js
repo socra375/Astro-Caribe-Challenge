@@ -118,5 +118,27 @@ const Rover = (function () {
     const lv = S.sys.rover.batt / 100; for (let k = 0; k < 4; k++) { c.fillStyle = lv > (k + 0.4) / 4 ? (lv < 0.25 ? '#ff5a5a' : '#6fffa0') : '#2b3550'; c.fillRect(-28 + k * 6, 11, 4.5, 4); }
     c.restore();
   }
-  return { bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
+  /** Plataforma-elevador del rover (exterior): foso, placa con franjas, luces de estado, panel con el nivel y dos hojas de puerta que cubren el foso. */
+  function drawPlatform(c, S, t) {
+    const P = Station.PLAT, TS = 32, e = S.station && S.station.elev.rover, d = e ? Station.door(S, 'rover') : 1, lvl = e ? Station.level(S, 'rover') : 0;
+    const x = P.x * TS, y = P.y * TS, w = P.w * TS, h = P.h * TS, moving = e && e.st !== 'idle', down = lvl > 0.5;
+    c.save();
+    c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(x - 5, y - 5, w + 10, h + 10);
+    c.fillStyle = '#1a1d27'; c.fillRect(x - 3, y - 3, w + 6, h + 6); // foso
+    // placa (sube y baja: se ve más pequeña y oscura cuanto más profunda)
+    const k = 1 - Math.min(1, lvl / 2) * 0.35, pw = w * k, ph = h * k, px = x + (w - pw) / 2, py = y + (h - ph) / 2;
+    const g = c.createLinearGradient(px, py, px, py + ph); g.addColorStop(0, '#6e7488'); g.addColorStop(1, '#3f4455'); c.fillStyle = g; c.fillRect(px, py, pw, ph);
+    c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([12, 9]); c.strokeRect(px + 4, py + 4, pw - 8, ph - 8); c.setLineDash([]);
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2; c.beginPath(); c.moveTo(px + pw / 2, py + 14); c.lineTo(px + pw / 2, py + ph - 14); c.moveTo(px + 14, py + ph / 2); c.lineTo(px + pw - 14, py + ph / 2); c.stroke();
+    // hojas de puerta: se cierran sobre el foso según el estado del elevador
+    const cover = 1 - d; if (cover > 0.01) { c.fillStyle = '#2a2f40'; c.strokeStyle = '#8b92a4'; c.lineWidth = 2; const lw = (w / 2) * cover; c.fillRect(x, y, lw, h); c.strokeRect(x, y, lw, h); c.fillRect(x + w - lw, y, lw, h); c.strokeRect(x + w - lw, y, lw, h); if (cover > 0.95) { c.fillStyle = 'rgba(255,194,74,.5)'; for (let i = 0; i < 6; i++) c.fillRect(x + w / 2 - 3, y + 8 + i * (h / 6), 6, h / 12); } }
+    // luces de las esquinas: verde en reposo, ámbar al abrir o cerrar, rojo en movimiento
+    const col = !moving ? '#6fffa0' : e.st === 'moving' ? '#ff6b6b' : '#ffc24a', on = !moving || Math.sin(t * 8) > 0;
+    for (const q of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) { c.fillStyle = on ? col : '#2a2f40'; c.beginPath(); c.arc(q[0], q[1], 6, 0, 6.2832); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke(); }
+    // panel con el nivel
+    const qx = P.panel[0] * TS, qy = P.panel[1] * TS; c.fillStyle = '#10182f'; c.fillRect(qx - 20, qy - 12, 40, 24); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.strokeRect(qx - 20, qy - 12, 40, 24);
+    c.fillStyle = col; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText((moving ? (down || (e && e.to === 2) ? '▼' : '▲') : '') + (lvl > 0.5 ? 'G' : '0'), qx, qy + 1);
+    c.restore();
+  }
+  return { drawPlatform, bind, state, update, draw, drawFx, drawParts, sides, body, VMAX, get parts() { return parts; }, get tracks() { return tracks; }, clearFx() { parts = []; tracks = []; lastTrk = null; } };
 })();
