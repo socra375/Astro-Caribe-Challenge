@@ -3525,8 +3525,10 @@ const Station = (function () {
     if (!suitOn) return { ok: false, why: 'ppe' };
     const st = ensure(S); st.core.authUntil = S.t + 20; st.core.checks++; return { ok: true };
   }
+  /** ¿Está la cabina del elevador de tripulación en el piso f con las puertas abiertas (o abriéndose)? */
+  const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();
 /* =====================================================================
    CHARS — Familia de astronautas originales, dibujados por código.
@@ -4375,6 +4377,8 @@ const Layout = (function () {
   const ELV = { 1: [80, 33, 83, 38], 2: [80, 59, 83, 64], 3: [79, 25, 82, 30] };
   for (const f of [1, 2, 3]) { const e = ELV[f]; ROOMS['elc' + f] = { s: [RR(e[0] + OX, e[1] + OY, e[2] + OX, e[3] + OY, 1)], g: f === 1 ? 'hab' : 'tec', floor: f === 1 ? 'clean' : 'plate', col: f === 1 ? ['#2a3350', '#303a5c'] : ['#2e3138', '#34373f'] }; }
   CONSOLES.push(['tele', 'bridge', 57 + OX, 22 + OY, 'use', '🌀']);
+  // botón de llamada del elevador, fuera de la cabina y junto a su puerta
+  CONSOLES.push(['call1', 'food', 91, 44, 'use', '🔔'], ['call2', 'rad', 91, 70, 'use', '🔔'], ['call3', 'reactor', 95, 36, 'use', '🔔']); // en la pared, justo encima de cada puerta
   LINKS.push(['food', 'elc1', 79 + OX, 35 + OY], ['rad', 'elc2', 79 + OX, 61 + OY], ['reactor', 'elc3', 83 + OX, 27 + OY]);
   for (const f of [1, 2, 3]) { const e = ELV[f]; CONSOLES.push(['elev' + f, 'elc' + f, Math.round((e[0] + e[2]) / 2) + OX, e[1] + OY, 'use', '🛗']); SPOTS['elc' + f] = [[(e[0] + e[2]) / 2 + OX, (e[1] + e[3]) / 2 + OY]]; }
   ROOMCOL.elc1 = ROOMCOL.elc2 = ROOMCOL.elc3 = '#b9c2e0';
@@ -5448,7 +5452,7 @@ const World = (function () {
       }
       if (!best) throw new Error('puerta sin posición: ' + a + '-' + b);
       for (let yy = best.y; yy < best.y + best.h; yy++) for (let xx = best.x; xx < best.x + best.w; xx++) { grid[yy][xx] = DOOR; roomAt[yy][xx] = null; }
-      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false, secure: (a === 'elc3' && b === 'reactor') || (a === 'reactor' && b === 'elc3') }));
+      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false, secure: (a === 'elc3' && b === 'reactor') || (a === 'reactor' && b === 'elc3'), elev: /^elc\d$/.test(a) ? +a.slice(3) : /^elc\d$/.test(b) ? +b.slice(3) : 0 }));
     }
     // Mobiliario y consolas
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
@@ -5516,8 +5520,10 @@ const World = (function () {
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
   function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
-  function arrive(n) {
-    if (!setFloor(n)) return false; const D = FL[fidx].D, p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
+  function arrive(n, outside) {
+    if (!setFloor(n)) return false; const D = FL[fidx].D; let p = null;
+    if (outside) { const d = doors.find((q) => q.elev === n); if (d) p = standAt(d.x + 0.5 + (Math.sign(d.x + 0.5 - D.elev[0]) || -1) * 2.4, d.y + d.h / 2, null); } // delante de la puerta del elevador
+    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
     player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true;
   }
   /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
@@ -5654,13 +5660,18 @@ const World = (function () {
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
     for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
+    // las puertas de los otros pisos también se abren para los NPC que las cruzan (si no, quedarían atrapados dentro de una puerta cerrada)
+    const other = {}; for (const bt of bots) if (!bt.ride && !onF(bt)) (other[bt.floor || 1] = other[bt.floor || 1] || []).push(bt);
+    for (const f in other) withFloor(+f, () => { for (const d of doors) { const cx = d.x + d.w / 2, cy = d.y + d.h / 2, want = d.kind === 'auto' && other[f].some((e) => Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0); d.open = clampN(d.open + (want ? 3 : -3) * dt, 0, 1); if (!want) for (const e of other[f]) if (Math.floor(e.x) >= d.x && Math.floor(e.x) < d.x + d.w && Math.floor(e.y) >= d.y && Math.floor(e.y) < d.y + d.h) d.open = Math.max(d.open, 0.7); } });
     // Puertas (horizontales y verticales)
     const ents = [player].concat(bots.filter((b) => onF(b) && !b.ride));
     for (const d of doors) {
       const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
       let want = false;
       const sec = d.secure && !!curS && Station.coreStatus(curS).restricted; d.sec = sec; // núcleo restringido: solo bloquea al jugador (el ingeniero puede entrar a reparar)
-      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0 && !(sec && e === player)) want = true;
+      // puerta del elevador: al jugador solo se le abre si la cabina está en este piso, o si ya está dentro y el elevador está parado (para poder salir); los NPC usan su propio trayecto
+      const cab = d.elev && curS ? Station.cabinHere(curS, d.elev) || (roomAt[Math.floor(player.y)] && roomAt[Math.floor(player.y)][Math.floor(player.x)] === 'elc' + d.elev && curS.station && curS.station.elev.crew.st === 'idle') : true;
+      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0 && !(sec && e === player) && !(d.elev && e === player && !cab)) want = true;
       d.lock = d.rooms.some(locked);
       if (d.lock) want = false;
       if (d.kind === 'inner') want = want && airlock.st === 'in';
@@ -7116,7 +7127,7 @@ const Game = (function () {
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
-    tele: { es: 'Teletransporte de pisos', en: 'Floor teleporter' }, elev1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev3: { es: 'Elevador de tripulación', en: 'Crew elevator' },
+    tele: { es: 'Teletransporte de pisos', en: 'Floor teleporter' }, call1: { es: 'Llamar al elevador', en: 'Call the elevator' }, call2: { es: 'Llamar al elevador', en: 'Call the elevator' }, call3: { es: 'Llamar al elevador', en: 'Call the elevator' }, elev1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev3: { es: 'Elevador de tripulación', en: 'Crew elevator' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
     lock: { es: 'Esclusa', en: 'Airlock' }, suit: { es: 'Traje y expedición', en: 'Suit & expedition' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
@@ -7132,7 +7143,7 @@ const Game = (function () {
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
-    const map = { tele: teleportPanel, elev1: () => elevatorPanel(1), elev2: () => elevatorPanel(2), elev3: () => elevatorPanel(3), cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
+    const map = { call1: () => elevatorPanel(1), call2: () => elevatorPanel(2), call3: () => elevatorPanel(3), tele: teleportPanel, elev1: () => elevatorPanel(1), elev2: () => elevatorPanel(2), elev3: () => elevatorPanel(3), cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
       shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
@@ -9375,7 +9386,7 @@ const Game = (function () {
   function teleportTo(n) {
     const veil = h('div', { id: 'telefx', 'aria-hidden': 'true' }, h('div', { class: 'telering' }, '🌀'));
     document.getElementById('app').append(veil); Sfx.play('scan');
-    setTimeout(() => { World.arrive(n); lastRoom = null; Sfx.play('door'); }, 450);
+    setTimeout(() => { World.arrive(n, true); lastRoom = null; Sfx.play('door'); }, 450);
     setTimeout(() => { veil.remove(); toast('🌀 ' + fname(n), '', 'info'); }, 950);
   }
   function teleportPanel() {
@@ -9385,7 +9396,7 @@ const Game = (function () {
       ...Station.FLOORS.map((f) => h('div', { style: { margin: '6px 0' } }, btn((f === cur ? '📍 ' : '➡ ') + fname(f), () => { pop(); if (f !== cur) teleportTo(f); }, f === cur ? 'ghost' : 'primary', { 'data-act': 'tele-' + f, disabled: f === cur ? true : null }), h('div', { class: 'small muted' }, tr(FLOOR_D[f])))))));
   }
   /** Llegada al piso de destino (elevador o escalera): cambia de piso y deja al jugador junto al elevador. */
-  function arriveFloor(n) { World.arrive(n); lastRoom = null; }
+  function arriveFloor(n, outside) { World.arrive(n, !!outside); lastRoom = null; }
   /** Estado de seguridad del núcleo energético (se muestra en el panel del elevador del piso 3). */
   function coreBlock() {
     const c = Station.coreStatus(S), es = LANG === 'es', why = c.reasons.map((k) => tr(Station.CORE_WHY[k]));
@@ -9409,6 +9420,8 @@ const Game = (function () {
         e.broken && mode !== 'stairs' ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null].filter(Boolean));
       if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Subiendo por la escalera… ', 'Taking the stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
       if (e.st !== 'idle') return body.append(h('p', { class: 'small muted' }, lt('Espera a que el elevador termine el trayecto.', 'Wait for the elevator to finish the trip.')));
+      const inside = World.roomName(World.player.x, World.player.y) === 'elc' + here;
+      if (!inside && e.at === here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está aquí con las puertas abiertas: entra para elegir el piso.', 'The elevator is here with its doors open: step in to choose the floor.')));
       if (e.at !== here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está en el piso ' + e.at + '.', 'The elevator is on floor ' + e.at + '.')), btn('🔔 ' + lt('Llamar al elevador', 'Call the elevator'), () => { Station.call(S, 'crew', here); Sfx.play('door'); paint(); }, 'primary', { 'data-act': 'elev-call' }));
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
@@ -9420,7 +9433,7 @@ const Game = (function () {
     };
     timer = setInterval(() => {
       if (!s.isConnected) return clearInterval(timer);
-      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest); toast('🪜 ' + fname(dest), '', 'info'); return; } }
+      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest, true); toast('🪜 ' + fname(dest), '', 'info'); return; } }
       if (mode === 'ride' && e.st === 'idle' && e.at === dest) { clearInterval(timer); Station.leave(S, 'crew', 'player'); pop(); arriveFloor(dest); Sfx.play('ok'); toast('🛗 ' + fname(dest), '', 'ok'); return; }
       paint();
     }, 100);

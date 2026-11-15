@@ -203,6 +203,8 @@ const Layout = (function () {
   const ELV = { 1: [80, 33, 83, 38], 2: [80, 59, 83, 64], 3: [79, 25, 82, 30] };
   for (const f of [1, 2, 3]) { const e = ELV[f]; ROOMS['elc' + f] = { s: [RR(e[0] + OX, e[1] + OY, e[2] + OX, e[3] + OY, 1)], g: f === 1 ? 'hab' : 'tec', floor: f === 1 ? 'clean' : 'plate', col: f === 1 ? ['#2a3350', '#303a5c'] : ['#2e3138', '#34373f'] }; }
   CONSOLES.push(['tele', 'bridge', 57 + OX, 22 + OY, 'use', '🌀']);
+  // botón de llamada del elevador, fuera de la cabina y junto a su puerta
+  CONSOLES.push(['call1', 'food', 91, 44, 'use', '🔔'], ['call2', 'rad', 91, 70, 'use', '🔔'], ['call3', 'reactor', 95, 36, 'use', '🔔']); // en la pared, justo encima de cada puerta
   LINKS.push(['food', 'elc1', 79 + OX, 35 + OY], ['rad', 'elc2', 79 + OX, 61 + OY], ['reactor', 'elc3', 83 + OX, 27 + OY]);
   for (const f of [1, 2, 3]) { const e = ELV[f]; CONSOLES.push(['elev' + f, 'elc' + f, Math.round((e[0] + e[2]) / 2) + OX, e[1] + OY, 'use', '🛗']); SPOTS['elc' + f] = [[(e[0] + e[2]) / 2 + OX, (e[1] + e[3]) / 2 + OY]]; }
   ROOMCOL.elc1 = ROOMCOL.elc2 = ROOMCOL.elc3 = '#b9c2e0';

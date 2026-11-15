@@ -82,7 +82,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   ok('El panel ofrece los tres pisos y deshabilita el piso actual', JSON.stringify(tp.btns) === '[false,true,true]', JSON.stringify(tp));
   await pg.click('[data-act="tele-3"]'); await sleep(pg, 1300);
   const t3 = await pg.evaluate(() => ({ floor: World.floor, pf: World.player.floor, room: World.roomName(World.player.x, World.player.y), fx: !!document.getElementById('telefx') }));
-  ok('Elegir el piso 3 te lleva (con animación) a la cabina del elevador de ese piso', t3.floor === 3 && t3.pf === 3 && t3.room === 'elc3' && !t3.fx, JSON.stringify(t3));
+  ok('Elegir el piso 3 te lleva (con animación) delante de la puerta del elevador de ese piso', t3.floor === 3 && t3.pf === 3 && t3.room === 'reactor' && !t3.fx, JSON.stringify(t3));
   await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev3'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
   await pg.keyboard.press('e'); await sleep(pg, 300);
   const ep = await pg.evaluate(() => ({ call: !!document.querySelector('[data-act="elev-call"]'), at: Game.S.station.elev.crew.at }));
@@ -102,7 +102,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   const stp = await pg.evaluate(() => ({ txt: document.querySelector('.panel').innerText, floor: World.floor }));
   ok('La escalera tarda (7 s por piso) y mientras tanto no se cambia de piso', /Escalera de emergencia/.test(stp.txt) && stp.floor === 1, JSON.stringify(stp));
   await pg.waitForFunction(() => World.floor === 2, null, { timeout: 15000 });
-  ok('Tras la escalera se llega al piso 2', await pg.evaluate(() => World.floor === 2 && World.roomName(World.player.x, World.player.y) === 'elc2'));
+  ok('Tras la escalera se llega al piso 2, delante de la puerta del elevador', await pg.evaluate(() => World.floor === 2 && World.roomName(World.player.x, World.player.y) === 'rad'));
   await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', false); World.arrive(1); });
 
 
@@ -141,6 +141,39 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   ok('El estado del elevador del rover y el rover guardado en el garaje se guardan con la partida', sv3.at === 2 && sv3.ra === 'garage', JSON.stringify(sv3));
   await pg.evaluate(() => { Station.call(Game.S, 'rover', 0, { roverOn: true }); for (let i = 0; i < 300; i++) Station.step(Game.S, 0.05); World.arrive(1); });
 
+
+  /* ---- Puertas del elevador de tripulación en el mundo ---- */
+  const dr = await pg.evaluate(() => {
+    const S = Game.S; S.inc = []; Station.ensure(S); const e = S.station.elev.crew; e.at = 1; e.st = 'idle'; e.broken = false;
+    World.arrive(3, true); const d = World.withFloor(3, () => { const q = World._test.doors.find((x) => x.elev === 3); return { x: q.x, y: q.y, w: q.w, h: q.h }; });
+    const out = { room: World.roomName(World.player.x, World.player.y), floor: World.floor, d, call: !!Layout.CONSOLES.find((c) => c[0] === 'call3') };
+    // cabina en otro piso: la puerta no se abre para el jugador
+    for (let i = 0; i < 40; i++) World.update(0.05, S, { x: 0, y: 0 }); const dd = World._test.doors.find((x) => x.elev === 3);
+    for (let i = 0; i < 60; i++) World.update(0.05, S, { x: -1, y: 0 }); out.closedOpen = dd.open; out.closedX = World.player.x;
+    return out;
+  });
+  ok('Hay un botón de llamada junto a la puerta de cada elevador y el teletransporte te deja delante de ella (fuera de la cabina)', dr.call && dr.room === 'reactor' && dr.floor === 3, JSON.stringify([dr.room, dr.floor, dr.call]));
+  ok('Con la cabina en otro piso la puerta del elevador permanece cerrada para el jugador y no puede entrar', dr.closedOpen === 0 && dr.closedX > dr.d.x + 0.5, JSON.stringify([dr.closedOpen, dr.closedX, dr.d]));
+  const dr2 = await pg.evaluate(() => {
+    const S = Game.S, e = S.station.elev.crew; Station.call(S, 'crew', 3); for (let i = 0; i < 250; i++) Station.step(S, 0.05);
+    const dd = World._test.doors.find((x) => x.elev === 3), d = { x: dd.x, y: dd.y };
+    World.player.x = d.x + 2.4; World.player.y = d.y + 1; for (let i = 0; i < 90; i++) World.update(0.05, S, { x: -1, y: 0 });
+    return { at: e.at, st: e.st, open: dd.open, x: World.player.x, room: World.roomName(World.player.x, World.player.y), d };
+  });
+  ok('Cuando llega la cabina la puerta se abre y el jugador entra en el elevador', dr2.at === 3 && dr2.st === 'idle' && dr2.room === 'elc3' && dr2.x < dr2.d.x, JSON.stringify(dr2));
+  const dr3 = await pg.evaluate(() => {
+    const S = Game.S, dd = World._test.doors.find((x) => x.elev === 3); Station.call(S, 'crew', 1);
+    for (let i = 0; i < 40; i++) { Station.step(S, 0.05); World.update(0.05, S, { x: 0, y: 0 }); }
+    const moving = { st: S.station.elev.crew.st, open: dd.open }; for (let i = 0; i < 250; i++) { Station.step(S, 0.05); World.update(0.05, S, { x: 0, y: 0 }); }
+    // dentro y con el elevador parado en otro piso: puede salir
+    World.player.x = dd.x - 1.6; World.player.y = dd.y + 1; for (let i = 0; i < 90; i++) World.update(0.05, S, { x: 1, y: 0 });
+    return { moving, at: S.station.elev.crew.at, out: World.player.x, door: dd.x };
+  });
+  ok('Mientras el elevador viaja la puerta está cerrada; y quien se queda dentro con el elevador parado en otro piso puede salir', dr3.moving.st === 'moving' && dr3.moving.open === 0 && dr3.at === 1 && dr3.out > dr3.door + 0.5, JSON.stringify(dr3));
+  const dr4 = await pg.evaluate(() => { const S = Game.S, dd = World._test.doors.find((x) => x.elev === 3); const eng = World._test.bots.find((b) => b.role === 'engineer'); eng.floor = 3; const e = World.withFloor(3, () => World._test.spot('elc3', 0)); eng.x = e[0]; eng.y = e[1]; eng.viaTo = 1; eng.path = []; eng.ride = null; World.player.floor = 3; let opened = false; for (let i = 0; i < 40; i++) { World.update(0.05, S, { x: 0, y: 0 }); if (dd.open > 0.3) opened = true; } return { opened, ride: !!eng.ride }; });
+  ok('Los NPC usan el elevador sin depender de la cabina: la puerta se abre para ellos y hacen su trayecto', dr4.opened || dr4.ride, JSON.stringify(dr4));
+  await pg.evaluate(() => { const S = Game.S; const e = S.station.elev.crew; e.at = 1; e.st = 'idle'; World.arrive(1); });
+
   /* ---- Núcleo energético: escala, equipamiento y acceso restringido ---- */
   const core = await pg.evaluate(() => World.withFloor(3, () => {
     const R = World.RECTS.reactor, F = Layout.FLOORS[2].FURN, T = World._test, cnt = (k) => F.filter((f) => f[0] === k).length, e = Layout.FLOORS[2].elev;
@@ -168,9 +201,9 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   await pg.evaluate(() => { for (let i = 0; i < 30; i++) World.update(0.05, Game.S, { x: 0, y: 0 }); });
   const lk = await pg.evaluate((d) => { for (let i = 0; i < 60; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); const dd = World._test.doors.find((q) => q.secure); return { px: World.player.x, open: dd.open, sec: dd.sec, near: World.secureNear() }; }, sd.d);
   ok('Con una avería crítica en el reactor la puerta del núcleo se cierra por seguridad y el jugador no puede pasar', sd.has && lk.sec === true && lk.open === 0 && lk.px < sd.d.x + 0.5 && lk.near === true, JSON.stringify([lk, sd.d]));
-  await sleep(pg, 400);
+  await pg.evaluate((d) => { World.player.x = d.x + 2.4; World.player.y = d.y + 1.5; }, sd.d); await sleep(pg, 600); // desde el lado del reactor, lejos del botón de llamada
   const pr2 = await pg.evaluate(() => document.getElementById('actBtn').textContent);
-  ok('Junto a la puerta cerrada se explica el motivo y qué hacer', /restringido/.test(pr2) && /elevador/.test(pr2), pr2);
+  ok('Ante la puerta cerrada del núcleo se explica el motivo y qué hacer', /restringido/.test(pr2) && /elevador/.test(pr2), pr2);
   await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev3'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
   await pg.keyboard.press('e'); await sleep(pg, 400);
   const cp = await pg.evaluate(() => ({ restricted: !!document.querySelector('[data-core="restricted"]'), btn: !!document.querySelector('[data-act="core-auth"]') }));
