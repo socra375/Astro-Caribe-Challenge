@@ -1,4 +1,4 @@
-# Guía docente · Junior Astronaut Mission Trainer
+# Guía docente · Space Explorer
 
 Tres lecciones de **20 minutos** para estudiantes de 7 a 12 años. Funcionan en ordenador, tablet o móvil, con o sin Internet (abre `index.html`).
 

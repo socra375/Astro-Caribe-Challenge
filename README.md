@@ -1,4 +1,4 @@
-# Junior Astronaut Mission Trainer
+# Space Explorer
 
 Simulador educativo 2D (vista cenital) para niños y niñas de 7 a 12 años. El jugador administra un puesto avanzado en la **Luna** (región del cráter Shackleton) o en **Marte** (Jezero, Arcadia Planitia, Valles Marineris y Gale como escenarios de comparación). Aprende que cada recurso es limitado, que toda decisión tiene consecuencias y que la ingeniería espacial también se relaciona con retos de **República Dominicana** y del planeta.
 
