@@ -57,7 +57,8 @@ const Ex = (function () {
   }
   /** Señal de radio (0–1): antena de la base y repetidores activados; la distancia, el polvo y las tormentas la reducen. */
   function signal(S, x, y) {
-    const e = ensure(S), mars = S.scen === 'mars', nodes = [{ x: Field.PAD[0], y: Field.PAD[1], r: SIG_RANGE[S.scen] || 100 }];
+    const e = ensure(S), mars = S.scen === 'mars', nodes = [{ x: Field.PAD[0], y: Field.PAD[1], r: (SIG_RANGE[S.scen] || 100) * Land.mods(S).sig }], rl = Land.relayNode(S);
+    if (rl) nodes.push(rl);
     for (const q of Field.G.rep) if (e.rep[q.id]) nodes.push({ x: q.x, y: q.y, r: REP_RANGE });
     let best = 0;
     for (const n of nodes) best = Math.max(best, 1 - Math.pow(Math.hypot(n.x - x, n.y - y) / n.r, 1.6));
@@ -128,7 +129,7 @@ const Ex = (function () {
     if (ev.dust) su.integ = Math.max(0, su.integ - 0.012 * dt);
     else if (ev.ground.k === 'deep' && mv > 0.2 && !c.inRover) su.integ = Math.max(0, su.integ - 0.01 * dt);
     const sh = c.inShel ? 0.08 : c.inRover ? 0.6 : 1;
-    const rate = RAD_RATE[S.scen] * sh * (1 + (100 - integ) / 120) * (ev.burst ? 5 : 1) * (S.mods && S.mods.spe > 0 ? 1.6 : 1) * (r === 'medic' ? 0.8 : 1) * (ev.dust ? 0.9 : 1);
+    const rate = RAD_RATE[S.scen] * sh * (1 + (100 - integ) / 120) * (ev.burst ? 5 : 1) * (S.mods && S.mods.spe > 0 ? 1.6 : 1) * (r === 'medic' ? 0.8 : 1) * (ev.dust ? 0.9 : 1) * Land.mods(S).rad;
     su.rad += rate * dt; e.doseTot += rate * dt;
     const cr = S.crew.find((q) => q.role === r); if (cr) cr.dose += rate * dt * DOSE_K;
     if (c.inShel) { e.f.shelter = true; if (c.inShel && condOn(S)) e.m.c.m4shel += dt; }

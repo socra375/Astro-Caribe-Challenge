@@ -70,8 +70,11 @@ const Field = (function () {
   function addObs(o) { G.obs.push(o); const x0 = Math.floor((o.x - o.r) / 4), x1 = Math.floor((o.x + o.r) / 4), y0 = Math.floor((o.y - o.r) / 4), y1 = Math.floor((o.y + o.r) / 4); for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const k = cellKey(cx, cy); (hash.get(k) || hash.set(k, []).get(k)).push(o); } }
   function distSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1; let u = ((px - ax) * dx + (py - ay) * dy) / l2; u = Math.max(0, Math.min(1, u)); return Math.hypot(px - (ax + dx * u), py - (ay + dy * u)); }
   const trailDist = (x, y) => { let m = 1e9; for (const t of TRAILS) for (let i = 1; i < t.length; i++) m = Math.min(m, distSeg(x, y, t[i - 1][0], t[i - 1][1], t[i][0], t[i][1])); return m; };
-  function init(s) {
+  const BASE_TRAILS = TRAILS.length;
+  let SHIP = null; // plataforma de la nave: [x, y] (se fija antes de generar el terreno)
+  function init(s, pad) {
     sc = s === 'mars' ? 'mars' : 'moon'; chunks = new Map(); hash = new Map();
+    SHIP = pad ? { x: pad[0], y: pad[1] } : null; TRAILS.length = BASE_TRAILS; if (SHIP) TRAILS.push([[68, 110], [SHIP.x, SHIP.y]]);
     const mars = sc === 'mars', rnd = rngOf(mars ? 777 : 313);
     G = { obs: [], craters: [], zones: [], dunes: [], pois: POI[sc].map((p) => Object.assign({}, p)), rep: REPEATERS[sc].map((p) => Object.assign({}, p)), shel: SHELTERS[sc].map((p) => Object.assign({}, p)), sites: [], pebbles: [] };
     // muestras: las del entorno de la base (mismas posiciones que ya existían) y las de las zonas de exploración
@@ -84,9 +87,9 @@ const Field = (function () {
     }
     // cráteres grandes (el rover no los cruza) y pequeños
     const bigC = mars ? [[22, 112, 9], [124, 108, 8], [-18, 126, 10], [150, 138, 11], [30, 160, 9]] : [[26, 110, 9], [122, 110, 8], [-18, 126, 10], [150, 140, 11], [30, 160, 9], [90, 168, 8]];
-    for (const c of bigC) if (trailDist(c[0], c[1]) > c[2] + 1.5) { G.craters.push({ x: c[0], y: c[1], r: c[2], big: true }); addObs({ x: c[0], y: c[1], r: c[2] * 0.7, rover: true, t: 'crater' }); }
+    for (const c of bigC) if (trailDist(c[0], c[1]) > c[2] + 1.5 && !(SHIP && Math.hypot(c[0] - SHIP.x, c[1] - SHIP.y) < c[2] + 6)) { G.craters.push({ x: c[0], y: c[1], r: c[2], big: true }); addObs({ x: c[0], y: c[1], r: c[2] * 0.7, rover: true, t: 'crater' }); }
     for (const p of G.pois) if (p.k === 'icecrater') { G.craters.push({ x: p.x, y: p.y, r: p.r, ice: true }); }
-    const okFree = (x, y, m) => !inRect(x, y, 4 + (m || 0)) && trailDist(x, y) > 3.6 + (m || 0) && Math.hypot(x - PAD[0], y - PAD[1]) > 12 && G.pois.every((p) => Math.hypot(p.x - x, p.y - y) > p.r * 0.5 + 3) && G.sites.every((s) => Math.hypot(s.x - x, s.y - y) > 2.2) && G.rep.every((q) => Math.hypot(q.x - x, q.y - y) > 4) && G.shel.every((q) => Math.hypot(q.x - x, q.y - y) > 4.5);
+    const okFree = (x, y, m) => !inRect(x, y, 4 + (m || 0)) && !(SHIP && Math.hypot(x - SHIP.x, y - SHIP.y) < 9 + (m || 0)) && trailDist(x, y) > 3.6 + (m || 0) && Math.hypot(x - PAD[0], y - PAD[1]) > 12 && G.pois.every((p) => Math.hypot(p.x - x, p.y - y) > p.r * 0.5 + 3) && G.sites.every((s) => Math.hypot(s.x - x, s.y - y) > 2.2) && G.rep.every((q) => Math.hypot(q.x - x, q.y - y) > 4) && G.shel.every((q) => Math.hypot(q.x - x, q.y - y) > 4.5);
     for (let i = 0; i < 70; i++) { const c = { x: B.x0 + 4 + rnd() * (B.x1 - B.x0 - 8), y: B.y0 + 4 + rnd() * (B.y1 - B.y0 - 8), r: 1.6 + rnd() * 3.4 }; if (okFree(c.x, c.y, c.r) && G.craters.every((q) => Math.hypot(q.x - c.x, q.y - c.y) > q.r + c.r + 1)) G.craters.push(c); }
     // zonas de suelo (movilidad)
     const Z = mars ? [['sand', 130, 110, 18, 10], ['sand', 60, 142, 14, 9], ['sand', -22, 72, 14, 10], ['sand', 8, -8, 16, 10], ['slope', 90, 160, 16, 6], ['slope', 176, 60, 10, 14]] : [['deep', 140, 122, 16, 9], ['deep', 30, 150, 14, 8], ['deep', -12, 36, 12, 9], ['deep', 176, 100, 12, 8], ['deep', 74, 132, 10, 6]];
@@ -103,6 +106,7 @@ const Field = (function () {
     for (const p of G.pois) if (p.k === 'lander' || p.k === 'seismo' || p.k === 'weather') addObs({ x: p.x, y: p.y, r: p.k === 'lander' ? 1.6 : 0.8, t: 'equip' });
     for (const q of G.rep) addObs({ x: q.x, y: q.y, r: 0.9, t: 'equip' });
     for (const q of G.shel) addObs({ x: q.x, y: q.y, r: 2.3, t: 'dome' });
+    if (SHIP) addObs({ x: SHIP.x, y: SHIP.y, r: 3.1, t: 'ship' });
   }
 
   /* ---------- Consultas ---------- */
@@ -241,6 +245,7 @@ const Field = (function () {
     if (!G) return [];
     const out = [], vis = (x, y, m) => x * TS > cam.x - m && x * TS < cam.x + vw + m && y * TS > cam.y - m && y * TS < cam.y + vh + m;
     for (const p of G.pois) if (vis(p.x, p.y, 120) && ['seismo', 'weather', 'lander'].includes(p.k)) out.push({ y: p.y, f: () => sprite(ctx, p.k, p.x * TS, p.y * TS, t, 0) });
+    if (SHIP && S && vis(SHIP.x, SHIP.y, 200)) out.push({ y: SHIP.y + 1.5, f: () => LandArt.shipWorld(ctx, SHIP.x * TS, SHIP.y * TS, t, S) });
     for (const q of G.rep) if (vis(q.x, q.y, 120)) out.push({ y: q.y, f: () => sprite(ctx, 'rpt', q.x * TS, q.y * TS, t, !!(ex && ex.rep && ex.rep[q.id])) });
     for (const q of G.shel) if (vis(q.x, q.y, 140)) out.push({ y: q.y, f: () => sprite(ctx, 'shelter', q.x * TS, q.y * TS, t, { id: q.id, open: ex && ex.inShel === q.id }) });
     for (const s of G.sites) {
@@ -259,6 +264,6 @@ const Field = (function () {
     }
   }
 
-  return { B, PAD, TRAILS, init, reset, hit, ground, near, info, coord, drawTerrain, ents, guideLights, KG, CAT, KIND_T, WHY, inRect,
+  return { B, PAD, TRAILS, get ship() { return SHIP; }, init, reset, hit, ground, near, info, coord, drawTerrain, ents, guideLights, KG, CAT, KIND_T, WHY, inRect,
     get G() { return G; }, get sc() { return sc; }, poi: (id) => G && G.pois.find((p) => p.id === id), site: (id) => G && G.sites.find((s) => s.id === id), rep: (id) => G && G.rep.find((r) => r.id === id) };
 })();

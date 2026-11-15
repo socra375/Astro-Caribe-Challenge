@@ -98,6 +98,7 @@
       // rover y objetivo de la expedición (los que quedan fuera del plano se señalan en el borde)
       if (S.ex) {
         const edge = (px, py) => { const mx = 14, ex = Math.max(mx, Math.min(CW - mx, px)), ey = Math.max(mx, Math.min(CH - mx, py)); return [ex, ey, ex !== px || ey !== py]; };
+        if (S.land && S.land.ship) { const sp = edge(X(S.land.ship.x), Y(S.land.ship.y)); x.save(); x.translate(sp[0], sp[1]); x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -11); x.lineTo(7, 6); x.lineTo(-7, 6); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#ff8a3d'; x.fillRect(-7, 6, 14, 3); x.restore(); x.font = '700 11px system-ui'; x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; const nl = LANG === 'es' ? 'Nave' : 'Ship'; x.strokeText(nl, sp[0], sp[1] - 13); x.fillText(nl, sp[0], sp[1] - 13); }
         const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y));
         x.save(); x.translate(rp[0], rp[1]); x.rotate(rp[2] ? Math.atan2(Y(R0.y) - CH / 2, X(R0.x) - CW / 2) : R0.a); x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-9, -6, 18, 12); x.strokeRect(-9, -6, 18, 12); x.fillStyle = '#fff'; x.fillRect(3, -3, 5, 6); x.restore();
         x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; x.strokeText('Rover', rp[0], rp[1] - 10); x.fillText('Rover', rp[0], rp[1] - 10);

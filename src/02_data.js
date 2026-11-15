@@ -462,6 +462,9 @@ const Sfx = (function () {
     geiger: () => tone(2100, 0.012, 'square', 0, 0.05),
     photo: () => { tone(2400, 0.03, 'square', 0, 0.07); tone(1300, 0.09, 'square', 0.05, 0.06); },
     engine: () => tone(62, 0.12, 'sawtooth', 0, 0.045),
+    thrust: () => { tone(48, 0.2, 'sawtooth', 0, 0.07); tone(96, 0.18, 'square', 0.02, 0.025); for (let i = 0; i < 3; i++) tone(180 + ((i * 7919) % 400), 0.05, 'square', i * 0.05, 0.015); },
+    thump: () => { tone(70, 0.28, 'sine', 0, 0.3); tone(38, 0.4, 'triangle', 0.02, 0.28); for (let i = 0; i < 5; i++) tone(400 + ((i * 6151) % 900), 0.04, 'square', i * 0.02, 0.04); },
+    deployclk: () => { tone(330, 0.05, 'square', 0, 0.09); tone(220, 0.09, 'triangle', 0.06, 0.12); },
     // EarthLink Radio: conexión, transmisión, recepción, interferencia y fin de transmisión (volumen propio)
     rcon: () => { [440, 660, 880, 1320].forEach((f, i) => tone(f, 0.09, 'sine', i * 0.08, 0.16)); tone(2400, 0.05, 'square', 0.36, 0.05); },
     rtx: () => { tone(1500, 0.05, 'square', 0, 0.06); tone(900, 0.07, 'triangle', 0.05, 0.1); },

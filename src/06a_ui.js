@@ -98,6 +98,7 @@ const Game = (function () {
     if (k === 'cm.sent') return [es ? 'Mensaje enviado' : 'Message sent', (es ? 'Tardará ' : 'Takes ') + fmt(p.ow) + (es ? ' h en llegar a la Tierra (simulado).' : ' h to reach Earth (simulated).')];
     if (k === 'cm.recv') return [es ? 'Respuesta de la Tierra' : 'Reply from Earth', (es ? 'Ida y vuelta: ' : 'Round trip: ') + fmt(p.rt) + ' h'];
     if (k.startsWith('ex.')) return exLogText(e);
+    if (k.startsWith('land.')) return k === 'land.arr' ? [lt('Llegada y aterrizaje completados', 'Arrival and landing complete'), [tr(Land.zoneOf(S.scen, p.zone).n), p.rev ? '💧 ' + p.rev : '', p.mat ? (p.mat > 0 ? '+' : '') + p.mat + ' ' + lt('materiales', 'materials') : ''].filter(Boolean).join(' · ')] : [lt('Nave reparada', 'Ship repaired'), tr(Land.PART_T[p.part])];
     if (k.startsWith('el.')) return elLogText(e);
     if (k === 'm.start') return [(es ? 'Misión iniciada: ' : 'Mission started: ') + tr(DATA.MIS[p.id].t), ''];
     if (k === 'm.done') return [(es ? 'Misión completada: ' : 'Mission completed: ') + tr(DATA.MIS[p.id].t), '★'.repeat(p.stars)];
@@ -377,7 +378,7 @@ const Game = (function () {
   function loadRun() {
     const r = Store.get('run', null);
     if (!r || !r.S || r.S.v !== 1) return false;
-    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; World.init(S.scen); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
+    S = Sim.migrate(r.S); MODE = S.mode; settings.mode = S.mode; speed = r.speed || 1; if (!S.land.done) { Store.del('run'); return false; } World.init(S.scen, Land.pad(S)); World.restore(r.w); Sim.setPlayerRole(S, World.player.role); lastN = S.logN || 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null;
     beginPlay();
     return true;
   }
@@ -387,7 +388,13 @@ const Game = (function () {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp }); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
     settings.scen = scen; settings.mode = S.mode; settings.diff = S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = S.mode === 'junior'; Store.set('settings', settings);
-    World.init(scen); stats.runs++; Store.set('stats', stats);
+    // La llegada se juega una sola vez al empezar. Los atajos de prueba (skipCamp / skipLanding) saltan directo a la base ya desplegada.
+    if (opts.skipCamp || opts.skipLanding || /[?&]quick\b/.test(location.search)) { Land.ensure(S); finishNewRun(scen); return; }
+    popAll(); clearLayer(); startLanding(S);
+  }
+  function finishNewRun(scen, inited) {
+    if (!inited) World.init(scen, Land.pad(S));
+    stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
   }
@@ -412,7 +419,7 @@ const Game = (function () {
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
-        btn('📘 ' + _('manual'), manual), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
+        btn('📘 ' + _('manual'), manual), btn('🛰️ ' + lt('Archivo de misión: ver la llegada', 'Mission file: watch the arrival'), replayArrival), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
         btn('⚙️ ' + _('settings'), settingsPanel), btn('🔊 ' + (LANG === 'es' ? 'Audio y voces' : 'Audio & voices'), audioPanel), btn('🌐 ' + _('lang'), () => { settings.lang = LANG === 'es' ? 'en' : 'es'; applySettings(); mainMenu(); })),
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
@@ -460,7 +467,7 @@ const Game = (function () {
     push(panel('⏸ ' + _('paused'), h('div', { class: 'menu-grid' },
       btn('▶ ' + _('resume'), () => { pop(); }, 'primary', { autofocus: true }),
       btn('💾 ' + _('save'), () => { saveRun(); toast(_('saved'), '', 'ok'); }),
-      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel),
+      btn('⚙️ ' + _('settings'), settingsPanel), btn('📘 ' + _('manual'), manual), btn('🔭 ' + _('sources'), sourcesPanel), btn('💬 ' + (LANG === 'es' ? 'Conversaciones' : 'Conversations'), talksPanel), btn('🛰️ ' + lt('Ver la llegada otra vez', 'Watch the arrival again'), replayArrival),
       btn('📄 ' + _('endRun'), () => { popAll(); Sim.finishRun(S); saveRun(); showReport(); }),
       btn('🏠 ' + _('mainMenu'), () => { saveRun(); mainMenu(); }))), { onclose: () => { paused = false; updateHud(); } });
   }

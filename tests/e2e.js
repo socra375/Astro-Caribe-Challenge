@@ -7,6 +7,18 @@ const results = [];
 const closeAll = async (pg) => { for (let i = 0; i < 8; i++) { if ((await pg.locator('[role=dialog]').count()) === 0) break; await pg.keyboard.press('Escape'); await pg.waitForTimeout(60); } };
 const AT = (pg, room, i) => pg.evaluate(([r, k]) => { const q = World._test.spot(r, k || 0); World.player.x = q[0]; World.player.y = q[1]; }, [room, i]);
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
+/** Atraviesa la llegada y el aterrizaje (acelerada) tras pulsar «Despegar» en la interfaz. */
+async function landThrough(pg) {
+  await pg.waitForFunction(() => Game._debug.land.on, null, { timeout: 8000 });
+  await pg.evaluate(() => Game._debug.land.speed(25));
+  await pg.waitForSelector('.lbtn:not(.hidden)', { timeout: 20000 }); await pg.locator('.lbtn').click();
+  await pg.waitForSelector('.lpanel .choice'); await pg.locator('.lpanel .choice').first().click(); await pg.locator('.lpanel .btn.primary').click();
+  await pg.waitForSelector('.lpanel .btn.primary'); await pg.waitForTimeout(500); await pg.locator('.lpanel .btn.primary').click();
+  await pg.waitForFunction(() => Game._debug.land.st === 'D' && document.querySelector('.lcen .btn.primary'), null, { timeout: 60000 }); await pg.locator('.lcen .btn.primary').click();
+  for (let i = 0; i < 60; i++) { const st = await pg.evaluate(() => ({ w: Game._debug.land.dd.wait, r: Game._debug.land.dd.ready })); if (st.r) break; if (st.w) await pg.locator('.lcen .btn').first().click(); await pg.waitForTimeout(120); }
+  await pg.locator('.lcen .btn.primary').click(); await pg.waitForFunction(() => !Game._debug.land.on && Game._debug.running, null, { timeout: 8000 });
+  await pg.waitForTimeout(300);
+}
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -24,6 +36,8 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await page.getByRole('button', { name: /Marte/ }).click();
   await page.getByRole('button', { name: /Despegar/ }).click();
   await page.waitForTimeout(300);
+  ok('Una partida nueva empieza con la llegada y el aterrizaje (no directamente en la base)', await page.locator('#landw').isVisible() && !(await page.evaluate(() => Game._debug.running)));
+  await landThrough(page);
   ok('Guía del puente se presenta al empezar', await page.getByText('Control de Misión').first().isVisible());
   await page.getByRole('button', { name: 'Saltar' }).click();
   const scen = await page.evaluate(() => Game.S.scen + '/' + Game.S.diff);
@@ -161,7 +175,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   pm.on('pageerror', (e) => err2.push(e.message));
   await pm.goto(FILE); await pm.waitForTimeout(300);
   ok('Con localStorage bloqueado avisa y funciona', await pm.getByText(/sesión temporal/).isVisible());
-  await pm.getByRole('button', { name: /Iniciar misión/ }).click(); await pm.getByRole('button', { name: /Despegar/ }).click();
+  await pm.getByRole('button', { name: /Iniciar misión/ }).click(); await pm.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pm);
   await pm.getByRole('button', { name: 'Saltar' }).click();
   await pm.waitForTimeout(300);
   ok('Joystick táctil visible en móvil', await pm.locator('#joy').isVisible());
@@ -182,7 +196,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const pg = await ctx5.newPage(); const err5 = [];
   pg.on('pageerror', (e) => err5.push(e.message));
   await pg.goto(FILE); await pg.waitForTimeout(300);
-  await pg.getByRole('button', { name: /Iniciar misión/ }).click(); await pg.getByRole('button', { name: /Despegar/ }).click(); await pg.waitForTimeout(400);
+  await pg.getByRole('button', { name: /Iniciar misión/ }).click(); await pg.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pg); await pg.waitForTimeout(400);
   const skipTalk = async () => { for (let i = 0; i < 6; i++) { const b = pg.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pg.waitForTimeout(60); } else break; } };
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
@@ -504,7 +518,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('La pantalla de inicio ofrece las dos modalidades', (await pm2.getByRole('button', { name: /Explorador Junior/ }).count()) === 1 && (await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).count()) === 1);
   await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).click();
   ok('Ingeniero de Misión ofrece nivel de reto', await pm2.getByRole('button', { name: /Exigente/ }).isVisible());
-  await pm2.getByRole('button', { name: /Despegar/ }).click(); await pm2.waitForTimeout(400);
+  await pm2.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pm2); await pm2.waitForTimeout(400);
   ok('La modalidad elegida se aplica', await pm2.evaluate(() => Game.S.mode === 'adv' && MODE === 'adv'));
   const hudA = await pm2.evaluate(() => [...document.querySelectorAll('#meters .meter')].filter((m) => !m.classList.contains('hidden')).length);
   ok('Ingeniero: 5 indicadores detallados en el HUD', hudA === 5, String(hudA));

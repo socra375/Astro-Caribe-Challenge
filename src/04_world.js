@@ -59,7 +59,7 @@ const World = (function () {
     const S0 = SHELTER;
     for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
     for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
-    samples = []; Field.init(scen);
+    samples = []; Field.init(scen, buildPad);
     // Terreno exterior
     scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
     props = scenery.props;
@@ -139,8 +139,9 @@ const World = (function () {
     return true;
   }
   const BOTCOL = { commander: '#d9a72b', engineer: '#ff8a2a', scientist: '#a58cff', medic: '#7ff0cf', agri: '#8fd14f' };
-  function init(sc) {
-    scen = sc; build(); staticCv = null; mapCv = null;
+  let buildPad = null;
+  function init(sc, pad) {
+    scen = sc; buildPad = pad || (curS && curS.scen === sc ? Land.pad(curS) : null) || null; build(); staticCv = null; mapCv = null;
     player.x = Layout.START[0]; player.y = Layout.START[1]; player.dir = 2; player.role = 'commander'; marker = null;
     bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => mkBot(role, HOME[role][0], i));
     airlock = { st: 'in', t: 0 }; parts = []; camInit = false; veilCache = { room: null, d: null };
@@ -366,6 +367,7 @@ const World = (function () {
     for (const p of Field.G.pois) { const d = Math.hypot(px - p.x, py - p.y); if (d < Math.max(3.4, p.r * 0.55)) cons(d + 0.8, { id: 'x:poi', verb: 'investigate', icon: '🔭', p }); }
     for (const q of Field.G.rep) { const d = Math.hypot(px - q.x, py - q.y); if (d < 2.4) cons(d, { id: 'x:rep', verb: 'activate', icon: '📡', q }); }
     for (const q of Field.G.shel) { const d = Math.hypot(px - q.x, py - (q.y + 2.6)); if (d < 2.4) cons(d, { id: 'x:shel', verb: 'enter', icon: '🛡️', q }); }
+    if (Field.ship && curS && curS.land && curS.land.done) { const d = Math.hypot(px - Field.ship.x, py - (Field.ship.y + 2.4)); if (d < 3.6) cons(d, { id: 'x:ship', verb: 'inspect', icon: '🚀' }); }
     return best;
   }
   function exCtx() {
@@ -419,6 +421,7 @@ const World = (function () {
     if (mapCv) { c.globalAlpha = 0.95; c.drawImage(mapCv, X(0), Y(0), W * s, H * s); c.globalAlpha = 1; }
     for (const p of Field.G.pois) { const known = E.disc[p.id] || E.visited[p.id] || Math.hypot(player.x - p.x, player.y - p.y) < 45; if (!known) continue; c.fillStyle = E.visited[p.id] ? '#6fffa0' : '#ffd36b'; c.save(); c.translate(X(p.x), Y(p.y)); c.rotate(0.785); c.fillRect(-4, -4, 8, 8); c.restore(); }
     for (const q of Field.G.sites) { if (E.taken[q.id] || (q.hidden && !E.rev[q.id])) continue; c.fillStyle = '#9dffe3'; c.fillRect(X(q.x) - 1.5, Y(q.y) - 1.5, 3, 3); }
+    if (Field.ship) { c.fillStyle = '#e8ecf5'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X(Field.ship.x), Y(Field.ship.y) - 6); c.lineTo(X(Field.ship.x) + 5, Y(Field.ship.y) + 4); c.lineTo(X(Field.ship.x) - 5, Y(Field.ship.y) + 4); c.closePath(); c.fill(); c.stroke(); }
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
