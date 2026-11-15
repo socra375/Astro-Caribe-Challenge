@@ -189,5 +189,7 @@ const Layout = (function () {
   SHELTER[0] += OX; SHELTER[1] += OY; SHELTER[2] += OX; SHELTER[3] += OY;
   LOCK.x += OX; LOCK.inY += OY; LOCK.outY += OY; START[0] += OX; START[1] += OY; REACTOR_C[0] += OX; REACTOR_C[1] += OY;
 
-  return { W, H, OX, OY, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
+  /** Pisos de la estación. El piso 1 es la base de siempre; los datos son los mismos objetos de arriba. */
+  const FLOORS = [{ id: 1, name: { es: 'Piso 1 · Operaciones', en: 'Floor 1 · Operations' }, ROOMS, LINKS, FURN, CONSOLES, PLANTERS, SHELTER }];
+  return { W, H, OX, OY, has, FLOORS, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
 })();

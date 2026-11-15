@@ -316,7 +316,7 @@ const Game = (function () {
       if (live) {
         World.update(dt, S, inputVec());
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt); elFrame(dt);
+        exFrame(dt); elFrame(dt); if (S.station) Station.step(S, dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }

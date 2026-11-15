@@ -10,7 +10,10 @@ const World = (function () {
   const ROOMCOL = Layout.ROOMCOL;
   let grid = [], solid = [], roomAt = [], doors = [], furn = [], consoles = [], samples = [], props = [], scenery = null, RECTS = {};
   let staticCv = null, mapCv = null, scen = 'moon';
-  const player = { x: Layout.START[0], y: Layout.START[1], dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
+  /* Pisos: cada piso es una «ranura» con su cuadrícula, puertas, mobiliario, rutas y arte. Las variables de abajo (grid, doors…) son siempre las del piso actual. */
+  let FL = [], fidx = 0, extraFloors = [], pathCache = {}, roomCache = {};
+  const onF = (b) => (b.floor || 1) === fidx + 1;
+  const player = { floor: 1, x: Layout.START[0], y: Layout.START[1], dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
   const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
@@ -22,11 +25,11 @@ const World = (function () {
   function vehicleArrival() { const tr0 = scenery && scenery.tracks[2]; if (tr0) fxVeh = { t: 0, path: tr0.slice().reverse() }; }
 
   /* ---------- Construcción: formas → cuadrícula ---------- */
-  function build() {
+  function buildFloor(D) {
     grid = []; roomAt = []; solid = []; doors = []; furn = []; consoles = []; RECTS = {}; pathCache = {};
     for (let y = 0; y < H; y++) { grid.push(new Array(W).fill(OUT)); roomAt.push(new Array(W).fill('pad')); solid.push(new Array(W).fill(false)); }
-    for (const k in Layout.ROOMS) {
-      const def = Layout.ROOMS[k]; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (const k in D.ROOMS) {
+      const def = D.ROOMS[k]; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (def.s.some((s) => Layout.has(s, x + 0.5, y + 0.5))) { grid[y][x] = FLOOR; roomAt[y][x] = k; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
       RECTS[k] = [x0, y0, x1, y1];
     }
@@ -38,7 +41,7 @@ const World = (function () {
     }
     // Puertas: se buscan en la frontera real entre dos salas (nunca sobre una esquina curva)
     const inRoom = (x, y, r) => y >= 0 && y < H && x >= 0 && x < W && (r === 'pad' ? grid[y][x] === OUT : roomAt[y][x] === r);
-    for (const [a, b, px, py, kind] of Layout.LINKS) {
+    for (const [a, b, px, py, kind] of D.LINKS) {
       const pref = [px, py];
       let best = null, bs = 1e9;
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
@@ -52,29 +55,47 @@ const World = (function () {
     }
     // Mobiliario y consolas
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
-    for (const f of Layout.FURN) F(f[1], f[2], f[3], f[4], f[0]);
-    Layout.PLANTERS.forEach((p, i) => F(p[0], p[1], 3, 2, 'planter', { bed: i }));
-    for (const c of Layout.CONSOLES) { consoles.push({ id: c[0], room: c[1], x: c[2], y: c[3], verb: c[4], icon: c[5] }); F(c[2], c[3], 1, 1, 'console', { cid: c[0] }); }
+    for (const f of D.FURN) F(f[1], f[2], f[3], f[4], f[0]);
+    (D.PLANTERS || []).forEach((p, i) => F(p[0], p[1], 3, 2, 'planter', { bed: i }));
+    for (const c of D.CONSOLES) { consoles.push({ id: c[0], room: c[1], x: c[2], y: c[3], verb: c[4], icon: c[5] }); F(c[2], c[3], 1, 1, 'console', { cid: c[0] }); }
     // Refugio contra la radiación: muros blindados con una entrada
-    const S0 = SHELTER;
-    for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
-    for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
-    samples = []; Field.init(scen, buildPad);
-    // Terreno exterior
-    scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
-    props = scenery.props;
+    const S0 = D.SHELTER || [0, 0, -2, -2];
+    if (D.SHELTER) for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
+    if (D.SHELTER) for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
+    if (D.id === 1) { // el terreno exterior pertenece al piso 1
+      samples = []; Field.init(scen, buildPad);
+      scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
+      props = scenery.props;
+    }
     // Solidez
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (D.id !== 1 && grid[y][x] === OUT); // los pisos superiores no tienen exterior
     for (const f of furn) if (!['window', 'pipe', 'vent', 'rug'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
-    for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
+    if (D.id === 1) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
-    // margen alrededor de la base: el rover no se pega al casco (el arte del casco es más grueso que la pared de colisión)
-    hullBuf = [];
-    for (let y = 0; y < H; y++) { hullBuf.push(new Array(W).fill(false)); for (let x = 0; x < W; x++) { if (grid[y][x] !== OUT) continue; for (let dy = -1; dy <= 1 && !hullBuf[y][x]; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W && grid[yy][xx] !== OUT) { hullBuf[y][x] = true; break; } } } }
+    if (D.id === 1) {
+      // margen alrededor de la base: el rover no se pega al casco (el arte del casco es más grueso que la pared de colisión)
+      hullBuf = [];
+      for (let y = 0; y < H; y++) { hullBuf.push(new Array(W).fill(false)); for (let x = 0; x < W; x++) { if (grid[y][x] !== OUT) continue; for (let dy = -1; dy <= 1 && !hullBuf[y][x]; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W && grid[yy][xx] !== OUT) { hullBuf[y][x] = true; break; } } } }
+    }
+  }
+
+  function slot() { return { D: null, grid, solid, roomAt, doors, furn, consoles, RECTS, pathCache, roomCache, staticCv: null, mapCv: null }; }
+  function loadSlot(o) { grid = o.grid; solid = o.solid; roomAt = o.roomAt; doors = o.doors; furn = o.furn; consoles = o.consoles; RECTS = o.RECTS; pathCache = o.pathCache; roomCache = o.roomCache; staticCv = o.staticCv; mapCv = o.mapCv; }
+  /** Construye todos los pisos (el 1 es la base de siempre) y deja el piso 1 como actual. */
+  function build() {
+    FL = [];
+    const defs = Layout.FLOORS.concat(extraFloors);
+    defs.forEach((D) => { buildFloor(D); const o = slot(); o.D = D; FL.push(o); });
+    fidx = 0; loadSlot(FL[0]); player.floor = 1;
+  }
+  /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
+  function setFloor(n) {
+    n = Math.floor(n); if (!(n >= 1 && n <= FL.length)) return false; if (n === fidx + 1) return true;
+    const cur = FL[fidx]; cur.staticCv = staticCv; cur.mapCv = mapCv; cur.pathCache = pathCache; cur.roomCache = roomCache;
+    fidx = n - 1; loadSlot(FL[fidx]); player.floor = n; camInit = false; veilCache = { room: null, d: null }; return true;
   }
 
   /* ---------- Rutas por la cuadrícula real ---------- */
-  let pathCache = {}, roomCache = {};
   const walk = (x, y) => x > 0 && y > 0 && x < W - 1 && y < H - 1 && !solid[y][x];
   /** Celda libre más cercana (opcionalmente dentro de una sala). */
   function standAt(x, y, room) {
@@ -126,7 +147,7 @@ const World = (function () {
   const HOME = { commander: ['bridge', 'hall'], engineer: ['reactor', 'water', 'workshop'], scientist: ['lab', 'samples'], medic: ['med', 'life'], agri: ['gh', 'food'] };
   function mkBot(role, room, i) {
     const p = spot(room, i || 0);
-    return { role, x: p[0], y: p[1], path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false, goal: null };
+    return { floor: 1, role, x: p[0], y: p[1], path: [], wait: 1 + (i || 0), dir: 2, anim: Math.random() * 5, task: 'wander', act: null, actT: 0, carry: false, work: false, goal: null };
   }
   /** Cambia el especialista del jugador: el elegido deja de ser NPC y el anterior queda junto al jugador. */
   function setPlayerRole(role) {
@@ -142,7 +163,7 @@ const World = (function () {
   let buildPad = null;
   function init(sc, pad) {
     scen = sc; buildPad = pad || (curS && curS.scen === sc ? Land.pad(curS) : null) || null; build(); staticCv = null; mapCv = null;
-    player.x = Layout.START[0]; player.y = Layout.START[1]; player.dir = 2; player.role = 'commander'; marker = null;
+    player.x = Layout.START[0]; player.y = Layout.START[1]; player.dir = 2; player.role = 'commander'; player.floor = 1; marker = null;
     bots = ['engineer', 'scientist', 'medic', 'agri'].map((role, i) => mkBot(role, HOME[role][0], i));
     airlock = { st: 'in', t: 0 }; parts = []; camInit = false; veilCache = { room: null, d: null };
   }
@@ -199,9 +220,9 @@ const World = (function () {
     if (!player.moving) player.anim += dt * 8;
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
-    for (let i = 0; i < bots.length; i++) updateBot(bots[i], dt, S);
+    for (let i = 0; i < bots.length; i++) if (onF(bots[i])) updateBot(bots[i], dt, S);
     // Puertas (horizontales y verticales)
-    const ents = [player].concat(bots);
+    const ents = [player].concat(bots.filter(onF));
     for (const d of doors) {
       const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
       let want = false;
@@ -462,7 +483,7 @@ const World = (function () {
   /* ---------- Render ---------- */
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function buildStatic() {
-    const o = Art.build({ scen, W, H, TS, grid, roomAt, doors, furn, props, scenery, rooms: Layout.ROOMS, ROOMCOL, SHELTER, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
+    const o = Art.build({ scen, W, H, TS, grid, roomAt, doors, furn, props, scenery, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
     staticCv = o.cv; mapCv = o.mapCv;
   }
 
@@ -656,7 +677,7 @@ const World = (function () {
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
     // Entidades (orden por y)
     const pPose = player.act || o.playerPose || (player.moving ? 'walk' : o.crit ? 'alert' : 'idle');
-    const ents = bots.map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
+    const ents = bots.filter(onF).map((b) => ({ y: b.y, f: () => drawChar(ctx, b.role, b.x * TS, b.y * TS + 6, b.dir, b.anim / 8, b.task === 'shelter' && o.crit && !b.moving ? 'alert' : botPose(b, S), b.moving, tr(DATA.ROLE_T[b.role]).split(' ').pop()) }));
     plantEnts.forEach((pe) => ents.push(pe));
     const eva = !!(S && S.ex && S.ex.suit.on), inRov = !!(S && S.ex && S.ex.rover.occ) && !boardAnim, cargo = !!(S && S.ex && S.ex.hand.length);
     if (!inRov && !shelIn) ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? (cargo ? 'carry' : 'walk') : (cargo && !player.act && pPose === 'idle' ? 'carry' : pPose), player.moving, o.youLabel || '', eva) });
@@ -719,7 +740,7 @@ const World = (function () {
     for (const k in MAIN) if (locked(k)) { c.save(); c.translate(ox, oy); c.scale(s, s); c.fillStyle = 'rgba(0,0,0,.62)'; c.fill(roomPath(k)); c.restore(); const R = RECTS[k]; Icons.draw(c, 'lock', ox + (R[0] + R[2] + 1) / 2 * s, oy + (R[1] + R[3] + 1) / 2 * s, Math.max(8, 5 * s), '#ffc24a'); }
     if (target) { c.fillStyle = '#ffc24a'; c.beginPath(); c.arc(ox + target[0] * s, oy + target[1] * s, 5, 0, 7); c.fill(); }
     if (marker) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 3; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 8 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); c.fillStyle = '#ff6b6b'; c.beginPath(); c.arc(ox + marker.p[0] * s, oy + marker.p[1] * s, 3, 0, 7); c.fill(); }
-    for (const b of bots) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
+    for (const b of bots.filter(onF)) { c.fillStyle = BOTCOL[b.role]; c.fillRect(ox + b.x * s - 2, oy + b.y * s - 2, 5, 5); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ox + player.x * s, oy + player.y * s, 5, 0, 7); c.fill();
     c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
   }
@@ -741,10 +762,11 @@ const World = (function () {
     const t = spot(roomId, 0), p = findPath(player.x, player.y, t[0], t[1]);
     return p ? [[player.x, player.y]].concat(p.slice(1)) : null;
   }
-  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, room: roomName(b.x, b.y) })); }
-  function state() { return { role: player.role, px: player.x, py: player.y, shel: shelIn, lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
+  function crew() { return bots.map((b) => ({ role: b.role, x: b.x, y: b.y, floor: b.floor || 1, room: roomName(b.x, b.y) })); }
+  function state() { return { role: player.role, fl: fidx + 1, px: player.x, py: player.y, shel: shelIn, lock: airlock.st === 'out' || airlock.st === 'cycle_out' ? 'out' : 'in' }; }
   function restore(o) {
     if (!o) return;
+    if (o.fl && o.fl !== fidx + 1) setFloor(o.fl); // partidas anteriores no traen piso: se quedan en el 1
     if (Number.isFinite(o.px) && Number.isFinite(o.py) && canStand(o.px, o.py, 0.3)) { player.x = o.px; player.y = o.py; }
     shelIn = o.shel || null; camInit = false;
     airlock.st = o.lock === 'out' ? 'out' : 'in';
@@ -753,12 +775,12 @@ const World = (function () {
   }
   function respawnSamples() { if (curS && curS.ex) { curS.ex.taken = {}; curS.ex.rev = {}; } }
   function setReduced(v) { reduced = !!v; }
-  function invalidate() { staticCv = null; }
+  function invalidate() { staticCv = null; for (const o of FL) { o.staticCv = null; o.mapCv = null; } }
   function zoom(f) { zoomMul = clampN(zoomMul * f, 0.6, 1.7); fitAll = false; }
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
-    _test: { get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
+    _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
