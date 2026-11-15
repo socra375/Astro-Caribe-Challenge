@@ -5549,7 +5549,8 @@ const World = (function () {
   const player = { floor: 1, x: Layout.START[0], y: Layout.START[1], dir: 2, moving: false, anim: 0, stepT: 0, act: null, actT: 0, role: 'commander' };
   let curS = null, marker = null;
   const MAIN = { bridge: 1, life: 1, gh: 1, reactor: 1, water: 1, rad: 1, lab: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
-  const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
+  // Todas las salas son accesibles desde el principio: las misiones ya no cierran puertas (el progreso de la campaña solo marca el ritmo de los sistemas y los avisos).
+  const locked = () => false;
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false, zoomMul = 1, fitAll = false;
   const isTube = (r) => /^t\d/.test(r || '');
   let camInit = false, camRT = 0, camCx = 0, camCy = 0, camZ = 1, veilCache = { room: null, d: null }, hullBuf = [], fxVeh = null, steamT = 0, boardAnim = null, shelIn = null, collect = null, camDrive = 0, noRov = false, needSuitT = -9;
@@ -7181,7 +7182,6 @@ const Game = (function () {
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
         btn('🚀 ' + _('start'), setupScreen, 'primary', { autofocus: true }),
-        btn('🎬 ' + lt('Modo presentación', 'Presentation mode'), presentPanel, '', { 'data-act': 'present' }),
         Store.get('runBackup', null) ? btn('💾 ' + lt('Restaurar copia de seguridad', 'Restore backup'), restoreBackupPanel, '', { 'data-act': 'backup-menu' }) : null,
         has ? btn(_('cont') + ' (' + (Store.get('run', {}).S && Store.get('run', {}).S.mode === 'adv' ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ')', () => loadRun() || mainMenu()) : null,
         btn('📘 ' + _('manual'), manual), btn('🛰️ ' + lt('Archivo de misión: ver la llegada', 'Mission file: watch the arrival'), replayArrival), btn('👩‍🚀 ' + (LANG === 'es' ? 'Tripulación' : 'Crew'), () => sheetPanel()), btn('🌎 ' + _('earthConn'), () => earthList()), btn('🔭 ' + _('sources'), sourcesPanel),
@@ -9931,38 +9931,7 @@ const Game = (function () {
     survReset(); const o = lastStart; if (!o) { mainMenu(); return; }
     popAll(); newRun(o.scen, o.diff, o.opts);
   }
-  /* ---------- Modo presentación: acceso directo a todas las secciones (base completa, todas las salas abiertas) ---------- */
-  function presentPanel() {
-    stopPlay(); popAll(); const es = LANG === 'es'; let sc = settings.scen === 'mars' ? 'mars' : 'moon';
-    const lv = ['explorer', 'engineer', 'commander'].includes(settings.diff) ? settings.diff : 'explorer';
-    const run = (extra, then) => { newRun(sc, lv, Object.assign({ mode: settings.mode || 'junior', indep: true, age: settings.age || null }, extra || {})); if (then) then(); };
-    const base = (then) => () => run({ skipCamp: true }, then);
-    const suitUp = () => { Ex.equip(S); S.ex.suit.on = true; S.ex.suit.o2 = 100; S.ex.suit.en = 100; };
-    const demo = (cause) => base(() => { paused = true; startGameOver(cause); });
-    const sec = [
-      ['🎬', es ? 'Carga e inicio' : 'Loading and start', () => bootLoad(), 'pres-load'],
-      ['🧭', es ? 'Asistente: edad, misión, dificultad' : 'Wizard: age, mission, difficulty', () => setupScreen(), 'pres-wizard'],
-      ['🚀', es ? 'Viaje espacial (cabina, encendido, lanzamiento)' : 'Space trip (cabin, ignition, launch)', () => run({}), 'pres-trip'],
-      ['🛬', es ? 'Llegada y aterrizaje de la colonia' : 'Arrival and colony landing', () => run({}, () => landDebug.skipTrip()), 'pres-land'],
-      ['🏗', es ? 'Base completa (todas las salas)' : 'Full base (all rooms)', base(), 'pres-base'],
-      ['🧑‍🚀', es ? 'Exterior con traje y rover' : 'Outside with suit and rover', base(() => { World.setFloor(2); suitUp(); World.player.x = 72; World.player.y = 87.5; }), 'pres-eva'],
-      ['⚡', es ? 'Núcleo energético (piso 3)' : 'Energy core (floor 3)', base(() => World.arrive(3, true)), 'pres-core'],
-      ['🛗', es ? 'Elevadores y pisos (piso 2)' : 'Elevators and floors (floor 2)', base(() => World.arrive(2, true)), 'pres-floors'],
-      ['📻', es ? 'Radio con la Tierra (EarthLink)' : 'Radio to Earth (EarthLink)', base(() => elToggle(true)), 'pres-radio'],
-      ['🗺', es ? 'Mapa general con pisos' : 'Overview map with floors', base(() => toggleMap()), 'pres-map']
-    ];
-    const over = [['cold', es ? 'Congelación' : 'Freezing'], ['rover', es ? 'Rover' : 'Rover'], ['food', es ? 'Hambre' : 'Hunger'], ['dose', es ? 'Radiación' : 'Radiation'], ['core', es ? 'Núcleo' : 'Core']];
-    const planet = h('div', { class: 'row', style: { justifyContent: 'center' } });
-    const drawPlanet = () => { planet.replaceChildren(...[['moon', es ? 'Luna' : 'Moon'], ['mars', 'Marte']].map(([id, nm]) => h('button', { class: 'btn', type: 'button', 'aria-pressed': sc === id ? 'true' : 'false', 'data-planet': id, style: sc === id ? { borderColor: 'var(--accent)', boxShadow: '0 0 0 3px rgba(56,214,255,.3)' } : {}, onclick: () => { Sfx.play('click'); sc = id; settings.scen = id; Store.set('settings', settings); drawPlanet(); } }, nm))); };
-    drawPlanet();
-    showScreen(h('div', { class: 'panel cine-panel' }, h('h2', null, '🎬 ' + (es ? 'Modo presentación' : 'Presentation mode')),
-      h('p', { class: 'muted' }, es ? 'Entra directo a cada sección con todas las salas abiertas. Elige el planeta y pulsa la sección que quieras mostrar.' : 'Jump straight into each section with every room open. Pick the planet and press the section you want to show.'), planet,
-      h('div', { class: 'menu-grid' }, sec.map(([ic, nm, fn, id]) => btn(ic + ' ' + nm, fn, '', { 'data-act': id }))),
-      h('h3', null, es ? 'Pantallas de derrota (demostración, no pierdes la partida)' : 'Defeat screens (demo, you do not lose the run)'),
-      h('div', { class: 'menu-grid' }, over.map(([k, nm]) => btn('☠ ' + nm, demo(k), '', { 'data-act': 'pres-over-' + k }))),
-      h('div', { class: 'row', style: { marginTop: '12px' } }, btn(_('back'), () => mainMenu(), 'primary', { 'data-act': 'pres-back' }))), 'cine');
-  }
-  const survDebug = { presentPanel, noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };
+  const survDebug = { noSuitPanel, survFrame, startGameOver, showGameOver, retryMission, get slow() { return survSlow; }, get lastStart() { return lastStart; }, skip: () => goDone && goDone(), get active() { return goActive; } };
   /* =================== MINIJUEGOS: intro → juego → resultado =================== */
   function miniIntro(kind, opts) {
     const D = MG.defs[kind]; if (D && D.how) narrate(tr(D.how), { silent: true });

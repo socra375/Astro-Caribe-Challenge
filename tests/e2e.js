@@ -213,8 +213,9 @@ async function landThrough(pg) {
   await pg.evaluate(() => { World.player.x = 43.5; World.player.y = 40.6; });
   await pg.keyboard.down('a'); await pg.waitForTimeout(1100); await pg.keyboard.up('a');
   const yb = await pg.evaluate(() => World.player.x);
-  ok('La puerta de una sección bloqueada no deja pasar', yb > 41.4, yb.toFixed(2));
-  ok('Se explica qué abre la sección bloqueada', /se abre al completar/.test(await pg.locator('#actBtn').textContent()));
+  ok('Ninguna sección está cerrada por misiones: se puede cruzar la puerta que antes estaba bloqueada', yb < 41.4, yb.toFixed(2));
+  ok('Todas las salas son accesibles desde el principio (también el camino al elevador)', await pg.evaluate(() => Object.keys(Layout.ROOMS).every((k) => !World.roomLocked(k)) && !World.lockedNear()));
+  ok('Ya no aparece el aviso «se abre al completar»', !/se abre al completar/.test(await pg.locator('#actBtn').textContent()));
   // Misión c1 con acciones reales
   await pg.evaluate(() => Game._debug.openConsole('cmd')); await pg.getByRole('tab', { name: /Recursos/ }).click(); await closeAll(pg);
   await AT(pg, 'life'); await pg.waitForTimeout(500);
