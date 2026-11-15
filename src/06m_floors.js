@@ -53,19 +53,68 @@
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
     const go = (to) => {
-      if (e.broken) { mode = 'stairs'; const r = Station.stairs(S, World.floor, to); stairsT = r.s; dest = to; Sfx.play('step'); paint(); return; }
+      const from = World.floor; if (to === from) return;
+      if (e.broken) { const r = Station.stairs(S, from, to); pop(); startRide('stairs', from, to, r.s); return; }
       const b = Station.board(S, 'crew', 'player'); if (!b.ok) return toast(tr(Station.WHY[b.why]), '', 'warn');
-      const r = Station.call(S, 'crew', to); if (!r.ok) return toast(tr(Station.WHY[r.why]), '', 'warn');
-      dest = to; mode = 'ride'; Sfx.play('door'); paint();
+      const r = Station.call(S, 'crew', to); if (!r.ok) { Station.leave(S, 'crew', 'player'); return toast(tr(Station.WHY[r.why]), '', 'warn'); }
+      pop(); startRide('lift', from, to, r.s); // el panel se cierra y empieza la animación del trayecto
     };
-    timer = setInterval(() => {
-      if (!s.isConnected) return clearInterval(timer);
-      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest, true); toast('🪜 ' + fname(dest), '', 'info'); return; } }
-      if (mode === 'ride' && e.st === 'idle' && e.at === dest) { clearInterval(timer); Station.leave(S, 'crew', 'player'); pop(); arriveFloor(dest); Sfx.play('ok'); toast('🛗 ' + fname(dest), '', 'ok'); return; }
-      paint();
-    }, 100);
+    // una ocupación que quedó de un viaje interrumpido no debe dejar la cabina «ocupada» ni en un piso que no es
+    if (!ride && e.st === 'idle' && e.occ.includes('player')) Station.leave(S, 'crew', 'player');
+    timer = setInterval(() => { if (!s.isConnected) return clearInterval(timer); paint(); }, 100);
     paint();
   }
+
+  /* ---------- Trayecto del elevador: animación a pantalla completa ----------
+     El cambio de piso lo completa este controlador (no el panel): cerrar el panel o pausar no deja al jugador
+     en un piso distinto al de la cabina. Mientras dura el viaje el juego queda quieto. */
+  let ride = null;
+  const rideOn = () => !!ride;
+  function startRide(kind, from, to, secs) {
+    rideEnd(true);
+    const es = LANG === 'es', up = to > from;
+    const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
+    const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
+    const col = h('div', { class: 'elr-col' }, Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const shaft = h('div', { class: 'elr-shaft' });
+    const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
+      shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
+    document.getElementById('app').append(el);
+    ride = { kind, from, to, up, t: 0, total: Math.max(1, secs || 1), el, num, arrow, name, msg, doorL, doorR, shaft, col, e: 0, last: '', engine: 0 };
+    Sfx.play(kind === 'stairs' ? 'step' : 'door'); rideFrame(0);
+  }
+  function rideEnd(abort) {
+    if (!ride) return; const r = ride; ride = null; r.el.remove();
+    if (abort || !S) return;
+    if (r.kind === 'lift') Station.leave(S, 'crew', 'player');
+    arriveFloor(r.to, r.kind === 'stairs'); Sfx.play('ok');
+    toast((r.kind === 'stairs' ? '🪜 ' : '🛗 ') + fname(r.to), '', 'ok');
+  }
+  /** Se llama en cada fotograma del juego (también con paneles abiertos; con el juego en pausa no avanza). */
+  function rideFrame(dt) {
+    if (!ride || !S) return; const r = ride, e = Station.ensure(S).elev.crew, es = LANG === 'es';
+    let lvl, open, state;
+    if (r.kind === 'stairs') {
+      if (!paused) r.t += dt; const u = Math.min(1, r.t / r.total); lvl = r.from + (r.to - r.from) * u; open = 0; state = 'moving';
+      if (u >= 1) return rideEnd();
+    } else {
+      lvl = Station.level(S, 'crew'); open = Station.door(S, 'crew'); state = e.st; r.t += dt;
+      if (e.st === 'idle' && e.at === r.to) return rideEnd();
+      if (e.st === 'idle' && e.at !== r.to && r.t > 2) return rideEnd(true); // seguridad: el trayecto no empezó; no se deja la pantalla bloqueada
+    }
+    const lv = Math.round(lvl);
+    r.num.textContent = String(lv); r.name.textContent = (es ? 'Piso ' : 'Floor ') + lv + ' · ' + fname(lv).replace(/^[^·]*·\s*/, '');
+    r.doorL.style.transform = 'translateX(' + (-open * 100).toFixed(1) + '%)'; r.doorR.style.transform = 'translateX(' + (open * 100).toFixed(1) + '%)';
+    r.shaft.className = 'elr-shaft' + (state === 'moving' ? (r.up ? ' up' : ' down') : '');
+    for (const c of r.col.children) c.classList.toggle('on', +c.dataset.f === lv);
+    const txt = r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s' : 'Emergency stairs… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s')
+      : { closing: es ? 'Cerrando puertas…' : 'Closing doors…', moving: r.up ? (es ? 'Subiendo…' : 'Going up…') : (es ? 'Bajando…' : 'Going down…'), opening: es ? 'Abriendo puertas…' : 'Opening doors…', idle: es ? 'Puertas abiertas' : 'Doors open' }[state];
+    r.msg.textContent = txt;
+    if (r.last !== state) { if (r.last && state === 'opening') Sfx.play('door'); r.last = state; }
+    if (state === 'moving') { r.engine -= dt; if (r.engine <= 0) { r.engine = 0.7; Sfx.play(r.kind === 'stairs' ? 'step' : 'engine'); } }
+  }
+  /** Para volver al menú o empezar otra partida mientras se viaja. */
+  const rideAbort = () => rideEnd(true);
 
   /* ---------- Elevador del rover (plataforma exterior ↔ garaje) ---------- */
   /** ¿Puede moverse la plataforma? El rover tiene que estar bien colocado encima (o ya en el garaje). */
@@ -102,4 +151,4 @@
     }, 100);
     paint();
   }
-  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel };
+  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };
