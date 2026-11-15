@@ -5,6 +5,7 @@ const FILE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 const shots = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
 const results = [];
 const closeAll = async (pg) => { for (let i = 0; i < 8; i++) { if ((await pg.locator('[role=dialog]').count()) === 0) break; await pg.keyboard.press('Escape'); await pg.waitForTimeout(60); } };
+const AT = (pg, room, i) => pg.evaluate(([r, k]) => { const q = World._test.spot(r, k || 0); World.player.x = q[0]; World.player.y = q[1]; }, [room, i]);
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
 (async () => {
   const browser = await chromium.launch();
@@ -39,15 +40,15 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   // Colisión con pared: ir hacia arriba mucho tiempo no debe atravesar y < 2 (pared en y=1)
   await page.keyboard.down('w'); await page.waitForTimeout(2500); await page.keyboard.up('w');
   const p2 = await page.evaluate(() => [World.player.x, World.player.y]);
-  ok('Colisión con paredes/objetos', p2[1] >= 2.3, JSON.stringify(p2));
+  ok('Colisión con paredes/objetos', p2[1] >= 12.9 && p2[1] < p0[1], JSON.stringify(p2));
   // Puerta: teletransportar cerca de la puerta del puente y bajar
-  await page.evaluate(() => { World.player.x = 30; World.player.y = 10.5; });
+  await page.evaluate(() => { World.player.x = 56; World.player.y = 23.4; });
   await page.keyboard.down('s'); await page.waitForTimeout(1200); await page.keyboard.up('s');
   const p3 = await page.evaluate(() => [World.player.y, World.roomName(World.player.x, World.player.y), World._test.doors[0].open]);
-  ok('Puerta automática se abre y deja pasar al pasillo', p3[0] > 13 && p3[1] === 'hall', JSON.stringify(p3));
+  ok('Puerta automática se abre y deja pasar al atrio', p3[0] > 26.3 && p3[1] === 'hall', JSON.stringify(p3));
   if (shots) await page.screenshot({ path: shots + '/02_game.png' });
   // Interacción: consola de mando
-  await page.evaluate(() => { World.player.x = 25.5; World.player.y = 5.2; });
+  await page.evaluate(() => { World.player.x = 50.5; World.player.y = 17.4; });
   await page.waitForTimeout(400);
   ok('Indicador de interacción', await page.locator('#prompt').isVisible(), await page.locator('#actBtn').textContent());
   await page.keyboard.press('e');
@@ -118,7 +119,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   if (shots) await page.screenshot({ path: shots + '/07_why.png' });
   await closeAll(page);
   // Guardado y recuperación
-  await page.evaluate(() => { World.player.x = 30; World.player.y = 14.5; });
+  await AT(page, 'bridge');
   await page.locator('#bMenu').click(); await page.getByRole('button', { name: /Guardar/ }).click();
   const tSaved = await page.evaluate(() => Game.S.t);
   await page.reload(); await page.waitForTimeout(400);
@@ -186,17 +187,17 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
   ok('Al empezar están abiertos puente, dormitorios, enfermería, reactor y soporte vital', un0 === 'bridge,life,med,reactor,water', un0);
-  await pg.evaluate(() => { World.player.x = 10; World.player.y = 14.6; });
-  await pg.keyboard.down('s'); await pg.waitForTimeout(900); await pg.keyboard.up('s');
-  const yb = await pg.evaluate(() => World.player.y);
-  ok('La puerta de una sección bloqueada no deja pasar', yb < 16, yb.toFixed(2));
+  await pg.evaluate(() => { World.player.x = 31.5; World.player.y = 30.6; });
+  await pg.keyboard.down('a'); await pg.waitForTimeout(1100); await pg.keyboard.up('a');
+  const yb = await pg.evaluate(() => World.player.x);
+  ok('La puerta de una sección bloqueada no deja pasar', yb > 29.4, yb.toFixed(2));
   ok('Se explica qué abre la sección bloqueada', /se abre al completar/.test(await pg.locator('#actBtn').textContent()));
   // Misión c1 con acciones reales
   await pg.evaluate(() => Game._debug.openConsole('cmd')); await pg.getByRole('tab', { name: /Recursos/ }).click(); await closeAll(pg);
-  await pg.evaluate(() => { World.player.x = 10; World.player.y = 9.5; }); await pg.waitForTimeout(500);
+  await AT(pg, 'life'); await pg.waitForTimeout(500);
   ok('La médica se presenta en el módulo de vida', await pg.getByText('Sofía').first().isVisible()); await skipTalk();
   await pg.evaluate(() => Game._debug.openConsole('med')); await closeAll(pg);
-  await pg.evaluate(() => { World.player.x = 50; World.player.y = 25.5; }); await pg.waitForTimeout(500);
+  await AT(pg, 'reactor'); await pg.waitForTimeout(500);
   ok('La ingeniera se presenta en el reactor', await pg.getByText('Ana').first().isVisible()); await skipTalk();
   await pg.evaluate(() => Game._debug.openConsole('reactor'));
   await pg.getByRole('button', { name: /Activar modo emergencia/ }).click(); await pg.getByRole('button', { name: /Confirmar/ }).click(); await closeAll(pg);
@@ -207,14 +208,14 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   ok('Llamada de radio anuncia la sección nueva (en cola, tras las alertas más urgentes)', rq.includes('campc1'), rq.join(','));
   await pg.evaluate(() => Game.S.emergency = false);
   // c2
-  await pg.evaluate(() => { World.player.x = 30; World.player.y = 25.5; }); await pg.waitForTimeout(500); await skipTalk();
+  await AT(pg, 'water'); await pg.waitForTimeout(500); await skipTalk();
   await pg.evaluate(() => { const S = Game.S, inc = S.inc.find((i) => i.type === 'water_fail' && !i.res); Sim.mini(S, 'wiring', { ok: true, score: 1, inc: inc.id }); Sim.mini(S, 'o2', { ok: true, score: 0.9 }); Sim.decide(S, 'recmode', { v: 'max' }); Sim.step(S, 8); });
   await pg.waitForTimeout(400);
   ok('Misión 2 completada desbloquea el invernadero', await pg.evaluate(() => !!Game.S.camp.unlocked.gh && Game.S.camp.i === 2));
   // c3 en el invernadero
-  await pg.evaluate(() => { World.player.x = 10; World.player.y = 23.5; }); await pg.waitForTimeout(500);
+  await AT(pg, 'gh'); await pg.waitForTimeout(500);
   ok('El agrónomo se presenta en el invernadero', await pg.getByText('Teo').first().isVisible()); await skipTalk();
-  await pg.evaluate(() => { World.player.x = 4.5; World.player.y = 26.3; }); await pg.waitForTimeout(400);
+  await pg.evaluate(() => { const q = World.plantPos(0, 0); World.player.x = q[0]; World.player.y = q[1] + 0.9; }); await pg.waitForTimeout(400);
   const pr = await pg.locator('#actBtn').textContent();
   ok('Cada planta se selecciona individualmente (indicador)', /Hueco|Lechuga|Mizuna|Rábano|Chile|Zinnia/.test(pr), pr);
   await pg.evaluate(() => Game._debug.plantCard(1, 0));
@@ -240,7 +241,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.waitForTimeout(300);
   ok('Misión 3 completada desbloquea el laboratorio', await pg.evaluate(() => { Sim.step(Game.S, 0.25); return !!Game.S.camp.unlocked.lab; }));
   // c4
-  await pg.evaluate(() => { World.player.x = 50; World.player.y = 9.5; }); await pg.waitForTimeout(500);
+  await AT(pg, 'lab'); await pg.waitForTimeout(500);
   ok('El científico se presenta en el laboratorio', await pg.getByText('Leo').first().isVisible()); await skipTalk();
   await pg.evaluate(() => { Game._debug.openConsole('spec'); }); await closeAll(pg);
   await pg.evaluate(() => { Game._debug.openConsole('log'); }); await closeAll(pg);
@@ -248,10 +249,10 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.waitForTimeout(400);
   const fin = await pg.evaluate(() => [Game.S.camp.basicDone, Object.keys(Game.S.camp.unlocked).length]);
   ok('Familiarización completa: las 7 secciones principales, la enfermería y el almacén de alimentos abiertos', fin[0] && fin[1] === 9, JSON.stringify(fin));
-  await pg.evaluate(() => { World.player.x = 30; World.player.y = 36; }); await pg.waitForTimeout(500);
+  await AT(pg, 'rad'); await pg.waitForTimeout(500);
   ok('La guía de la bahía del rover se presenta', await pg.getByText(/bahía del rover/).first().isVisible()); await skipTalk();
   // Permisos después de la familiarización y vestuario
-  await pg.evaluate(() => { World.player.x = 10; World.player.y = 23.5; Game._debug.openConsole('gh'); });
+  await AT(pg, 'gh'); await pg.evaluate(() => Game._debug.openConsole('gh'));
   ok('Tras la familiarización, el comandante sigue pudiendo operar el invernadero', !(await pg.getByText(/Se necesita otro especialista/).count()) && await pg.getByRole('heading', { name: /Panel del invernadero/ }).isVisible());
   await closeAll(pg);
   await pg.evaluate(() => Game._debug.wardrobePanel());
@@ -268,9 +269,9 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   const tm0 = await pg.evaluate(() => Game.S.t); await pg.waitForTimeout(600);
   ok('Con el mapa abierto el tiempo simulado está en pausa', await pg.evaluate((t) => Game.S.t === t, tm0));
   const box = await pg.locator('.mapcv').boundingBox();
-  const mp = await pg.evaluate(() => { const R = World.RECTS.reactor; return [(R[0] + R[2] + 1) / 2, (R[1] + R[3] + 1) / 2, World.DIM.W, World.DIM.H]; });
-  const msc = Math.min(720 / mp[2], 560 / mp[3]), mpx = 360 + (mp[0] - mp[2] / 2) * msc, mpy = 280 + (mp[1] - mp[3] / 2) * msc;
-  await pg.mouse.click(box.x + mpx * box.width / 720, box.y + mpy * box.height / 560);
+  const mp = await pg.evaluate(() => { const q = World._test.spot('reactor', 0), cv = document.querySelector('.mapcv'); return [q[0], q[1], World.DIM.W, World.DIM.H, cv.width, cv.height]; });
+  const msc = Math.min(mp[4] / mp[2], mp[5] / mp[3]), mpx = mp[4] / 2 + (mp[0] - mp[2] / 2) * msc, mpy = mp[5] / 2 + (mp[1] - mp[3] / 2) * msc;
+  await pg.mouse.click(box.x + mpx * box.width / mp[4], box.y + mpy * box.height / mp[5]);
   ok('Seleccionar una sala muestra su ficha', await pg.locator('.mapinfo').getByText(/Reactor y energía/).first().isVisible());
   await pg.getByRole('button', { name: /Mostrar ruta/ }).click();
   const rt = await pg.evaluate(() => { const r = World.route('reactor'); return r && r.length > 2 && r.every((p) => World.RECTS && Number.isFinite(p[0])); });
@@ -298,21 +299,20 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   // ---- Las 13 instalaciones: existencia, conexión y rutas transitables ----
   const inst = await pg.evaluate(() => {
     const T = World._test, R = World.RECTS, need = ['bridge', 'life', 'med', 'reactor', 'water', 'gh', 'food', 'kitchen', 'lab', 'samples', 'workshop', 'rad', 'waste'];
-    const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [] };
-    const inDoor = (x, y) => T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2);
-    for (const k in T.N) if (!T.canStand(T.N[k][0], T.N[k][1], 0.25) && !inDoor(T.N[k][0], T.N[k][1])) out.nodesOk = false, out.bad.push(k);
-    World.player.x = 30; World.player.y = 9.5;
+    const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [], doors: T.doors.length };
+    const rm = (x, y) => T.roomAt[y] && T.roomAt[y][x];
+    for (const d of T.doors) { const a = d.v ? [rm(d.x - 1, d.y), rm(d.x + 1, d.y)] : [rm(d.x, d.y - 1), rm(d.x, d.y + 1)]; if (!a[0] || !a[1] || a[0] === a[1]) out.nodesOk = false, out.bad.push('puerta@' + d.x + ',' + d.y); }
+    World.player.x = 56; World.player.y = 21.5;
     const savedUn = Game.S.camp.unlocked; Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
-    for (const k of need) {
-      const r = World.route(k);
-      if (!r || r.length < 2) { out.unreachable.push(k); continue; }
-      for (let i = 1; i < r.length; i++) for (let t = 0; t <= 1; t += 0.1) { const x = r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, y = r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t; if (!T.canStand(x, y, 0.25) && !T.doors.some((d) => Math.abs(x - (d.x + 1)) < 1.2 && Math.abs(y - (d.y + 0.5)) < 1.2)) out.bad.push(k + '@' + x.toFixed(1) + ',' + y.toFixed(1)); }
-    }
+    for (const k of need) { const r = World.route(k); if (!r) out.unreachable.push(k); }
+    out.consoles = Layout.CONSOLES.filter((c) => { const p = World.consolePos(c[0]); return !p || !T.findPath(56, 21.5, p[0], p[1]); }).map((c) => c[0]);
+    out.samples = T.samples.filter((q) => !T.findPath(55.5, 71.5, q.x, q.y)).length;
     Game.S.camp.unlocked = savedUn;
     return out;
   });
   ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
-  ok('Todos los nodos de ruta están en suelo transitable', inst.nodesOk && !inst.bad.length, JSON.stringify(inst.bad.slice(0, 5)));
+  ok('Cada puerta une dos salas distintas (paredes y puertas coherentes)', inst.nodesOk && !inst.bad.length && inst.doors >= 28, JSON.stringify(inst.bad.slice(0, 5)) + inst.doors);
+  ok('Todas las consolas y las muestras exteriores son alcanzables por la cuadrícula real', inst.consoles.length === 0 && inst.samples === 0, JSON.stringify([inst.consoles, inst.samples]));
   ok('Las 13 instalaciones son alcanzables desde el puente por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
   // ---- Instalaciones nuevas: almacén, cocina, muestras, taller, residuos ----
   const fac = await pg.evaluate(() => {

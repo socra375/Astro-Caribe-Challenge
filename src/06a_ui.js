@@ -40,7 +40,7 @@ const Game = (function () {
     const rm = settings.rm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.documentElement.classList.toggle('rm', !!rm); World.setReduced(rm);
     document.documentElement.style.setProperty('--scale', settings.scale);
-    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
+    Icons.setText($('#bMute'), settings.muted ? '🔇' : '🔊'); Icons.setText($('#bMap'), '🗺'); Icons.setText($('#zFit'), '🗺'); Icons.setText($('#bCom'), '📡'); Icons.setText($('#bCrew'), '🧑‍🚀'); Icons.setText($('#bMenu'), '☰');
     applyAudio();
     World.invalidate();
     Store.set('settings', settings);
@@ -212,7 +212,7 @@ const Game = (function () {
     const room = (k) => tr(DATA.ROOMS[k]);
     const storm = S.inc.find((i) => i.type === 'solar_storm' && !i.res);
     if (storm && !S.proto) return { t: es ? '¡Tormenta solar! Activa el protocolo en «Blindaje» (bahía del rover).' : 'Solar storm! Turn on the protocol at "Shielding" (rover bay).', p: World.consolePos('shield') };
-    if (storm && S.proto && World.zone() !== 'shelter') return { t: es ? 'Entra en el refugio (zona con rayas amarillas).' : 'Walk into the shelter (yellow-striped zone).', p: [43, 40] };
+    if (storm && S.proto && World.zone() !== 'shelter') return { t: es ? 'Entra en el refugio (zona con rayas amarillas).' : 'Walk into the shelter (yellow-striped zone).', p: World.shelterCenter() };
     if (S.d.power < 0.2 && !S.emergency) return { t: es ? 'Batería baja: ve a «Reactor y energía» y ahorra energía.' : 'Low battery: go to "Reactor & power" and save energy.', p: World.consolePos('reactor') };
     const inc = Sim.activeInc(S).filter((i) => i.fix && S.t >= i.from).sort((a, b) => (b.sev === 'crit') - (a.sev === 'crit'))[0];
     if (inc) { const cid = { water: inc.type === 'sensor_drift' ? 'o2' : 'water', life: 'med', bridge: 'comms', gh: 'gh', reactor: 'reactor', rad: 'shield', lab: 'lab' }[inc.room]; return { t: (es ? 'Repara «' : 'Repair "') + tr(DATA.EVT[inc.type].t) + (es ? '» en ' : '" in ') + room(inc.room), p: World.consolePos(cid) }; }
@@ -276,6 +276,9 @@ const Game = (function () {
     if (e.key === 'n' || e.key === 'N') toggleMute();
     if (e.key === 'c' || e.key === 'C') openCrew();
     if (e.key === 'v' || e.key === 'V') repeatVoice();
+    if (e.key === '+' || e.key === '=') World.zoom(1.2);
+    if (e.key === '-' || e.key === '_') World.zoom(1 / 1.2);
+    if (e.key === 'z' || e.key === 'Z') World.overview();
   });
   window.addEventListener('keyup', (e) => { keys[e.key] = false; if (mgRun && mgRun.g) mgRun.g.keys[e.key] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -377,11 +380,11 @@ const Game = (function () {
   }
   function beginPlay() {
     clearLayer(); running = true; paused = false;
-    $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden');
+    $('#hud').classList.remove('hidden'); $('#mini').classList.remove('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); saveRun();
   }
-  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
