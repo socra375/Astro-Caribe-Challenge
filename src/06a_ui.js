@@ -48,7 +48,7 @@ const Game = (function () {
 
   /* ---------- Capas: pantallas y modales ---------- */
   function clearLayer() { layer.innerHTML = ''; stack = []; }
-  function showScreen(el) { clearLayer(); const s = h('div', { class: 'screen' }, el); layer.append(s); stack.push(s); focusFirst(s); }
+  function showScreen(el, cls) { clearLayer(); const s = h('div', { class: 'screen' + (cls ? ' ' + cls : '') }, el); layer.append(s); stack.push(s); focusFirst(s); }
   function push(panel, opts) {
     opts = opts || {};
     const s = h('div', { class: 'screen dim', role: 'dialog', 'aria-modal': 'true' }, panel);
@@ -315,14 +315,15 @@ const Game = (function () {
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
-        World.update(dt, S, inputVec());
+        World.update(dt, S, scaleIn(inputVec()));
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt); elFrame(dt);
+        exFrame(dt); elFrame(dt); survFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
-        if (S.ended) { saveRun(); setTimeout(showReport, 900); }
+        if (S.ended) { saveRun(); if (S.ended.kind === 'dead') startGameOver(S.ended.reason); else setTimeout(showReport, 900); }
       }
+      if (S.ended && S.ended.kind === 'dead' && !goActive) { saveRun(); startGameOver(S.ended.reason); } // derrota decidida fuera del bucle (rover, pruebas)
       const hi = settings.hints && !modalOpen() ? nextHint() : null;
       World.render(ctx, S, { dpr, playerPose: modalOpen() ? (mgRun && mgRun.kind === 'wiring' ? 'repair' : mgRun ? 'interact' : 'interact') : null, crit: Sim.activeInc(S).some((i) => i.sev === 'crit' && S.t >= i.from), target: hi && hi.p, youLabel: LANG === 'es' ? 'Tú' : 'You' });
       if (!miniCv.classList.contains('hidden')) World.minimap(mctx, S, hi && hi.p);
@@ -332,11 +333,20 @@ const Game = (function () {
   }
   let stars = null;
   function drawMenuBg(t) {
-    const w = cv.width, hh = cv.height;
-    if (!stars) { stars = []; for (let i = 0; i < 220; i++) stars.push([Math.random(), Math.random(), Math.random()]); }
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#050816'; ctx.fillRect(0, 0, w, hh);
-    const rm = document.documentElement.classList.contains('rm');
-    for (const s of stars) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + s[2] * 0.7) + ')'; ctx.fillRect(((s[0] * w + (rm ? 0 : t * 8 * s[2] * dpr)) % w), s[1] * hh, 2 * dpr * s[2] + 0.5, 2 * dpr * s[2] + 0.5); }
+    const w = cv.width, hh = cv.height, m = Math.min(w, hh), rm = document.documentElement.classList.contains('rm');
+    if (!stars) { stars = []; for (let i = 0; i < 240; i++) stars.push([Math.random(), Math.random(), Math.random()]); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const bgG = ctx.createLinearGradient(0, 0, w, hh); bgG.addColorStop(0, '#050816'); bgG.addColorStop(0.55, '#0a0a2c'); bgG.addColorStop(1, '#150a35'); ctx.fillStyle = bgG; ctx.fillRect(0, 0, w, hh);
+    for (const [nx, ny, nr, c] of [[0.2, 0.25, 0.6, '60,100,255'], [0.85, 0.78, 0.65, '150,80,255']]) { const g = ctx.createRadialGradient(nx * w, ny * hh, 0, nx * w, ny * hh, nr * m); g.addColorStop(0, 'rgba(' + c + ',0.22)'); g.addColorStop(1, 'rgba(' + c + ',0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, hh); }
+    for (const s of stars) { const tw = rm ? 1 : 0.65 + 0.35 * Math.sin(t * 2 + s[0] * 60); ctx.fillStyle = 'rgba(220,230,255,' + ((0.25 + s[2] * 0.7) * tw) + ')'; ctx.fillRect(((s[0] * w + (rm ? 0 : t * 8 * s[2] * dpr)) % w), s[1] * hh, 2 * dpr * s[2] + 0.5, 2 * dpr * s[2] + 0.5); }
+    const dr = rm ? 0 : Math.sin(t * 0.1) * m * 0.012;
+    const ball = (x, y, r, c0, c1, c2) => { const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); g.addColorStop(0, c0); g.addColorStop(0.55, c1); g.addColorStop(1, c2); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+    const px = w * 0.83, py = hh * 0.27 + dr, pr = m * 0.16;
+    ctx.save(); ctx.translate(px, py); ctx.rotate(-0.35); ctx.scale(1, 0.27); ctx.strokeStyle = 'rgba(200,180,255,0.5)'; ctx.lineWidth = pr * 0.14; ctx.beginPath(); ctx.arc(0, 0, pr * 1.55, Math.PI, 2 * Math.PI); ctx.stroke(); ctx.restore();
+    ball(px, py, pr, '#c9b6ff', '#5b3fc4', '#150a42');
+    ctx.save(); ctx.translate(px, py); ctx.rotate(-0.35); ctx.scale(1, 0.27); ctx.strokeStyle = 'rgba(200,180,255,0.6)'; ctx.lineWidth = pr * 0.14; ctx.beginPath(); ctx.arc(0, 0, pr * 1.55, 0, Math.PI); ctx.stroke(); ctx.restore();
+    ball(w * 0.12, hh * 0.74 - dr, m * 0.07, '#ffb08a', '#b5402a', '#3a1008');
+    ball(w * 0.3, hh * 0.12 + dr * 0.6, m * 0.04, '#e8ecf5', '#8d94a8', '#2a2f40');
   }
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -400,11 +410,11 @@ const Game = (function () {
     return true;
   }
   function newRun(scen, diff, opts) {
-    opts = opts || {};
+    opts = opts || {}; lastStart = { scen, diff, opts: Object.assign({}, opts) }; survReset(); // «Reintentar» repite esta misma configuración desde cero
     const mode = opts.mode || settings.mode || 'junior';
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
-    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp }); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
-    settings.scen = scen; settings.mode = S.mode; settings.diff = S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = S.mode === 'junior'; Store.set('settings', settings);
+    S = Sim.create({ scen, diff, mode, seed, skipCamp: !!opts.skipCamp, indep: !!opts.indep }); S.focus = opts.focus || null; S.age = opts.age || null; if (opts.focus === 'station') S.r.mat.v = Math.min(S.r.mat.max, S.r.mat.v + 20); MODE = S.mode; speed = 1; lastN = 0; radio.q = []; radio.cur = null; radio.recent = {}; renderRadio(); lastRoom = null; for (const k in resState) delete resState[k];
+    settings.scen = scen; settings.mode = S.mode; settings.diff = opts.indep ? S.diff : S.diff === 'commander' ? 'commander' : 'engineer'; settings.hints = opts.age ? ageHints(opts.age) : S.mode === 'junior'; Store.set('settings', settings);
     // La llegada se juega una sola vez al empezar. Los atajos de prueba (skipCamp / skipLanding) saltan directo a la base ya desplegada.
     if (opts.skipCamp || opts.skipLanding || /[?&]quick\b/.test(location.search)) { Land.ensure(S); finishNewRun(scen); return; }
     popAll(); clearLayer(); startLanding(S);
@@ -414,6 +424,7 @@ const Game = (function () {
     stats.runs++; Store.set('stats', stats);
     beginPlay();
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
+    const fm = S && S.focus && MISSIONS.find((x) => x.id === S.focus); if (fm && (S.focus === 'station' || S.focus === 'science')) toast((LANG === 'es' ? fm.t[0] + ': ' : fm.t[1] + ': ') + (LANG === 'es' ? fm.g[0] : fm.g[1]), '', 'info');
   }
   function beginPlay() {
     clearLayer(); World.prewarm(); running = true; paused = false;
@@ -421,16 +432,16 @@ const Game = (function () {
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();
   }
-  function stopPlay() { radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
+  function stopPlay() { survReset(); radio.cur = null; radio.q = []; running = false; renderRadio(); $('#hud').classList.add('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#prompt').classList.add('hidden'); $('#hint').classList.add('hidden'); $('#toasts').innerHTML = ''; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && running) { saveRun(); if (!paused) { paused = true; } } });
 
   /* ---------- Menú principal ---------- */
   function mainMenu() {
     stopPlay(); popAll();
     const has = !!Store.get('run', null);
-    const body = h('div', { class: 'panel' },
+    const body = h('div', { class: 'panel cine-panel' },
       h('p', { class: 'muted small' }, 'Astro Caribe Challenge · STEM'),
-      h('h1', { class: 'title-big' }, 'Space Explorer'),
+      h('h1', { class: 'title-big has-logo' }, logoImg()),
       h('p', null, LANG === 'es' ? 'Administra un puesto avanzado en la Luna o en Marte. Cada recurso es limitado y cada decisión tiene consecuencias. Lo que aprendas también sirve en la Tierra.' : 'Run an outpost on the Moon or Mars. Every resource is limited and every decision has consequences. What you learn also helps on Earth.'),
       !Store.ok ? h('p', { class: 'tag warn' }, '⚠ ' + _('storageOff')) : null,
       h('div', { class: 'menu-grid' },
@@ -442,30 +453,103 @@ const Game = (function () {
       h('p', { class: 'small muted', style: { marginTop: '14px' } }, navigator.onLine === false || !donkiLive ? _('offline') : _('online')),
       h('p', { class: 'small muted' }, (LANG === 'es' ? 'Funciona sin Internet. Sin cuentas, sin descargas.' : 'Works offline. No accounts, no downloads.'))
     );
-    showScreen(body);
+    showScreen(body, 'cine');
   }
+  /* ---------- Edad, misión y dificultad (asistente de inicio) ---------- */
+  // La edad ajusta el lenguaje y las ayudas (modalidad + pistas); la dificultad ajusta recursos y eventos. Son independientes.
+  // Iconos propios del inicio (SVG en línea: no dependen de la fuente de emojis del dispositivo)
+  const WIZ_SVG = {
+    ship: '<svg viewBox="-14 0 78 32" width="64" height="26"><path d="M4 16 L-12 9 L-6 16 L-12 23 Z" fill="#ffb454"/><path d="M-2 16 L-8 12.5 L-5 16 L-8 19.5 Z" fill="#fff3c4"/><path d="M12 7 L2 1 L6 16 L2 31 L12 25 Z" fill="#6b7cff"/><path d="M4 16 L18 8 H40 Q58 10 62 16 Q58 22 40 24 H18 Z" fill="#e6edff"/><path d="M42 8.5 Q58 10 62 16 Q58 22 42 23.5 Z" fill="#a98bff"/><circle cx="33" cy="16" r="4.2" fill="#38d6ff" stroke="#0b1b3a" stroke-width="1.5"/></svg>',
+    earth: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="21" fill="#2f7bff"/><path d="M12 16 Q20 8 26 14 Q22 22 14 24 Q8 22 12 16Z M28 26 Q38 22 40 30 Q36 40 28 38 Q24 32 28 26Z" fill="#5fe39a"/><circle cx="24" cy="24" r="21" fill="none" stroke="#bcd7ff" stroke-width="2" opacity=".6"/></svg>',
+    dest: '<svg viewBox="0 0 48 48" width="40" height="40"><circle cx="24" cy="24" r="14" fill="#a98bff"/><circle cx="19" cy="19" r="5" fill="#d8c9ff" opacity=".7"/><ellipse cx="24" cy="26" rx="23" ry="6" fill="none" stroke="#d8c9ff" stroke-width="3" transform="rotate(-18 24 26)"/></svg>',
+    moon: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#cfd5e3"/><circle cx="16" cy="18" r="5" fill="#9aa2b8"/><circle cx="30" cy="30" r="6.5" fill="#9aa2b8"/><circle cx="31" cy="14" r="3" fill="#9aa2b8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/></svg>',
+    mars: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="21" fill="#d9623f"/><path d="M8 26 Q18 20 26 26 Q34 32 42 24 Q42 38 24 44 Q10 40 8 26Z" fill="#a8412a"/><ellipse cx="24" cy="6" rx="8" ry="3" fill="#fff" opacity=".8"/><circle cx="24" cy="24" r="21" fill="none" stroke="#ffd0bd" stroke-width="2" opacity=".5"/></svg>',
+    station: '<svg viewBox="0 0 64 48" width="64" height="52"><rect x="2" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><rect x="46" y="16" width="16" height="16" rx="2" fill="#3b82f6"/><path d="M18 24 H46" stroke="#cfd5e3" stroke-width="4"/><rect x="24" y="12" width="16" height="24" rx="4" fill="#e6edff"/><circle cx="32" cy="24" r="5" fill="#38d6ff"/><path d="M32 12 V4 M28 4 H36" stroke="#cfd5e3" stroke-width="2.5"/></svg>',
+    science: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M18 4 H30 M20 4 V18 L8 40 Q6 44 11 44 H37 Q42 44 40 40 L28 18 V4" fill="none" stroke="#e6edff" stroke-width="3" stroke-linejoin="round"/><path d="M13 32 H35 L40 41 Q41 44 37 44 H11 Q7 44 8 41Z" fill="#5fe39a"/><circle cx="22" cy="26" r="2.5" fill="#a98bff"/><circle cx="29" cy="22" r="2" fill="#38d6ff"/></svg>',
+    compass: '<svg viewBox="0 0 48 48" width="52" height="52"><circle cx="24" cy="24" r="20" fill="none" stroke="#38d6ff" stroke-width="3"/><path d="M24 8 L30 24 L24 40 L18 24Z" fill="#e6edff"/><path d="M24 8 L30 24 H18Z" fill="#ff6b6b"/><circle cx="24" cy="24" r="2.5" fill="#0b1b3a"/></svg>',
+    cadet: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 4 L42 10 V24 Q42 38 24 45 Q6 38 6 24 V10Z" fill="#3b82f6" stroke="#bcd7ff" stroke-width="2.5"/><path d="M24 14 L27 21 L35 22 L29 27 L31 35 L24 31 L17 35 L19 27 L13 22 L21 21Z" fill="#e6edff"/></svg>',
+    star: '<svg viewBox="0 0 48 48" width="52" height="52"><path d="M24 3 L30 17 L45 18 L33 28 L37 43 L24 35 L11 43 L15 28 L3 18 L18 17Z" fill="#ffd25e" stroke="#fff3c4" stroke-width="2" stroke-linejoin="round"/></svg>'
+  };
+  const logoImg = () => h('img', { class: 'logo-img', src: LOGO_SRC, alt: 'Space Explorer', width: 220, height: 232, draggable: 'false' });
+  const wizIco = (k, cls) => h('span', { class: cls || 'mico', html: WIZ_SVG[k], 'aria-hidden': 'true' });
+  const AGE_MIN = 5, AGE_MAX = 17;
+  const ageMode = (a) => (a <= 12 ? 'junior' : 'adv');
+  const ageHints = (a) => a <= 14;
+  const ageBand = (a) => (a <= 12
+    ? { es: ['Lenguaje sencillo y ejemplos cotidianos', 'Modo Junior: misiones guiadas y pistas siempre visibles'], en: ['Simple language and everyday examples', 'Junior mode: guided missions and hints always on'] }
+    : a <= 14
+      ? { es: ['Lenguaje técnico con explicaciones', 'Modo Avanzado: datos y unidades, con pistas'], en: ['Technical language with explanations', 'Advanced mode: data and units, with hints'] }
+      : { es: ['Lenguaje técnico completo', 'Modo Avanzado: datos y unidades, sin pistas automáticas'], en: ['Full technical language', 'Advanced mode: data and units, no automatic hints'] });
+  const MISSIONS = [
+    { id: 'moon', scen: 'moon', ico: 'moon', t: ['Luna', 'Moon'], d: ['Base en el polo sur lunar: noches de dos semanas, polvo y poca gravedad.', 'Base at the lunar south pole: two-week nights, dust and low gravity.'] },
+    { id: 'mars', scen: 'mars', ico: 'mars', t: ['Marte', 'Mars'], d: ['Tormentas de polvo, poca luz solar y mensajes con retraso desde la Tierra.', 'Dust storms, weak sunlight and delayed messages from Earth.'] },
+    { id: 'station', scen: 'moon', ico: 'station', t: ['Construcción de estación', 'Station construction'], d: ['Escenario Luna. Empiezas con +20 de materiales para construir y ampliar la base.', 'Moon scenario. You start with +20 materials to build and expand the base.'], g: ['construye y amplía la base; tienes +20 de materiales.', 'build and expand the base; you have +20 materials.'] },
+    { id: 'science', scen: 'mars', ico: 'science', t: ['Investigación científica', 'Scientific research'], d: ['Escenario Marte. Objetivo: expediciones, muestras y experimentos.', 'Mars scenario. Goal: expeditions, samples and experiments.'], g: ['sal en expediciones, recoge muestras y haz experimentos.', 'go on expeditions, collect samples and run experiments.'] }];
+  const LEVELS = [
+    { id: 'explorer', ico: 'compass', n: ['Explorador', 'Explorer'], tag: ['Fácil', 'Easy'], d: ['Más ayudas, recursos abundantes y mucho margen para equivocarte.', 'More help, plenty of resources and lots of room for mistakes.'] },
+    { id: 'engineer', ico: 'cadet', n: ['Cadete', 'Cadet'], tag: ['Normal', 'Normal'], d: ['Recursos equilibrados y eventos ambientales.', 'Balanced resources and environmental events.'] },
+    { id: 'commander', ico: 'star', n: ['Comandante', 'Commander'], tag: ['Difícil', 'Hard'], d: ['Recursos escasos, eventos complejos y poco margen.', 'Scarce resources, complex events and little margin.'] }];
+  const diffName = (d) => { const L = LEVELS.find((x) => x.id === d) || LEVELS[0]; return L.n[LANG === 'es' ? 0 : 1]; };
   function setupScreen() {
-    let md = settings.mode || 'junior', sc = settings.scen, ch = settings.diff === 'commander' ? 'commander' : 'engineer';
-    const wrap = h('div');
+    const prevMode = MODE, pk = (a) => a[LANG === 'es' ? 0 : 1];
+    let step = 0, age = clampN(Math.round(+settings.age || 10), AGE_MIN, AGE_MAX), mi = MISSIONS.some((m) => m.id === settings.mission) ? settings.mission : 'moon', lv = LEVELS.some((l) => l.id === settings.diff) ? settings.diff : 'explorer';
+    const wrap = h('div', { class: 'wiz' });
+    const go = (n) => { step = n; render(); };
+    const stepsBar = () => h('ol', { class: 'wiz-steps' }, [['Edad', 'Age'], ['Misión', 'Mission'], ['Dificultad', 'Difficulty']].map((x, i) => h('li', { class: i === step ? 'on' : i < step ? 'done' : '', 'aria-current': i === step ? 'step' : null }, h('b', null, String(i + 1)), h('span', null, pk(x)))));
+    const ageStep = () => {
+      const num = h('div', { class: 'age-num', 'aria-live': 'polite', 'data-age': '1' }), b1 = h('p', null), b2 = h('p', { class: 'small muted' });
+      const rng = h('input', { type: 'range', min: AGE_MIN, max: AGE_MAX, step: 1, value: age, class: 'age-range', 'aria-label': LANG === 'es' ? 'Edad' : 'Age' });
+      const set = (v) => { age = clampN(Math.round(v), AGE_MIN, AGE_MAX); rng.value = age; num.textContent = age === AGE_MAX ? AGE_MAX + '+' : String(age); const b = ageBand(age)[LANG]; b1.textContent = '🗣️ ' + b[0]; b2.textContent = '💡 ' + b[1]; rng.style.setProperty('--p', ((age - AGE_MIN) / (AGE_MAX - AGE_MIN) * 100) + '%'); };
+      rng.addEventListener('input', () => set(+rng.value));
+      const mk = (txt, d, lab) => h('button', { class: 'age-btn', type: 'button', 'aria-label': lab, 'data-age-step': d, onclick: () => { Sfx.play('click'); set(age + d); } }, txt);
+      set(age);
+      return h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? '¿Cuántos años tienes?' : 'How old are you?'),
+        h('p', { class: 'muted' }, LANG === 'es' ? 'La edad ajusta el lenguaje y las ayudas. La dificultad se elige aparte.' : 'Age adjusts the language and the help. Difficulty is chosen separately.'),
+        h('div', { class: 'age-row' }, mk('−', -1, LANG === 'es' ? 'Bajar la edad' : 'Decrease age'), num, mk('+', 1, LANG === 'es' ? 'Subir la edad' : 'Increase age')), rng,
+        h('div', { class: 'age-ticks' }, h('span', null, '5'), h('span', null, '11'), h('span', null, '17+')), h('div', { class: 'age-info' }, b1, b2));
+    };
+    const cards = (list, cur, set, kind) => {
+      const grid = h('div', { class: kind === 'm' ? 'mgrid' : 'dgrid' });
+      for (const it of list) grid.append(h('button', { class: kind === 'm' ? 'mcard' : 'dcard', type: 'button', 'aria-pressed': cur() === it.id ? 'true' : 'false', ['data-' + (kind === 'm' ? 'mission' : 'level')]: it.id,
+        onclick: () => { Sfx.play('click'); set(it.id); for (const c of grid.children) c.setAttribute('aria-pressed', c === grid.children[list.indexOf(it)] ? 'true' : 'false'); } },
+      wizIco(it.ico), h('b', null, pk(it.t || it.n)), it.tag ? h('span', { class: 'dtag' }, pk(it.tag)) : null, h('span', { class: 'small muted' }, pk(it.d))));
+      return grid;
+    };
+    const missionStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige tu misión' : 'Choose your mission'), cards(MISSIONS, () => mi, (v) => (mi = v), 'm'));
+    const levelStep = () => h('div', { class: 'wiz-step' }, h('h2', null, LANG === 'es' ? 'Elige la dificultad' : 'Choose the difficulty'),
+      h('p', { class: 'muted' }, LANG === 'es' ? 'Cambia los recursos y los eventos, no el lenguaje: puedes ser Comandante a cualquier edad.' : 'It changes resources and events, not the language: you can be a Commander at any age.'), cards(LEVELS, () => lv, (v) => (lv = v), 'd'));
+    const start = () => {
+      const m = MISSIONS.find((x) => x.id === mi); settings.age = age; settings.mission = mi; settings.diff = lv; Store.set('settings', settings);
+      MODE = prevMode; newRun(m.scen, lv, { mode: ageMode(age), indep: true, focus: mi, age });
+    };
     const render = () => {
-      wrap.innerHTML = '';
-      const prevMode = MODE; MODE = md; // los textos de esta pantalla se muestran en el nivel elegido
-      const card = (pressed, title, meta, desc, fn, ico) => h('button', { class: 'choice', type: 'button', 'aria-pressed': pressed ? 'true' : 'false', onclick: () => { fn(); Sfx.play('click'); render(); } },
-        h('div', { class: 'row', style: { gap: '6px' } }, ico ? Icons.el(ico) : null, h('b', null, title)), meta ? h('div', { class: 'small', style: { color: 'var(--accent)' } }, meta) : null, h('div', { class: 'small muted' }, desc));
-      wrap.append(...[
-        h('h3', null, _('modeT')),
-        h('div', { class: 'mt' },
-          card(md === 'junior', DATA.U[LANG].modeJ, DATA.U[LANG].modeJage, DATA.U[LANG].modeJd, () => (md = 'junior'), 'leaf'),
-          card(md === 'adv', DATA.U[LANG].modeA, DATA.U[LANG].modeAage, DATA.U[LANG].modeAd, () => (md = 'adv'), 'chart')),
-        h('h3', null, _('scen')),
-        h('div', { class: 'mt' }, card(sc === 'moon', _('moon'), '', _('moonD'), () => (sc = 'moon'), 'moon'), card(sc === 'mars', _('mars'), '', _('marsD'), () => (sc = 'mars'), 'dot')),
-        md === 'adv' ? h('div', null, h('h3', null, _('challenge')), h('div', { class: 'mt' }, card(ch === 'engineer', _('chStd'), '', _('chStdD'), () => (ch = 'engineer')), card(ch === 'commander', _('chHard'), '', _('chHardD'), () => (ch = 'commander')))) : null,
-        h('p', { class: 'small muted' }, LANG === 'es' ? 'Mismo mapa, misiones y ciencia en las dos modalidades. Cambian la profundidad, las explicaciones y las herramientas. Los sitios son escenarios educativos, no lugares aprobados para una base.' : 'Same map, missions and science in both modes. Depth, explanations and tools change. Sites are educational scenarios, not approved base locations.'),
-        h('div', { class: 'row', style: { marginTop: '12px' } }, btn(_('go'), () => { MODE = prevMode; newRun(sc, ch, { mode: md }); }, 'primary'), btn(_('back'), () => { MODE = prevMode; mainMenu(); }))].filter(Boolean));
-      MODE = prevMode;
+      MODE = ageMode(age);
+      wrap.replaceChildren(stepsBar(), step === 0 ? ageStep() : step === 1 ? missionStep() : levelStep(),
+        h('div', { class: 'row wiz-nav' }, btn(_('back'), () => { if (step === 0) { MODE = prevMode; mainMenu(); } else go(step - 1); }),
+          step < 2 ? btn((LANG === 'es' ? 'Siguiente' : 'Next') + ' ▶', () => go(step + 1), 'primary wiz-big', { 'data-act': 'wiz-next' }) : btn(_('go') + ' ▶', start, 'primary wiz-big', { 'data-act': 'launch' })));
+      const f = wrap.querySelector(step === 0 ? '.age-range' : '.wiz-big'); if (f && f.isConnected) f.focus({ preventScroll: true });
     };
     render();
-    showScreen(h('div', { class: 'panel' }, h('h2', null, _('start')), wrap));
+    showScreen(h('div', { class: 'panel cine-panel wiz-panel' }, wrap), 'cine');
+    const f = wrap.querySelector('.age-range'); if (f) f.focus({ preventScroll: true });
+  }
+
+  /* ---------- Carga espacial ---------- */
+  function bootLoad() {
+    const es = LANG === 'es', rm = document.documentElement.classList.contains('rm');
+    const MS = [[0, 'Encendiendo motores…', 'Starting engines…'], [20, 'Calibrando sensores…', 'Calibrating sensors…'], [42, 'Trazando la ruta hacia la Luna y Marte…', 'Plotting the route to the Moon and Mars…'], [64, 'Sincronizando con la Tierra…', 'Syncing with Earth…'], [84, 'Revisando el soporte vital…', 'Checking life support…'], [97, '¡Listo para el despegue!', 'Ready for launch!']];
+    const pct = h('div', { class: 'ld-pct' }, '0 %'), msg = h('p', { class: 'ld-msg', 'aria-live': 'polite' }), fill = h('i'), ship = h('div', { class: 'ld-ship', 'aria-hidden': 'true', html: WIZ_SVG.ship });
+    const rail = h('div', { class: 'ld-rail', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0, 'aria-label': es ? 'Carga' : 'Loading' }, fill, ship);
+    let done = false, t0 = null;
+    const set = (p) => { pct.textContent = p + ' %'; fill.style.width = p + '%'; ship.style.left = p + '%'; rail.setAttribute('aria-valuenow', p); let m = MS[0]; for (const x of MS) if (p >= x[0]) m = x; msg.textContent = es ? m[1] : m[2]; };
+    const body = h('div', { class: 'panel cine-panel ld-panel', 'data-boot': '1' },
+      h('p', { class: 'muted ld-sub' }, 'Astro Caribe Challenge · STEM'), h('h1', { class: 'title-big has-logo' }, logoImg()),
+      h('div', { class: 'ld-track' }, wizIco('earth', 'ld-pl'), rail, wizIco('dest', 'ld-pl')),
+      pct, msg, btn(es ? 'Saltar ▶' : 'Skip ▶', () => finish(), 'sm'));
+    const finish = () => { if (done) return; done = true; set(100); setTimeout(() => { if (layer.contains(body)) mainMenu(); }, rm ? 80 : 450); };
+    const D = rm ? 800 : 3800;
+    const tick = (ts) => { if (done || !layer.contains(body)) return; if (t0 == null) t0 = ts; const x = Math.min(1, (ts - t0) / D), e = x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; set(Math.round(e * 100)); if (x >= 1) finish(); else requestAnimationFrame(tick); };
+    set(0); showScreen(body, 'cine'); requestAnimationFrame(tick); setTimeout(finish, D + 4000);
   }
 
   function tutorial(i) {

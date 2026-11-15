@@ -162,10 +162,10 @@
     if (R.brownH > 4) improve.push(es ? 'Apaga primero lo no esencial cuando falte energía.' : 'Turn off non-essentials first when power is short.');
     if (R.foodProd < 3) improve.push(es ? 'Siembra pronto: los cultivos tardan 7 días.' : 'Plant early: crops take 7 days.');
     if (!improve.length) improve.push(es ? 'Prueba el nivel siguiente o el otro escenario.' : 'Try the next level or the other scenario.');
-    const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
+    const title = R.ended && R.ended.kind === 'victory' ? '🏆 ' + (es ? '¡Misión cumplida!' : 'Mission accomplished!') : R.ended && R.ended.kind === 'dead' ? (es ? 'Fin de la misión' : 'Mission over') : R.ended && R.ended.kind === 'abort' ? '🛟 ' + (es ? 'Misión interrumpida: ¡a aprender!' : 'Mission interrupted: time to learn!') : '📄 ' + _('report');
     const tbl = (rows) => h('table', null, h('tbody', null, rows.map(([a, b]) => h('tr', null, h('th', null, a), h('td', null, b)))));
     const body = h('div', { class: 'panel' },
-      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + (isAdv() ? DATA.U[LANG].modeA + ' · ' + (S.diff === 'commander' ? _('chHard') : _('chStd')) : DATA.U[LANG].modeJ) + (isAdv() ? ' · ' + (es ? 'semilla ' : 'seed ') + S.seed : '')),
+      h('h2', null, title), h('p', null, reasonTxt), h('p', { class: 'small muted' }, (S.scen === 'mars' ? '🔴 ' + _('mars') : '🌙 ' + _('moon')) + ' · ' + (isAdv() ? DATA.U[LANG].modeA : DATA.U[LANG].modeJ) + ' · ' + diffName(S.diff) + (isAdv() ? ' · ' + (es ? 'semilla ' : 'seed ') + S.seed : '')),
       h('p', { class: 'small' }, es ? 'Este informe no te califica solo por ganar o perder: cada error es información para la próxima misión.' : 'This report does not grade you only on winning or losing: every mistake is information for the next mission.'),
       h('div', { class: 'grid2' },
         h('div', { class: 'card' }, h('h3', null, _('r1')), tbl([[es ? 'Tiempo de supervivencia' : 'Survival time', fmt(R.days) + (es ? ' días' : ' days') + ' (' + fmt(R.hours, 0) + ' h)'], [es ? 'Objetivos completados' : 'Goals completed', R.done.length + ' / 7 · ' + '★'.repeat(R.stars)], [es ? 'Sistemas mantenidos (≥50 %)' : 'Systems kept (≥50%)', R.sysOk + ' / 8'], [es ? 'Problemas resueltos' : 'Problems solved', R.incRes + ' / ' + R.incTot], [es ? 'Puntos' : 'Points', R.pts]])),
@@ -329,11 +329,12 @@
     document.addEventListener('pointerdown', () => Sfx.init(), { once: true });
     if (/[?&]selftest\b/.test(location.search)) { mainMenu(); selfTestPanel(); }
     else if (/[?&]sheet\b/.test(location.search)) sheetPanel();
-    else mainMenu();
+    else if (/[?&](quick|noload)\b/.test(location.search) || (navigator.webdriver && !/[?&]load\b/.test(location.search))) mainMenu(); // la carga se omite con ?noload|?quick y en navegadores automatizados (salvo ?load)
+    else bootLoad();
     fetchDonki();
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { surv: survDebug, bootLoad, setupScreen, floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

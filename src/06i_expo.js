@@ -303,7 +303,7 @@
     }
     if (c.outside && E.suit.on && !Sfx.muted) { const ev = Ex.env(S, c.x, c.y); const rate = (ev.burst ? 5 : 1) * (c.inShel ? 0.1 : 1); geigerT -= dt; if (geigerT <= 0) { geigerT = (0.6 + Math.random() * 1.2) / rate; if (ev.burst > 0.5 && !c.inShel) Sfx.play('geiger'); } }
     const outNow = c.outside && E.suit.on, mc0 = $('#mini'); if (outNow && !miniForced) { miniWas = mc0.classList.contains('hidden'); mc0.classList.remove('hidden'); miniForced = true; } else if (!outNow && miniForced) { if (miniWas) mc0.classList.add('hidden'); miniForced = false; }
-    if (World.needSuit) toast(XT('Necesitas el traje para salir', 'You need the suit to go out'), XT('Equípalo en el vestuario de la bahía.', 'Put it on at the bay locker.'), 'warn');
+    if (World.needSuit) noSuitPanel(); // sin traje: se avisa del peligro y el jugador decide
     exT += dt; if (exT > 0.2) { exT = 0; exHud(); exCard(World.exNear()); }
   }
   function exAttach() { wasOut = false; lastCard = ''; if (evaEl) { evaEl.classList.add('hidden'); toolsEl.classList.add('hidden'); } }

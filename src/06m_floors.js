@@ -13,7 +13,7 @@
   function teleportTo(n) {
     const veil = h('div', { id: 'telefx', 'aria-hidden': 'true' }, h('div', { class: 'telering' }, '🌀'));
     document.getElementById('app').append(veil); Sfx.play('scan');
-    setTimeout(() => { World.arrive(n); lastRoom = null; Sfx.play('door'); }, 450);
+    setTimeout(() => { World.arrive(n, true); lastRoom = null; Sfx.play('door'); }, 450);
     setTimeout(() => { veil.remove(); toast('🌀 ' + fname(n), '', 'info'); }, 950);
   }
   function teleportPanel() {
@@ -23,7 +23,7 @@
       ...Station.FLOORS.map((f) => h('div', { style: { margin: '6px 0' } }, btn((f === cur ? '📍 ' : '➡ ') + fname(f), () => { pop(); if (f !== cur) teleportTo(f); }, f === cur ? 'ghost' : 'primary', { 'data-act': 'tele-' + f, disabled: f === cur ? true : null }), h('div', { class: 'small muted' }, tr(FLOOR_D[f])))))));
   }
   /** Llegada al piso de destino (elevador o escalera): cambia de piso y deja al jugador junto al elevador. */
-  function arriveFloor(n) { World.arrive(n); lastRoom = null; }
+  function arriveFloor(n, outside) { World.arrive(n, !!outside); lastRoom = null; }
   /** Estado de seguridad del núcleo energético (se muestra en el panel del elevador del piso 3). */
   function coreBlock() {
     const c = Station.coreStatus(S), es = LANG === 'es', why = c.reasons.map((k) => tr(Station.CORE_WHY[k]));
@@ -47,6 +47,8 @@
         e.broken && mode !== 'stairs' ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null].filter(Boolean));
       if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Subiendo por la escalera… ', 'Taking the stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
       if (e.st !== 'idle') return body.append(h('p', { class: 'small muted' }, lt('Espera a que el elevador termine el trayecto.', 'Wait for the elevator to finish the trip.')));
+      const inside = World.roomName(World.player.x, World.player.y) === 'elc' + here;
+      if (!inside && e.at === here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está aquí con las puertas abiertas: entra para elegir el piso.', 'The elevator is here with its doors open: step in to choose the floor.')));
       if (e.at !== here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está en el piso ' + e.at + '.', 'The elevator is on floor ' + e.at + '.')), btn('🔔 ' + lt('Llamar al elevador', 'Call the elevator'), () => { Station.call(S, 'crew', here); Sfx.play('door'); paint(); }, 'primary', { 'data-act': 'elev-call' }));
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
@@ -58,7 +60,7 @@
     };
     timer = setInterval(() => {
       if (!s.isConnected) return clearInterval(timer);
-      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest); toast('🪜 ' + fname(dest), '', 'info'); return; } }
+      if (mode === 'stairs') { stairsT -= 0.1 * (LS && LS.sp > 1 ? 1 : 1); if (stairsT <= 0) { clearInterval(timer); pop(); arriveFloor(dest, true); toast('🪜 ' + fname(dest), '', 'info'); return; } }
       if (mode === 'ride' && e.st === 'idle' && e.at === dest) { clearInterval(timer); Station.leave(S, 'crew', 'player'); pop(); arriveFloor(dest); Sfx.play('ok'); toast('🛗 ' + fname(dest), '', 'ok'); return; }
       paint();
     }, 100);

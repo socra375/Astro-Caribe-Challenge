@@ -51,7 +51,7 @@ const World = (function () {
       }
       if (!best) throw new Error('puerta sin posición: ' + a + '-' + b);
       for (let yy = best.y; yy < best.y + best.h; yy++) for (let xx = best.x; xx < best.x + best.w; xx++) { grid[yy][xx] = DOOR; roomAt[yy][xx] = null; }
-      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false, secure: (a === 'elc3' && b === 'reactor') || (a === 'reactor' && b === 'elc3') }));
+      doors.push(Object.assign(best, { open: 0, kind: kind || 'auto', rooms: [a, b], lock: false, secure: (a === 'elc3' && b === 'reactor') || (a === 'reactor' && b === 'elc3'), elev: /^elc\d$/.test(a) ? +a.slice(3) : /^elc\d$/.test(b) ? +b.slice(3) : 0 }));
     }
     // Mobiliario y consolas
     const F = (x, y, w, h, kind, o) => furn.push(Object.assign({ x, y, w, h, kind }, o || {}));
@@ -119,8 +119,10 @@ const World = (function () {
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
   function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
-  function arrive(n) {
-    if (!setFloor(n)) return false; const D = FL[fidx].D, p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
+  function arrive(n, outside) {
+    if (!setFloor(n)) return false; const D = FL[fidx].D; let p = null;
+    if (outside) { const d = doors.find((q) => q.elev === n); if (d) p = standAt(d.x + 0.5 + (Math.sign(d.x + 0.5 - D.elev[0]) || -1) * 2.4, d.y + d.h / 2, null); } // delante de la puerta del elevador
+    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
     player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true;
   }
   /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
@@ -257,13 +259,18 @@ const World = (function () {
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
     for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
+    // las puertas de los otros pisos también se abren para los NPC que las cruzan (si no, quedarían atrapados dentro de una puerta cerrada)
+    const other = {}; for (const bt of bots) if (!bt.ride && !onF(bt)) (other[bt.floor || 1] = other[bt.floor || 1] || []).push(bt);
+    for (const f in other) withFloor(+f, () => { for (const d of doors) { const cx = d.x + d.w / 2, cy = d.y + d.h / 2, want = d.kind === 'auto' && other[f].some((e) => Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0); d.open = clampN(d.open + (want ? 3 : -3) * dt, 0, 1); if (!want) for (const e of other[f]) if (Math.floor(e.x) >= d.x && Math.floor(e.x) < d.x + d.w && Math.floor(e.y) >= d.y && Math.floor(e.y) < d.y + d.h) d.open = Math.max(d.open, 0.7); } });
     // Puertas (horizontales y verticales)
     const ents = [player].concat(bots.filter((b) => onF(b) && !b.ride));
     for (const d of doors) {
       const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
       let want = false;
       const sec = d.secure && !!curS && Station.coreStatus(curS).restricted; d.sec = sec; // núcleo restringido: solo bloquea al jugador (el ingeniero puede entrar a reparar)
-      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0 && !(sec && e === player)) want = true;
+      // puerta del elevador: al jugador solo se le abre si la cabina está en este piso, o si ya está dentro y el elevador está parado (para poder salir); los NPC usan su propio trayecto
+      const cab = d.elev && curS ? Station.cabinHere(curS, d.elev) || (roomAt[Math.floor(player.y)] && roomAt[Math.floor(player.y)][Math.floor(player.x)] === 'elc' + d.elev && curS.station && curS.station.elev.crew.st === 'idle') : true;
+      for (const e of ents) if (Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0 && !(sec && e === player) && !(d.elev && e === player && !cab)) want = true;
       d.lock = d.rooms.some(locked);
       if (d.lock) want = false;
       if (d.kind === 'inner') want = want && airlock.st === 'in';

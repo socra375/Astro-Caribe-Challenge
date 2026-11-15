@@ -108,6 +108,8 @@ const Station = (function () {
     if (!suitOn) return { ok: false, why: 'ppe' };
     const st = ensure(S); st.core.authUntil = S.t + 20; st.core.checks++; return { ok: true };
   }
+  /** ¿Está la cabina del elevador de tripulación en el piso f con las puertas abiertas (o abriéndose)? */
+  const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();

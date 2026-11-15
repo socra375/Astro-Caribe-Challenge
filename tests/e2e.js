@@ -7,6 +7,17 @@ const results = [];
 const closeAll = async (pg) => { for (let i = 0; i < 8; i++) { if ((await pg.locator('[role=dialog]').count()) === 0) break; await pg.keyboard.press('Escape'); await pg.waitForTimeout(60); } };
 const AT = (pg, room, i) => pg.evaluate(([r, k]) => { const q = World._test.spot(r, k || 0); World.player.x = q[0]; World.player.y = q[1]; }, [room, i]);
 const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, extra || '']); };
+/** Recorre el asistente de inicio (edad → misión → dificultad) y pulsa «Despegar». */
+async function wiz(pg, o) {
+  o = o || {};
+  await pg.getByRole('button', { name: /Iniciar misión/ }).click();
+  if (o.age != null) await pg.locator('.age-range').fill(String(o.age));
+  await pg.locator('[data-act=wiz-next]').click();
+  if (o.mission) await pg.locator('[data-mission=' + o.mission + ']').click();
+  await pg.locator('[data-act=wiz-next]').click();
+  if (o.level) await pg.locator('[data-level=' + o.level + ']').click();
+  await pg.getByRole('button', { name: /Despegar/ }).click();
+}
 /** Atraviesa la llegada y el aterrizaje (acelerada) tras pulsar «Despegar» en la interfaz. */
 async function landThrough(pg) {
   await pg.waitForFunction(() => Game._debug.land.on, null, { timeout: 8000 });
@@ -32,10 +43,7 @@ async function landThrough(pg) {
   await page.waitForTimeout(400);
   ok('Menú principal visible', await page.locator('.title-big').isVisible());
   if (shots) await page.screenshot({ path: shots + '/01_menu.png' });
-  await page.getByRole('button', { name: /Iniciar misión/ }).click();
-  await page.getByRole('button', { name: /Explorador Junior/ }).click();
-  await page.getByRole('button', { name: /Marte/ }).click();
-  await page.getByRole('button', { name: /Despegar/ }).click();
+  await wiz(page, { age: 10, mission: 'mars' });
   await page.waitForTimeout(300);
   ok('Una partida nueva empieza con la llegada y el aterrizaje (no directamente en la base)', await page.locator('#landw').isVisible() && !(await page.evaluate(() => Game._debug.running)));
   await landThrough(page);
@@ -176,7 +184,7 @@ async function landThrough(pg) {
   pm.on('pageerror', (e) => err2.push(e.message));
   await pm.goto(FILE); await pm.waitForTimeout(300);
   ok('Con localStorage bloqueado avisa y funciona', await pm.getByText(/sesión temporal/).isVisible());
-  await pm.getByRole('button', { name: /Iniciar misión/ }).click(); await pm.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pm);
+  await wiz(pm); await landThrough(pm);
   await pm.getByRole('button', { name: 'Saltar' }).click();
   await pm.waitForTimeout(300);
   ok('Joystick táctil visible en móvil', await pm.locator('#joy').isVisible());
@@ -197,7 +205,7 @@ async function landThrough(pg) {
   const pg = await ctx5.newPage(); const err5 = [];
   pg.on('pageerror', (e) => err5.push(e.message));
   await pg.goto(FILE); await pg.waitForTimeout(300);
-  await pg.getByRole('button', { name: /Iniciar misión/ }).click(); await pg.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pg); await pg.waitForTimeout(400);
+  await wiz(pg); await landThrough(pg); await pg.waitForTimeout(400);
   const skipTalk = async () => { for (let i = 0; i < 6; i++) { const b = pg.getByRole('button', { name: /^Siguiente|¡Entendido!/ }); if (await b.count()) { await b.first().click(); await pg.waitForTimeout(60); } else break; } };
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
@@ -482,10 +490,11 @@ async function landThrough(pg) {
   const rout = await pg.evaluate(() => {
     const X = Sim.create({ seed: 8, noEv: true, mode: 'adv', skipCamp: true }); X.t = 24 + 12; // día 2, 12:00
     World.init(X.scen); World.update(0.01, X, { x: 0, y: 0 });
-    const B = World._test.bots, rooms = () => B.map((b) => World.roomName(b.x, b.y));
+    const rn = (b) => World.withFloor(b.floor || 1, () => World.roomName(b.x, b.y)); // la sala se busca en el piso del NPC
+    const B = World._test.bots, rooms = () => B.map(rn);
     const run = (sec) => { for (let i = 0; i < sec * 20; i++) { B.forEach((b) => { if (b.wait > 0.2) b.wait = 0.1; }); World.update(0.05, X, { x: 0, y: 0 }); } };
     const homes = {}; const seen = { engineer: new Set(), scientist: new Set(), medic: new Set(), agri: new Set() };
-    for (let k = 0; k < 400; k++) { run(0.5); B.forEach((b) => seen[b.role] && seen[b.role].add(World.roomName(b.x, b.y))); }
+    for (let k = 0; k < 400; k++) { run(0.5); B.forEach((b) => seen[b.role] && seen[b.role].add(rn(b))); }
     const day = Object.fromEntries(Object.entries(seen).map(([r, v]) => [r, [...v]]));
     X.t = 24 * 2 + 1; // noche (01:00)
     run(60);
@@ -523,10 +532,19 @@ async function landThrough(pg) {
   pm2.on('pageerror', (e) => errM.push(e.message));
   await pm2.goto(FILE); await pm2.waitForTimeout(300);
   await pm2.getByRole('button', { name: /Iniciar misión/ }).click();
-  ok('La pantalla de inicio ofrece las dos modalidades', (await pm2.getByRole('button', { name: /Explorador Junior/ }).count()) === 1 && (await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).count()) === 1);
-  await pm2.getByRole('button', { name: /Ingeniero de Misión/ }).click();
-  ok('Ingeniero de Misión ofrece nivel de reto', await pm2.getByRole('button', { name: /Exigente/ }).isVisible());
+  ok('El asistente de inicio ofrece edad de 5 a 17+ con barra y botones', (await pm2.locator('.age-range').count()) === 1 && (await pm2.locator('.age-btn').count()) === 2 && (await pm2.locator('.age-range').getAttribute('min')) === '5' && (await pm2.locator('.age-range').getAttribute('max')) === '17');
+  await pm2.locator('.age-range').fill('15');
+  await pm2.locator('[data-age-step="1"]').click(); await pm2.locator('[data-age-step="1"]').click(); await pm2.locator('[data-age-step="1"]').click();
+  ok('La edad máxima se muestra como 17+ y no se pasa del límite', (await pm2.locator('.age-num').innerText()) === '17+');
+  await pm2.locator('[data-age-step="-1"]').click();
+  ok('El botón − baja la edad', (await pm2.locator('.age-num').innerText()) === '16');
+  await pm2.locator('[data-age-step="1"]').click(); await pm2.locator('[data-act=wiz-next]').click();
+  ok('Hay cuatro misiones: Luna, Marte, estación e investigación', (await pm2.locator('.mcard').count()) === 4);
+  await pm2.locator('[data-mission=science]').click(); await pm2.locator('[data-act=wiz-next]').click();
+  ok('Hay tres dificultades: Explorador, Cadete y Comandante', (await pm2.locator('.dcard').count()) === 3 && (await pm2.getByText('Cadete').count()) >= 1);
+  await pm2.locator('[data-level=commander]').click();
   await pm2.getByRole('button', { name: /Despegar/ }).click(); await landThrough(pm2); await pm2.waitForTimeout(400);
+  ok('Edad, misión y dificultad son independientes: 17+ → Avanzado, investigación → Marte, Comandante → difícil', await pm2.evaluate(() => Game.S.mode === 'adv' && Game.S.scen === 'mars' && Game.S.focus === 'science' && Game.S.diff === 'commander' && Game.S.age === 17));
   ok('La modalidad elegida se aplica', await pm2.evaluate(() => Game.S.mode === 'adv' && MODE === 'adv'));
   const hudA = await pm2.evaluate(() => [...document.querySelectorAll('#meters .meter')].filter((m) => !m.classList.contains('hidden')).length);
   ok('Ingeniero: 5 indicadores detallados en el HUD', hudA === 5, String(hudA));
