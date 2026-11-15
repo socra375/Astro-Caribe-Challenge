@@ -145,7 +145,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   /* ---- Puertas del elevador de tripulación en el mundo ---- */
   const dr = await pg.evaluate(() => {
     const S = Game.S; S.inc = []; Station.ensure(S); const e = S.station.elev.crew; e.at = 1; e.st = 'idle'; e.broken = false;
-    World.arrive(3, true); const d = World.withFloor(3, () => { const q = World._test.doors.find((x) => x.elev === 3); return { x: q.x, y: q.y, w: q.w, h: q.h }; });
+    World.arrive(3, true); for (const b of World._test.bots) { b.ride = null; b.path = []; b.viaTo = null; b.wait = 1e4; if (b.floor === 3) { b.floor = 1; const q = World.withFloor(1, () => World._test.spot('bridge', 0)); b.x = q[0]; b.y = q[1]; } } /* sin NPC cerca: si uno usa el elevador, la puerta se abre para él y el jugador podría colarse */ const d = World.withFloor(3, () => { const q = World._test.doors.find((x) => x.elev === 3); return { x: q.x, y: q.y, w: q.w, h: q.h }; });
     const out = { room: World.roomName(World.player.x, World.player.y), floor: World.floor, d, call: !!Layout.CONSOLES.find((c) => c[0] === 'call3') };
     // cabina en otro piso: la puerta no se abre para el jugador
     for (let i = 0; i < 40; i++) World.update(0.05, S, { x: 0, y: 0 }); const dd = World._test.doors.find((x) => x.elev === 3);
