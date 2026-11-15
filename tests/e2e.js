@@ -10,6 +10,7 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
 /** Atraviesa la llegada y el aterrizaje (acelerada) tras pulsar «Despegar» en la interfaz. */
 async function landThrough(pg) {
   await pg.waitForFunction(() => Game._debug.land.on, null, { timeout: 8000 });
+  await pg.evaluate(() => Game._debug.land.skipTrip());
   await pg.evaluate(() => Game._debug.land.speed(25));
   await pg.waitForSelector('.lbtn:not(.hidden)', { timeout: 20000 }); await pg.locator('.lbtn').click();
   await pg.waitForSelector('.lpanel .choice'); await pg.locator('.lpanel .choice').first().click(); await pg.locator('.lpanel .btn.primary').click();

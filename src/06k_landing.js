@@ -44,7 +44,7 @@
     if (!LS.replay) { S.land = Land.fresh(S); } else { Land.ensure(S); }
     landEl.classList.remove('hidden'); $('#hud').classList.add('hidden'); $('#zoomc').classList.add('hidden'); $('#touch').classList.add('hidden'); $('#mini').classList.add('hidden');
     landLast = 0; cancelAnimationFrame(landRaf); landRaf = requestAnimationFrame(landTick);
-    landGo(phArrive());
+    if (LS.replay) landGo(phArrive()); else startTrip(S);
   }
   function landClose() { LS.on = false; cancelAnimationFrame(landRaf); Voice.stop(); if (landEl) { landEl.classList.add('hidden'); landUi.innerHTML = ''; } LS.ph = null; }
   function landAbort() { landClose(); mainMenu(); }
@@ -287,4 +287,4 @@
   }
   /** Tarjeta de la nave cuando está cerca. */
   function shipCard() { const L = Land.ensure(S); return h('div', null, h('b', null, '🚀 ' + lt('Nave de llegada', 'Arrival ship')), h('div', { class: 'small' }, Land.PARTS.map((k) => (L.parts[k] === 'ok' ? '🟢' : L.parts[k] === 'warn' ? '🟡' : '🔴') + ' ' + tr(Land.PART_T[k])).join(' · ')), h('div', { class: 'small' }, '👉 ' + lt('Pulsa E para revisar la nave.', 'Press E to inspect the ship.'))); }
-  const landDebug = { get ph() { return LS.ph; }, get on() { return LS.on; }, get st() { return LS.d && LS.d.st; }, get dd() { return LS.dd; }, get d() { return LS.d; }, drawMs: (n) => { const c = landCx, w = landCv.width, hh = landCv.height, t0 = performance.now(); for (let i = 0; i < n; i++) LS.ph.draw(c, w, hh, LS.t + i / 60); return (performance.now() - t0) / n; }, speed: (v) => { LS.sp = v; }, sel: () => LS.sel, S: () => LS.S, close: landClose };
+  const landDebug = { get ph() { return LS.ph; }, get on() { return LS.on; }, get st() { return LS.d && LS.d.st; }, get dd() { return LS.dd; }, get tr() { return LS.tr; }, get trip() { return LS.S && LS.S.trip; }, get phase() { return LS.ph; }, skipTrip: () => { const S = LS.S; S.trip = undefined; Trip.ensure(S); landGo(phArrive()); }, get d() { return LS.d; }, drawMs: (n) => { const c = landCx, w = landCv.width, hh = landCv.height, t0 = performance.now(); for (let i = 0; i < n; i++) LS.ph.draw(c, w, hh, LS.t + i / 60); return (performance.now() - t0) / n; }, speed: (v) => { LS.sp = v; }, sel: () => LS.sel, S: () => LS.S, close: landClose };
