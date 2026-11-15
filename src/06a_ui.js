@@ -311,12 +311,13 @@ const Game = (function () {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mgRun && mgRun.g && !mgRun.g.done && mgRun.tick) mgRun.tick(dt);
     if (running && S) tickRadio(dt);
+    if (running && S && !paused && !S.ended && S.station) Station.step(S, dt); // el elevador sigue su trayecto aunque haya un panel abierto
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended;
       if (live) {
         World.update(dt, S, inputVec());
         Sim.setPlayerZone(S, World.zone());
-        exFrame(dt); elFrame(dt); if (S.station) Station.step(S, dt);
+        exFrame(dt); elFrame(dt);
         Sim.step(S, dt * SIMH_PER_S * speed);
         processLogs();
         saveT += dt; if (saveT > 15) { saveT = 0; saveRun(); }
@@ -399,7 +400,7 @@ const Game = (function () {
     toast(isTouch ? _('helpTouch') : _('helpMove'), '', 'info');
   }
   function beginPlay() {
-    clearLayer(); running = true; paused = false;
+    clearLayer(); World.prewarm(); running = true; paused = false;
     $('#hud').classList.remove('hidden'); $('#mini').classList.add('hidden'); $('#zoomc').classList.remove('hidden');
     if (isTouch) $('#touch').classList.remove('hidden');
     buildHud(); updateHud(); exAttach(); elAttach(); saveRun();

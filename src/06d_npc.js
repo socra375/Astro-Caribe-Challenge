@@ -74,7 +74,9 @@
     box.classList.remove('hidden');
     $('#hint').style.visibility = 'hidden';
   }
-  function roomLoc(room, sysK) { const r = tr(DATA.ROOMS[room] || DATA.ROOMS.hall), sy = sysK && DATA.SYS_T[sysK] ? tr(DATA.SYS_T[sysK]) : ''; return r + (sy && sy !== r ? ' · ' + sy : ''); }
+  /** Piso de una sala (para alertas y llamadas): «Piso 3 · Energía», o «Exterior». */
+  const floorOfRoom = (room) => (room === 'pad' ? Station.floorName(0, LANG) : Station.floorName(Layout.roomFloor(room), LANG));
+  function roomLoc(room, sysK) { const r = floorOfRoom(room) + ' · ' + tr(DATA.ROOMS[room] || DATA.ROOMS.hall), sy = sysK && DATA.SYS_T[sysK] ? tr(DATA.SYS_T[sysK]) : ''; return r + (sy && sy !== r ? ' · ' + sy : ''); }
   function consoleTarget(id, room) { return (id && World.consolePos(id)) || (room && World.roomCenter(room)) || null; }
   /** Convierte entradas del registro del motor en llamadas de NPC (o devuelve false si no corresponde). */
   function logToRadio(e) {
@@ -122,7 +124,7 @@
       if (SEVR[st] < SEVR[prev]) continue;
       const R = ND.RES[k], room = ND.RES_ROOM[k];
       const val = k === 'dose' ? fmt(S.d.dose) + ' mSv' : Math.round((S.d[k] || 0) * 100) + ' %';
-      call({ key: 'res_' + k + st, sev: st, who: R.npc, title: tr(R.d) + ' (' + val + ')', desc: '', loc: tr(DATA.ROOMS[room]), act: tr(R.a), cons: tr(R.c), target: consoleTarget(R.console, room), console: R.console });
+      call({ key: 'res_' + k + st, sev: st, who: R.npc, title: tr(R.d) + ' (' + val + ')', desc: '', loc: roomLoc(room), act: tr(R.a), cons: tr(R.c), target: consoleTarget(R.console, room), console: R.console });
     }
   }
 

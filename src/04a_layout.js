@@ -189,7 +189,32 @@ const Layout = (function () {
   SHELTER[0] += OX; SHELTER[1] += OY; SHELTER[2] += OX; SHELTER[3] += OY;
   LOCK.x += OX; LOCK.inY += OY; LOCK.outY += OY; START[0] += OX; START[1] += OY; REACTOR_C[0] += OX; REACTOR_C[1] += OY;
 
-  /** Pisos de la estación. El piso 1 es la base de siempre; los datos son los mismos objetos de arriba. */
-  const FLOORS = [{ id: 1, name: { es: 'Piso 1 · Operaciones', en: 'Floor 1 · Operations' }, ROOMS, LINKS, FURN, CONSOLES, PLANTERS, SHELTER }];
-  return { W, H, OX, OY, has, FLOORS, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
+  /* ---------- Pisos ----------
+     La base de siempre se reparte entre tres pisos sin tocar la forma de las salas: cada sala, mueble, consola y puerta
+     pasa al piso de su sala. El piso 2 es la planta baja (esclusa, garaje y exterior) y conserva sus coordenadas, así el
+     terreno exterior, el rover y la nave no cambian. Cada piso tiene un elevador de tripulación (sala elc1/elc2/elc3). */
+  const FLOOR_OF = { bridge: 1, hall: 1, life: 1, med: 1, kitchen: 1, food: 1, water: 1, gh: 1, lab: 1, samples: 1, t1: 1, t2: 1, elc1: 1, rad: 2, lock: 2, workshop: 2, waste: 2, t6: 2, elc2: 2, reactor: 3, elc3: 3 };
+  for (const k of ['t3', 't4', 't5']) delete ROOMS[k]; // los túneles hacia el reactor los sustituye el elevador
+  const ELV = { 1: [80, 33, 83, 38], 2: [80, 59, 83, 64], 3: [79, 25, 82, 30] };
+  for (const f of [1, 2, 3]) { const e = ELV[f]; ROOMS['elc' + f] = { s: [RR(e[0] + OX, e[1] + OY, e[2] + OX, e[3] + OY, 1)], g: f === 1 ? 'hab' : 'tec', floor: f === 1 ? 'clean' : 'plate', col: f === 1 ? ['#2a3350', '#303a5c'] : ['#2e3138', '#34373f'] }; }
+  CONSOLES.push(['tele', 'bridge', 57 + OX, 22 + OY, 'use', '🌀']);
+  LINKS.push(['food', 'elc1', 79 + OX, 35 + OY], ['rad', 'elc2', 79 + OX, 61 + OY], ['reactor', 'elc3', 83 + OX, 27 + OY]);
+  for (const f of [1, 2, 3]) { const e = ELV[f]; CONSOLES.push(['elev' + f, 'elc' + f, Math.round((e[0] + e[2]) / 2) + OX, e[1] + OY, 'use', '🛗']); SPOTS['elc' + f] = [[(e[0] + e[2]) / 2 + OX, (e[1] + e[3]) / 2 + OY]]; }
+  ROOMCOL.elc1 = ROOMCOL.elc2 = ROOMCOL.elc3 = '#b9c2e0';
+  const fl = (r) => FLOOR_OF[r] || 1;
+  const roomOfPt = (x, y) => { for (const k in ROOMS) for (const sp of ROOMS[k].s) if (has(sp, x, y)) return k; return null; };
+  const FNAME = { 1: { es: 'Piso 1 · Operaciones', en: 'Floor 1 · Operations' }, 2: { es: 'Piso 2 · Exploración', en: 'Floor 2 · Exploration' }, 3: { es: 'Piso 3 · Energía', en: 'Floor 3 · Energy' } };
+  const FLOORS = [1, 2, 3].map((id) => {
+    const rooms = {}; for (const k in ROOMS) if (fl(k) === id) rooms[k] = ROOMS[k];
+    const real = (r) => r === 'pad' || rooms[r];
+    return {
+      id, name: FNAME[id], ground: id === 2, ROOMS: rooms,
+      LINKS: LINKS.filter((l) => real(l[0]) && real(l[1]) && (l[0] === 'pad' || l[1] === 'pad' || (fl(l[0]) === id && fl(l[1]) === id))),
+      FURN: FURN.filter((f) => fl(roomOfPt(f[1] + f[3] / 2, f[2] + f[4] / 2) || 'bridge') === id),
+      CONSOLES: CONSOLES.filter((c) => fl(c[1]) === id), PLANTERS: id === 1 ? PLANTERS : [], SHELTER: id === 2 ? SHELTER : null,
+      elev: SPOTS['elc' + id][0]
+    };
+  });
+  const roomFloor = (r) => fl(r);
+  return { W, H, OX, OY, has, FLOORS, roomFloor, FNAME, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
 })();

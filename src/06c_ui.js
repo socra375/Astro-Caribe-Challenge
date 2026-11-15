@@ -334,6 +334,6 @@
     requestAnimationFrame(frame);
   }
 
-  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
+  return { init, get scen() { return S ? S.scen : 'moon'; }, get S() { return S; }, _debug: { floors: floorsDebug, land: landDebug, startLanding: (o) => startLanding(S, o), exp: exDebug, el: elDebug, audioPanel, narrate, quizOf, mgDur, DMETA, saveNow: () => saveRun(), radio, call, talk, plantCard, wardrobePanel, sheetPanel: () => sheetPanel(), get mg() { return mgRun && mgRun.g; }, openConsole: (id) => openConsole({ id }), newRun, miniPlay, showReport, setSpeed: (v) => (speed = v), get running() { return running; } } };
 })();
 Game.init();

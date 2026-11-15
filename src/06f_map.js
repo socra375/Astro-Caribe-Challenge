@@ -34,8 +34,9 @@
   }
 
   function openMap() {
-    const es = LANG === 'es', D = World.DIM, RC = World.RECTS;
-    const st = { sel: null, route: false, z: 1, cx: D.W / 2, cy: D.H / 2, drag: null, moved: false };
+    const es = LANG === 'es', D = World.DIM;
+    let RC = World.RECTS, bgc = World.staticCanvas;
+    const st = { floor: World.player.floor || 1, sel: null, route: false, z: 1, cx: D.W / 2, cy: D.H / 2, drag: null, moved: false };
     const CW = 900, CH = Math.round(900 * D.H / D.W);
     const cvm = h('canvas', { width: CW, height: CH, class: 'mapcv', tabindex: '0', role: 'img', 'aria-label': es ? 'Mapa completo del puesto avanzado. Pulsa una sala para ver su ficha. Flechas para desplazar, más y menos para el zoom.' : 'Full outpost map. Select a room to see its card. Arrows to pan, plus and minus to zoom.' });
     const info = h('div', { class: 'mapinfo', 'aria-live': 'polite' });
@@ -43,12 +44,16 @@
     const X = (x) => CW / 2 + (x - st.cx) * sc(), Y = (y) => CH / 2 + (y - st.cy) * sc();
     const rname = (k) => tr(DATA.ROOMS[k] || { es: k, en: k });
     const alertsIn = (k) => S.inc.filter((i) => !i.res && S.t >= i.from && i.room === k);
-    const crewIn = (k) => World.crew().filter((m) => m.room === k);
+    const crewIn = (k) => World.crew().filter((m) => m.floor === st.floor && !m.ride && m.room === k);
     const roomOf = (k) => (isCorr(k) ? 'hall' : k);
     const ids = () => Object.keys(RC);
-    const bgc = World.staticCanvas;
+    /** Todo el dibujo y la selección ocurren sobre el piso que se está mirando (el jugador no se mueve). */
+    const inView = (fn) => World.withFloor(st.floor, () => { RC = World.RECTS; bgc = World.staticCanvas; return fn(); });
+    const draw = (t) => inView(() => drawIn(t));
+    const card = () => inView(cardIn);
+    const pick = (px, py) => inView(() => pickIn(px, py));
 
-    function draw(t) {
+    function drawIn(t) {
       const x = cvm.getContext('2d'), s = sc();
       x.clearRect(0, 0, CW, CH); x.fillStyle = '#070b18'; x.fillRect(0, 0, CW, CH);
       x.lineJoin = 'round';
@@ -84,7 +89,7 @@
       }
       // ruta
       if (st.route && st.sel) {
-        const pts = World.route(st.sel);
+        const pts = World.player.floor === st.floor ? World.route(st.sel) : null;
         if (pts && pts.length > 1) {
           x.save(); x.strokeStyle = '#38d6ff'; x.lineWidth = 4; x.setLineDash([10, 8]); x.lineDashOffset = -t / 40; x.beginPath();
           pts.forEach((p, i) => (i ? x.lineTo(X(p[0]), Y(p[1])) : x.moveTo(X(p[0]), Y(p[1])))); x.stroke(); x.restore();
@@ -96,7 +101,7 @@
       const mk = World.marker;
       if (mk) { x.strokeStyle = '#ff6b6b'; x.lineWidth = 3; x.beginPath(); x.arc(X(mk.p[0]), Y(mk.p[1]), 10 + 3 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'pin', X(mk.p[0]), Y(mk.p[1]) - 16, 20, '#ff6b6b'); }
       // rover y objetivo de la expedición (los que quedan fuera del plano se señalan en el borde)
-      if (S.ex) {
+      if (S.ex && st.floor === 2) {
         const edge = (px, py) => { const mx = 14, ex = Math.max(mx, Math.min(CW - mx, px)), ey = Math.max(mx, Math.min(CH - mx, py)); return [ex, ey, ex !== px || ey !== py]; };
         if (S.land && S.land.ship) { const sp = edge(X(S.land.ship.x), Y(S.land.ship.y)); x.save(); x.translate(sp[0], sp[1]); x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -11); x.lineTo(7, 6); x.lineTo(-7, 6); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#ff8a3d'; x.fillRect(-7, 6, 14, 3); x.restore(); x.font = '700 11px system-ui'; x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom'; const nl = LANG === 'es' ? 'Nave' : 'Ship'; x.strokeText(nl, sp[0], sp[1] - 13); x.fillText(nl, sp[0], sp[1] - 13); }
         const R0 = S.ex.rover, rp = edge(X(R0.x), Y(R0.y));
@@ -105,14 +110,17 @@
         const gl = Ex.goal(S); if (gl && S.ex.suit.on) { const gp = edge(X(gl.x), Y(gl.y)); x.strokeStyle = '#ffc24a'; x.lineWidth = 3; x.beginPath(); x.arc(gp[0], gp[1], 9 + 2 * Math.sin(t / 200), 0, 7); x.stroke(); Icons.draw(x, 'target', gp[0], gp[1], 18, '#ffc24a'); }
       }
       // tripulación (NPC) y jugador
-      for (const m of World.crew()) { x.fillStyle = ROLECOL[m.role]; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.arc(X(m.x), Y(m.y), 6, 0, 7); x.fill(); x.stroke(); }
+      for (const m of World.crew().filter((q) => q.floor === st.floor && !q.ride)) { x.fillStyle = ROLECOL[m.role]; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.arc(X(m.x), Y(m.y), 6, 0, 7); x.fill(); x.stroke(); }
       const P = World.player;
+      if (P.floor === st.floor) {
       x.fillStyle = '#fff'; x.beginPath(); x.arc(X(P.x), Y(P.y), 8, 0, 7); x.fill(); x.strokeStyle = '#38d6ff'; x.lineWidth = 3; x.stroke();
       x.font = '700 11px system-ui'; x.fillStyle = '#38d6ff'; x.strokeStyle = '#000'; x.lineWidth = 3; x.textAlign = 'center'; x.textBaseline = 'bottom';
       x.strokeText(es ? 'Tú' : 'You', X(P.x), Y(P.y) - 11); x.fillText(es ? 'Tú' : 'You', X(P.x), Y(P.y) - 11);
+      }
+      x.font = '700 14px system-ui'; x.fillStyle = '#e8ecf5'; x.strokeStyle = '#000'; x.lineWidth = 4; x.textAlign = 'left'; x.textBaseline = 'top'; const fnm = tr(Layout.FNAME[st.floor]); x.strokeText(fnm, 10, 8); x.fillText(fnm, 10, 8);
     }
 
-    function card() {
+    function cardIn() {
       info.innerHTML = '';
       const k = st.sel;
       if (!k) {
@@ -120,7 +128,7 @@
           h('div', { class: 'row small' }, Object.keys(ROLECOL).map((r) => h('span', { class: 'chip', style: { borderColor: ROLECOL[r] } }, h('i', { style: { background: ROLECOL[r], width: '10px', height: '10px', borderRadius: '50%', display: 'inline-block' } }), ' ' + tr(Chars.ROLES[r].name)))));
         return;
       }
-      const lk = World.roomLocked(k), al = alertsIn(k), crew = crewIn(k), here = World.roomName(World.player.x, World.player.y) === k;
+      const lk = World.roomLocked(k), al = alertsIn(k), crew = crewIn(k), here = World.player.floor === st.floor && World.roomName(World.player.x, World.player.y) === k;
       const sys = (MAPSYS[k] || []).filter((q) => S.sys[q] && S.sys[q].h != null);
       const cs = lk ? Sim.campStatus(S) : null;
       info.append(
@@ -138,7 +146,7 @@
           btn('🎯 ' + (es ? 'Centrar en la sala' : 'Center on room'), () => { const R = RC[k]; st.cx = (R[0] + R[2] + 1) / 2; st.cy = (R[1] + R[3] + 1) / 2; }, 'sm ghost')));
     }
 
-    function pick(px, py) {
+    function pickIn(px, py) {
       const s = sc(), wx = (px - CW / 2) / s + st.cx, wy = (py - CH / 2) / s + st.cy;
       let k = World.roomAtPoint(wx, wy);
       if (!k) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { k = World.roomAtPoint(wx + ox, wy + oy); if (k) break; }
@@ -162,12 +170,13 @@
       clampC(); e.preventDefault();
     });
 
+    const floorBtns = h('div', { class: 'row', 'data-floors': '1' }, ...Station.FLOORS.map((f) => btn((f === st.floor ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + f + ' · ' + tr(Station.FLOOR_T[f]).split('· ')[1], () => { st.floor = f; st.sel = null; st.route = false; st.cx = D.W / 2; st.cy = D.H / 2; st.z = 1; floorBtns.querySelectorAll('button').forEach((b, i) => { b.textContent = (i + 1 === f ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + (i + 1) + ' · ' + tr(Station.FLOOR_T[i + 1]).split('· ')[1]; b.classList.toggle('primary', i + 1 === f); }); card(); }, f === st.floor ? 'sm primary' : 'sm', { 'data-act': 'mapfloor-' + f })), h('span', { class: 'small muted' }, es ? 'Elevadores: 🛗 tripulación (pisos 1-3) · 🚙 rover (garaje ↔ exterior)' : 'Elevators: 🛗 crew (floors 1-3) · 🚙 rover (garage ↔ outside)'));
     const tools = h('div', { class: 'row' },
       btn('＋', () => zoom(1.25), 'sm', { 'aria-label': 'Zoom +' }), btn('－', () => zoom(0.8), 'sm', { 'aria-label': 'Zoom -' }),
       btn('📍 ' + (es ? 'Centrar en mí' : 'Center on me'), () => { st.cx = World.player.x; st.cy = World.player.y; if (st.z < 2) st.z = 2; clampC(); }, 'sm'),
       btn('↔ ' + (es ? 'Ver mundo completo' : 'Full view'), () => { st.z = 1; st.cx = D.W / 2; st.cy = D.H / 2; }, 'sm ghost'),
       h('span', { class: 'small muted' }, es ? 'Azul: puertas · naranja: esclusa. Cierra con M o Esc; el tiempo está en pausa.' : 'Blue: doors · orange: airlock. Close with M or Esc; time is paused.'));
-    const body = h('div', { class: 'col' }, tools, cvm, info);
+    const body = h('div', { class: 'col' }, floorBtns, tools, cvm, info);
     const s = push(panel('🗺 ' + (es ? 'Mapa de la base' : 'Base map'), body), { sticky: true, onclose: () => { clearInterval(iv); World.overview(false); } });
     World.overview(true); // MapCamera: la cámara se aleja hasta mostrar toda la base; al cerrar vuelve a la cámara principal
     s._map = true;

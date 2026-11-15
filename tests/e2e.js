@@ -284,7 +284,8 @@ async function landThrough(pg) {
   const tm0 = await pg.evaluate(() => Game.S.t); await pg.waitForTimeout(600);
   ok('Con el mapa abierto el tiempo simulado está en pausa', await pg.evaluate((t) => Game.S.t === t, tm0));
   const box = await pg.locator('.mapcv').boundingBox();
-  const mp = await pg.evaluate(() => { const q = World._test.spot('reactor', 0), cv = document.querySelector('.mapcv'); return [q[0], q[1], World.DIM.W, World.DIM.H, cv.width, cv.height]; });
+  await pg.locator('[data-act=mapfloor-3]').click(); await pg.waitForTimeout(150);
+  const mp = await pg.evaluate(() => { const q = World.roomCenterOn('reactor'), cv = document.querySelector('.mapcv'); return [q[0], q[1], World.DIM.W, World.DIM.H, cv.width, cv.height]; });
   const msc = Math.min(mp[4] / mp[2], mp[5] / mp[3]), mpx = mp[4] / 2 + (mp[0] - mp[2] / 2) * msc, mpy = mp[5] / 2 + (mp[1] - mp[3] / 2) * msc;
   await pg.mouse.click(box.x + mpx * box.width / mp[4], box.y + mpy * box.height / mp[5]);
   ok('Seleccionar una sala muestra su ficha', await pg.locator('.mapinfo').getByText(/Reactor y energía/).first().isVisible());
@@ -313,22 +314,25 @@ async function landThrough(pg) {
   ok('N alterna el silencio y M ya no lo hace', mu0 !== mu1 && (await pg.locator('#bMute').innerHTML()) === mu0);
   // ---- Las 13 instalaciones: existencia, conexión y rutas transitables ----
   const inst = await pg.evaluate(() => {
-    const T = World._test, R = World.RECTS, need = ['bridge', 'life', 'med', 'reactor', 'water', 'gh', 'food', 'kitchen', 'lab', 'samples', 'workshop', 'rad', 'waste'];
-    const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [], doors: T.doors.length };
-    const rm = (x, y) => T.roomAt[y] && T.roomAt[y][x];
-    for (const d of T.doors) { const a = d.v ? [rm(d.x - 1, d.y), rm(d.x + 1, d.y)] : [rm(d.x, d.y - 1), rm(d.x, d.y + 1)]; if (!a[0] || !a[1] || a[0] === a[1]) out.nodesOk = false, out.bad.push('puerta@' + d.x + ',' + d.y); }
-    World.player.x = 68; World.player.y = 31.5;
+    const T = World._test, need = ['bridge', 'life', 'med', 'reactor', 'water', 'gh', 'food', 'kitchen', 'lab', 'samples', 'workshop', 'rad', 'waste'];
+    const out = { have: 0, bad: [], nodesOk: true, unreachable: [], doors: 0, consoles: [], samples: 0, floorsOk: [], elev: [] };
     const savedUn = Game.S.camp.unlocked; Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
-    for (const k of need) { const r = World.route(k); if (!r) out.unreachable.push(k); }
-    out.consoles = Layout.CONSOLES.filter((c) => { const p = World.consolePos(c[0]); return !p || !T.findPath(68, 31.5, p[0], p[1]); }).map((c) => c[0]);
-    out.samples = T.samples.filter((q) => !T.findPath(67.5, 81.5, q.x, q.y)).length;
-    Game.S.camp.unlocked = savedUn;
+    for (const f of [1, 2, 3]) {
+      World.arrive(f); const R = World.RECTS, rm = (x, y) => T.roomAt[y] && T.roomAt[y][x], ex = Layout.FLOORS[f - 1].elev;
+      out.have += need.filter((k) => R[k]).length; out.doors += T.doors.length;
+      for (const d of T.doors) { const a = d.v ? [rm(d.x - 1, d.y), rm(d.x + 1, d.y)] : [rm(d.x, d.y - 1), rm(d.x, d.y + 1)]; if (!a[0] || !a[1] || a[0] === a[1]) { if (!(a.includes(undefined) && d.rooms.includes('pad'))) out.nodesOk = false, out.bad.push('puerta@' + d.x + ',' + d.y); } }
+      const px = World.player.x, py = World.player.y; out.elev.push([f, !!R['elc' + f]]);
+      for (const k of need) if (R[k]) { const r = World.route(k); if (!r) out.unreachable.push(k + '@' + f); }
+      for (const c of Layout.FLOORS[f - 1].CONSOLES) { const p = World.consolePos(c[0]); if (!p || !T.findPath(px, py, p[0], p[1])) out.consoles.push(c[0]); }
+    }
+    World.arrive(2); out.samples = T.samples.filter((q) => !T.findPath(67.5, 81.5, q.x, q.y)).length;
+    Game.S.camp.unlocked = savedUn; World.arrive(1);
     return out;
   });
-  ok('Existen las 13 instalaciones en el mapa', inst.have === 13, JSON.stringify(inst));
-  ok('Cada puerta une dos salas distintas (paredes y puertas coherentes)', inst.nodesOk && !inst.bad.length && inst.doors >= 28, JSON.stringify(inst.bad.slice(0, 5)) + inst.doors);
+  ok('Existen las 13 instalaciones repartidas en los tres pisos, cada piso con su elevador', inst.have === 13 && inst.elev.every((e) => e[1]), JSON.stringify(inst));
+  ok('Cada puerta une dos salas distintas (paredes y puertas coherentes)', inst.nodesOk && !inst.bad.length && inst.doors >= 22, JSON.stringify(inst.bad.slice(0, 5)) + inst.doors);
   ok('Todas las consolas y las muestras exteriores son alcanzables por la cuadrícula real', inst.consoles.length === 0 && inst.samples === 0, JSON.stringify([inst.consoles, inst.samples]));
-  ok('Las 13 instalaciones son alcanzables desde el puente por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
+  ok('Dentro de cada piso, todas sus salas son alcanzables desde el elevador por rutas reales', inst.unreachable.length === 0, JSON.stringify(inst.unreachable));
   // ---- Instalaciones nuevas: almacén, cocina, muestras, taller, residuos ----
   const fac = await pg.evaluate(() => {
     const mk = () => Sim.create({ seed: 11, noEv: true, mode: 'adv', skipCamp: true, scen: 'moon' });
@@ -416,12 +420,14 @@ async function landThrough(pg) {
   await closeAll(pg); await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
   // ---- Rediseño del mapa: silueta, exterior planetario, puertas, zoom, efectos y rendimiento ----
   const rd = await pg.evaluate(async () => {
-    const T = World._test, out = {}, R = World.RECTS;
-    // salas no rectangulares: su número de celdas es menor que el de su caja delimitadora
-    out.shaped = Object.keys(R).filter((k) => !/^t\d/.test(k)).filter((k) => { let n = 0; const b = R[k]; for (let y = b[1]; y <= b[3]; y++) for (let x = b[0]; x <= b[2]; x++) if (T.roomAt[y][x] === k) n++; return n < (b[2] - b[0] + 1) * (b[3] - b[1] + 1) * 0.985; }).length;
-    out.sizes = new Set(Object.keys(R).filter((k) => !/^t\d/.test(k)).map((k) => (R[k][2] - R[k][0] + 1) + 'x' + (R[k][3] - R[k][1] + 1))).size;
-    out.vdoor = T.doors.filter((d) => d.v).length; out.hdoor = T.doors.filter((d) => !d.v).length;
-    out.tubes = Object.keys(R).filter((k) => /^t\d/.test(k)).length;
+    const T = World._test, out = { shaped: 0, vdoor: 0, hdoor: 0, tubes: 0 }, sz = new Set();
+    for (const f of [1, 2, 3]) {
+      World.setFloor(f); const R = World.RECTS;
+      out.shaped += Object.keys(R).filter((k) => !/^t\d/.test(k)).filter((k) => { let n = 0; const b = R[k]; for (let y = b[1]; y <= b[3]; y++) for (let x = b[0]; x <= b[2]; x++) if (T.roomAt[y][x] === k) n++; return n < (b[2] - b[0] + 1) * (b[3] - b[1] + 1) * 0.985; }).length;
+      Object.keys(R).filter((k) => !/^t\d/.test(k)).forEach((k) => sz.add((R[k][2] - R[k][0] + 1) + 'x' + (R[k][3] - R[k][1] + 1)));
+      out.vdoor += T.doors.filter((d) => d.v).length; out.hdoor += T.doors.filter((d) => !d.v).length; out.tubes += Object.keys(R).filter((k) => /^t\d/.test(k)).length;
+    }
+    out.sizes = sz.size; World.setFloor(2); // el resto usa el exterior (planta baja)
     // exterior: el terreno bordea la base por todos los lados y sus rutas son navegables
     const props = T.props, sc = T.scenery;
     out.kindsMoon = [...new Set(props.map((p) => p.k))].sort().join(',');
@@ -432,14 +438,15 @@ async function landThrough(pg) {
     if (cont) { World.player.x = cont.x - 0.8; World.player.y = cont.y + cont.h / 2; const x0 = World.player.x; for (let i = 0; i < 40; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); blockedOk = World.player.x < cont.x - 0.25 && World.player.x >= x0; }
     out.blockedOk = blockedOk;
     // puertas verticales: se abren y dejan pasar
+    World.setFloor(1);
     const vd = T.doors.find((d) => d.v && d.kind === 'auto' && d.rooms.every((r) => !['gh', 'lab', 'food', 'kitchen', 'samples', 'workshop', 'waste', 'rad'].includes(r)));
     let vpass = false;
     if (vd) { Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 }; World.player.x = vd.x - 1.3; World.player.y = vd.y + 1; for (let i = 0; i < 60; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); vpass = World.player.x > vd.x + 1.2; }
-    out.vpass = vpass;
+    out.vpass = vpass; World.arrive(1);
     return out;
   });
   ok('Las salas tienen formas y tamaños distintos (no son rectángulos iguales)', rd.shaped >= 9 && rd.sizes >= 9, JSON.stringify([rd.shaped, rd.sizes]));
-  ok('Módulos unidos por túneles presurizados y puertas horizontales y verticales', rd.tubes >= 6 && rd.vdoor >= 8 && rd.hdoor >= 8, JSON.stringify([rd.tubes, rd.vdoor, rd.hdoor]));
+  ok('Módulos unidos por túneles presurizados y puertas horizontales y verticales', rd.tubes >= 3 && rd.vdoor >= 6 && rd.hdoor >= 6, JSON.stringify([rd.tubes, rd.vdoor, rd.hdoor]));
   ok('Exterior: paneles, antenas, contenedores, vehículos, plataforma y rocas', ['antenna', 'container', 'pad', 'solar', 'vehicle', 'rock'].every((k) => rd.kindsMoon.includes(k)), rd.kindsMoon);
   ok('Las rutas de exploración y la plataforma son navegables desde la esclusa', rd.tracksOk && rd.lockToPad, JSON.stringify([rd.badTracks, rd.lockToPad]));
   ok('Los objetos exteriores sólidos bloquean el paso', rd.blockedOk);

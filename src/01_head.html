@@ -158,6 +158,13 @@ select{background:var(--surface-2);border:2px solid var(--border-input);border-r
 #xcard .small{font-size:12px;margin:2px 0}
 
 
+/* ===== Teletransporte de pisos ===== */
+#telefx{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(160,220,255,.9),rgba(20,30,70,.96));animation:telefade .95s ease-in-out forwards;pointer-events:none}
+.telering{font-size:96px;animation:telespin .95s linear}
+@keyframes telefade{0%{opacity:0}40%{opacity:1}60%{opacity:1}100%{opacity:0}}
+@keyframes telespin{from{transform:rotate(0) scale(.4)}to{transform:rotate(540deg) scale(1.4)}}
+@media (prefers-reduced-motion:reduce){.telering{animation:none}}
+.rm .telering{animation:none}
 /* ===== Llegada y aterrizaje ===== */
 #landw{position:fixed;inset:0;z-index:30;background:#02040c}
 #landcv{position:absolute;inset:0;width:100%;height:100%;display:block}
