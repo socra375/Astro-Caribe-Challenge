@@ -80,7 +80,7 @@ const DATA = (function () {
     bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
     reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Soporte vital', en: 'Life support' },
     rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
-    hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
+    hall: { es: 'Atrio central', en: 'Central atrium' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
     commander: { es: 'Comandante Vega', en: 'Commander Vega', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },

@@ -16,6 +16,9 @@ const World = (function () {
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false, zoomMul = 1, fitAll = false;
   const isTube = (r) => /^t\d/.test(r || '');
+  let fxVeh = null, steamT = 0;
+  /** Llegada de un vehículo: un rover regresa por la ruta del este hasta la plataforma. */
+  function vehicleArrival() { const tr0 = scenery && scenery.tracks[2]; if (tr0) fxVeh = { t: 0, path: tr0.slice().reverse() }; }
 
   /* ---------- Construcción: formas → cuadrícula ---------- */
   function build() {
@@ -34,12 +37,13 @@ const World = (function () {
     }
     // Puertas: se buscan en la frontera real entre dos salas (nunca sobre una esquina curva)
     const inRoom = (x, y, r) => y >= 0 && y < H && x >= 0 && x < W && (r === 'pad' ? grid[y][x] === OUT : roomAt[y][x] === r);
-    for (const [a, b, pref, kind] of Layout.LINKS) {
+    for (const [a, b, px, py, kind] of Layout.LINKS) {
+      const pref = [px, py];
       let best = null, bs = 1e9;
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
         if (grid[y][x] !== WALL) continue;
-        if (grid[y][x + 1] === WALL && ((inRoom(x, y - 1, a) && inRoom(x + 1, y - 1, a) && inRoom(x, y + 1, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x, y - 1, b) && inRoom(x + 1, y - 1, b) && inRoom(x, y + 1, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.abs(x - pref); if (sc < bs) { bs = sc; best = { x, y, w: 2, h: 1, v: false }; } }
-        if (grid[y + 1][x] === WALL && ((inRoom(x - 1, y, a) && inRoom(x - 1, y + 1, a) && inRoom(x + 1, y, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x - 1, y, b) && inRoom(x - 1, y + 1, b) && inRoom(x + 1, y, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.abs(y - pref); if (sc < bs) { bs = sc; best = { x, y, w: 1, h: 2, v: true }; } }
+        if (grid[y][x + 1] === WALL && ((inRoom(x, y - 1, a) && inRoom(x + 1, y - 1, a) && inRoom(x, y + 1, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x, y - 1, b) && inRoom(x + 1, y - 1, b) && inRoom(x, y + 1, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.hypot(x - pref[0], y - pref[1]); if (sc < bs) { bs = sc; best = { x, y, w: 2, h: 1, v: false }; } }
+        if (grid[y + 1][x] === WALL && ((inRoom(x - 1, y, a) && inRoom(x - 1, y + 1, a) && inRoom(x + 1, y, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x - 1, y, b) && inRoom(x - 1, y + 1, b) && inRoom(x + 1, y, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.hypot(x - pref[0], y - pref[1]); if (sc < bs) { bs = sc; best = { x, y, w: 1, h: 2, v: true }; } }
       }
       if (!best) throw new Error('puerta sin posición: ' + a + '-' + b);
       for (let yy = best.y; yy < best.y + best.h; yy++) for (let xx = best.x; xx < best.x + best.w; xx++) { grid[yy][xx] = DOOR; roomAt[yy][xx] = null; }
@@ -53,7 +57,7 @@ const World = (function () {
     // Refugio contra la radiación: muros blindados con una entrada
     const S0 = SHELTER;
     for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
-    for (let y = S0[1]; y <= S0[3]; y++) { if (y !== 59 && y !== 60) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
+    for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
     samples = Layout.SAMPLES_OUT[scen].map((p) => ({ x: p[0], y: p[1], taken: false }));
     // Terreno exterior
     scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
@@ -200,7 +204,7 @@ const World = (function () {
     const rm = !reduced;
     if (rm && S) {
       const wc = Layout.ROOMS.water.s[0];
-      if (Math.random() < dt * 6) spawnP(70 + Math.random() * 3, 20 + Math.random(), '#7fe6ff', 'bub');
+      if (Math.random() < dt * 6) spawnP(Layout.OX + 70 + Math.random() * 3, Layout.OY + 20 + Math.random(), '#7fe6ff', 'bub');
       for (const inc of S.inc) if (!inc.res && inc.fix && Math.random() < dt * 5) { const sp2 = spot(inc.room, 0); spawnP(sp2[0] + (Math.random() - 0.5) * 3, sp2[1] - 1 + Math.random(), '#ffd36b', 'spark'); }
       if (S.mods && S.mods.spe > 0 && Math.random() < dt * 20) spawnP(player.x + (Math.random() - 0.5) * 20, player.y - 8, '#ffef9a', 'ray');
     }
@@ -218,6 +222,7 @@ const World = (function () {
     if (k === 'bub') { p.vy = -0.6; p.life = 1.6; }
     if (k === 'spark') { p.vx = (Math.random() - 0.5) * 3; p.vy = -1 - Math.random() * 2; p.life = 0.5; }
     if (k === 'ray') { p.vx = 0.8; p.vy = 14; p.life = 1.2; }
+    if (k === 'steam') { p.vy = -0.5; p.vx = (Math.random() - 0.5) * 0.4; p.life = 1.6; }
     parts.push(p);
   }
   function updateBot(b, dt, S) {
@@ -225,7 +230,7 @@ const World = (function () {
     if (!S) return;
     const c = S.crew.find((x) => x.role === b.role);
     let goal = null;
-    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? [70.5, 59.5] : [73.5, 62.5]; b.task = 'shelter'; }
+    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]; b.task = 'shelter'; }
     else if (b.role === 'engineer') {
       const inc = S.inc.find((i) => !i.res && i.fix && S.t >= i.from);
       if (inc && !locked(inc.room)) { goal = spot(inc.room, 0); b.task = 'repair'; } else b.task = 'wander';
@@ -378,6 +383,15 @@ const World = (function () {
         ctx.fillStyle = lockC; ctx.fillRect(x + 4, y + half - 3, TS - 8, 3); ctx.fillRect(x + 4, y + 2 * TS - half, TS - 8, 3);
       }
     }
+    // Estado de eventos
+    const incA = (ty) => !!S && S.inc.some((i) => !i.res && i.type === ty && S.t >= i.from);
+    const stormD = incA('dust_storm'), stormR = incA('solar_storm'), pDrop = incA('power_drop');
+    const dim = S ? Math.max(pDrop ? 0.3 : 0, S.d && S.d.power < 0.12 ? 0.4 : 0) : 0;
+    if (dim > 0) { // interrupción eléctrica: la base se oscurece y parpadea; las consolas siguen encendidas
+      const fl = rm ? 1 : 0.8 + 0.2 * Math.sin(t * 17) * Math.sin(t * 5.3);
+      ctx.fillStyle = 'rgba(4,6,16,' + (dim * fl + 0.28) + ')'; ctx.fillRect(cam.x, cam.y, vw, vh);
+      ctx.fillStyle = 'rgba(255,60,40,' + (rm ? 0.08 : 0.04 + 0.05 * Math.abs(Math.sin(t * 3))) + ')'; for (const d of doors) ctx.fillRect(d.x * TS - 4, d.y * TS - 4, d.w * TS + 8, d.h * TS + 8);
+    }
     // Jardineras: luz LED, riego, sensor de humedad, etiquetas e indicadores (las plantas se dibujan como entidades)
     const plantEnts = [];
     if (S) for (const f of furn) if (f.kind === 'planter') {
@@ -414,6 +428,37 @@ const World = (function () {
       ctx.fillRect(x + 7, y + 7, TS - 14, TS - 16);
       Icons.draw(ctx, Icons.byEmoji(cn.icon) || 'gear', x + TS / 2, y - 8, 15, alert ? '#ff9a9a' : '#bfe9ff');
     }
+    // Efectos ambientales (baratos): ventiladores, turbinas, pantallas, baterías, balizas y farolas
+    const inV = (x, y, w, h) => x * TS + w * TS > cam.x && x * TS < cam.x + vw && y * TS + h * TS > cam.y && y * TS < cam.y + vh;
+    for (const f of furn) {
+      if (!inV(f.x, f.y, f.w, f.h)) continue;
+      const x = f.x * TS, y = f.y * TS, w = f.w * TS, h = f.h * TS;
+      if (f.kind === 'vent') { ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * 5 + f.x); ctx.strokeStyle = 'rgba(210,220,240,.55)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.min(w, h) * 0.38, 0); ctx.stroke(); } ctx.restore(); }
+      if (f.kind === 'turbine') { const pw = S && S.pw && S.pw.rea != null ? Math.max(0.15, S.pw.rea) : 0.6; ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * (2 + 6 * pw) + f.x); ctx.strokeStyle = 'rgba(255,214,150,.75)'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(w / 2 - 6, 0); ctx.stroke(); } ctx.restore(); }
+      if (f.kind === 'holo') { const g = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w * 0.75); g.addColorStop(0, 'rgba(79,170,255,' + (rm ? 0.22 : 0.16 + 0.1 * Math.sin(t * 2)) + ')'); g.addColorStop(1, 'rgba(79,170,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - w / 2, y - h / 2, w * 2, h * 2); }
+      if (f.kind === 'battery' && S) { const lv = clampN(S.d.power || 0, 0, 1); for (let k = 0; k < 3; k++) { ctx.fillStyle = lv > (k + 0.5) / 3 ? '#8fe36b' : 'rgba(255,255,255,.12)'; ctx.fillRect(x + 6, y + 6 + k * 7, w - 12, 5); } }
+      if (f.kind === 'reactor' && S) { const lv = (S.pw && S.pw.rea) || 0.5; const rg = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w / 2); rg.addColorStop(0, 'rgba(255,200,120,' + (0.10 + 0.16 * lv + (rm ? 0 : 0.06 * Math.sin(t * 3))) + ')'); rg.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w / 2, 0, 7); ctx.fill(); }
+    }
+    if (!rm && S) { steamT += 1 / 60; if (steamT > 0.25) { steamT = 0; for (const f of furn) if (f.kind === 'turbine' && inV(f.x, f.y, f.w, f.h)) spawnP(f.x + f.w / 2 + (Math.random() - 0.5), f.y + 0.3, 'rgba(255,255,255,.5)', 'steam'); } }
+    if (scenery) {
+      for (const p of props) if (p.k === 'antenna' && inV(p.x, p.y, p.w, p.h)) { const cx = (p.x + p.w / 2) * TS, cy = (p.y + p.h / 2) * TS, ph = (rm ? 0 : t * 2 + p.dish) % 3; ctx.fillStyle = (rm || Math.sin(t * 4 + p.dish) > 0) ? '#ff5a5a' : '#661a1a'; ctx.beginPath(); ctx.arc(cx + 2, cy - 36, 4, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 - ph / 6) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + 2, cy - 36, 8 + ph * 14, -1.2, 0.3); ctx.stroke(); }
+      for (const l of scenery.lamps) if (Math.abs(l[0] * TS - (cam.x + vw / 2)) < vw && Math.abs(l[1] * TS - (cam.y + vh / 2)) < vh) { const a = rm ? 0.5 : 0.35 + 0.15 * Math.sin(t * 3 + l[0]); ctx.fillStyle = 'rgba(255,230,160,' + a + ')'; ctx.beginPath(); ctx.arc(l[0] * TS, l[1] * TS - 6, 9, 0, 7); ctx.fill(); }
+    }
+    // Esclusa: luz giratoria de advertencia mientras cicla
+    if (airlock.st.startsWith('cycle')) { const lx = LOCK.x * TS, ly = (LOCK.inY + 3.3) * TS, a = 0.5 + 0.5 * Math.sin(t * 8); const g = ctx.createRadialGradient(lx, ly, 2, lx, ly, 90); g.addColorStop(0, 'rgba(255,170,40,' + (0.55 * a) + ')'); g.addColorStop(1, 'rgba(255,170,40,0)'); ctx.fillStyle = g; ctx.fillRect(lx - 90, ly - 90, 180, 180); }
+    // Incidente radiológico: el refugio late en ámbar con el trébol de radiación
+    if (stormR) { const sx = SHELTER[0] * TS, sy = SHELTER[1] * TS, sw = (SHELTER[2] - SHELTER[0] + 1) * TS, sh = (SHELTER[3] - SHELTER[1] + 1) * TS, a = rm ? 0.5 : 0.35 + 0.3 * Math.abs(Math.sin(t * 3)); ctx.strokeStyle = 'rgba(255,194,74,' + a + ')'; ctx.lineWidth = 8; ctx.strokeRect(sx, sy, sw, sh); ctx.fillStyle = 'rgba(255,194,74,' + a * 0.15 + ')'; ctx.fillRect(sx, sy, sw, sh); Icons.draw(ctx, 'shield', sx + sw / 2, sy + sh / 2, 42, 'rgba(255,214,120,' + a + ')'); }
+    // Llegada de un vehículo por la ruta de exploración
+    if (fxVeh) {
+      fxVeh.t += 1 / 60; const pth = fxVeh.path, u = Math.min(1, fxVeh.t / 9); let tot = 0; const seg = []; for (let i = 1; i < pth.length; i++) { const l = Math.hypot(pth[i][0] - pth[i - 1][0], pth[i][1] - pth[i - 1][1]); seg.push(l); tot += l; }
+      let dist = u * tot, i = 0; while (i < seg.length - 1 && dist > seg[i]) { dist -= seg[i]; i++; }
+      const a = pth[i], b = pth[i + 1] || a, k = seg[i] ? dist / seg[i] : 0, vx = (a[0] + (b[0] - a[0]) * k) * TS, vy = (a[1] + (b[1] - a[1]) * k) * TS, ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      ctx.save(); ctx.translate(vx, vy); ctx.rotate(ang);
+      ctx.fillStyle = 'rgba(255,240,180,.25)'; ctx.beginPath(); ctx.moveTo(26, -9); ctx.lineTo(120, -34); ctx.lineTo(120, 34); ctx.lineTo(26, 9); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1c1f27'; ctx.fillRect(-26, -22, 52, 8); ctx.fillRect(-26, 14, 52, 8); ctx.fillStyle = '#e8ebf2'; rr(ctx, -28, -16, 56, 32, 9); ctx.fill(); ctx.fillStyle = '#26345e'; ctx.fillRect(10, -11, 12, 22); ctx.fillStyle = '#ff9a3d'; ctx.fillRect(-24, -4, 14, 8); ctx.restore();
+      if (!rm && Math.random() < 0.6) spawnP(vx / TS - Math.cos(ang) * 1.2, vy / TS + 0.5, scen === 'mars' ? 'rgba(216,150,98,.5)' : 'rgba(190,190,200,.45)', 'steam');
+      if (fxVeh.t > 11) fxVeh = null;
+    }
     // Rover fuera
     // Muestras
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -430,7 +475,7 @@ const World = (function () {
       Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillStyle = '#ffc24a'; ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4);
     }
     // Partículas
-    for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
+    for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : p.k === 'steam' ? 4 + p.t * 7 : 2, 0, 7); ctx.fill(); } }
     ctx.globalAlpha = 1;
     // Esclusa: estado
     if (airlock.st.startsWith('cycle')) { ctx.fillStyle = 'rgba(255,194,74,.9)'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText((airlock.st === 'cycle_out' ? (LANG === 'es' ? 'Despresurizando… ' : 'Depressurizing… ') : (LANG === 'es' ? 'Presurizando… ' : 'Pressurizing… ')) + Math.ceil(3 - airlock.t) + ' s', LOCK.x * TS, (LOCK.inY + 1.8) * TS); }
@@ -444,6 +489,12 @@ const World = (function () {
       ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
       if (o.crit) { ctx.fillStyle = 'rgba(255,40,40,' + (rm ? 0.08 : 0.06 + 0.06 * Math.sin(t * 4)) + ')'; ctx.fillRect(0, 0, cw, ch); }
     }
+    // Marte: viento y polvo permanentes, y tormenta de polvo como acontecimiento; motas de polvo en suspensión
+    if (S && (stormD || scen === 'mars')) {
+      const k = stormD ? 1 : 0.16; ctx.fillStyle = 'rgba(205,125,70,' + (0.2 * k + (stormD && !rm ? 0.06 * Math.sin(t * 1.3) : 0)) + ')'; ctx.fillRect(0, 0, cw, ch);
+      if (!rm) { ctx.strokeStyle = 'rgba(240,190,140,' + 0.35 * k + ')'; ctx.lineWidth = 2 * dpr; for (let i = 0; i < (stormD ? 70 : 12); i++) { const sx = ((i * 173.7 + t * (stormD ? 900 : 150)) % (cw + 200)) - 100, sy = (i * 97.3 + Math.sin(t + i) * 30) % ch; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - (stormD ? 60 : 20) * dpr, sy + 6 * dpr); ctx.stroke(); } }
+    }
+    if (!rm && S) { ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 26; i++) ctx.fillRect(((i * 131 + t * 6 * (1 + (i % 3))) % cw), ((i * 89 + t * 3) % ch), 1.6 * dpr, 1.6 * dpr); }
     // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
     const tgt = marker ? marker.p : o.target;
     if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
@@ -508,7 +559,7 @@ const World = (function () {
   function zoom(f) { zoomMul = clampN(zoomMul * f, 0.45, 2.4); fitAll = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; },
+  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return samples; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();

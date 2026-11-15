@@ -267,7 +267,7 @@ const DATA = (function () {
     bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
     reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, water: { es: 'Soporte vital', en: 'Life support' },
     rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
-    hall: { es: 'Pasillo', en: 'Corridor' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
+    hall: { es: 'Atrio central', en: 'Central atrium' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
     commander: { es: 'Comandante Vega', en: 'Commander Vega', b: { es: 'Coordina misiones y decisiones.', en: 'Coordinates missions and decisions.' } },
@@ -2046,7 +2046,7 @@ const Sim = (function () {
       case 'rover': {
         const n = Math.max(0, Math.round(fin(res.samples, 0)));
         addSamples(S, n, 'rover'); S.r.mat.v += fin(res.regolith, 0);
-        sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++;
+        sy.rover.h = clamp(sy.rover.h - fin(res.damage, 0), 10, 100); sy.rover.batt = clamp(fin(res.batt, 50), 0, 100); sy.rover.runs++; log(S, 'ok', 'rover.back', { n });
         const m7 = S.m[7];
         if (m7.st === 'active' && ok && n >= m7.data.target) finishMission(S, 7, res.score > 0.75 ? 3 : 2);
         sy.rover.hint = false;
@@ -3040,7 +3040,8 @@ const Flora = (function () {
    Unidades: baldosas de 32 px.
    ===================================================================== */
 const Layout = (function () {
-  const W = 112, H = 82;
+  const OX = 12, OY = 10; // margen de terreno alrededor de la base
+  const W = 136, H = 100;
   const R = (x0, y0, x1, y1) => ({ t: 'r', x0, y0, x1, y1 });
   const RR = (x0, y0, x1, y1, r) => ({ t: 'rr', x0, y0, x1, y1, r });
   const CH = (x0, y0, x1, y1, c, k) => ({ t: 'ch', x0, y0, x1, y1, c, k: k || 'tl,tr,bl,br' });
@@ -3091,13 +3092,8 @@ const Layout = (function () {
   };
   const ROOMCOL = { bridge: '#4f7dff', hall: '#8aa0d8', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff', kitchen: '#ff8f6b', med: '#5fd3e8', food: '#c8d44a', samples: '#4fe0c9', waste: '#8fbf6a', workshop: '#b8b8c4', lock: '#ffc24a' };
 
-  // Puertas: [sala A, sala B, posición preferida (x o y a lo largo del borde), tipo]
-  const LINKS = [
-    ['bridge', 'hall', 55], ['bridge', 'water', 18], ['hall', 'life', 28], ['hall', 'food', 28], ['hall', 'kitchen', 49], ['hall', 'kitchen', 62],
-    ['life', 'med', 46], ['kitchen', 'med', 49], ['med', 'food', 47], ['water', 'food', 73], ['life', 'samples', 48], ['lab', 'samples', 50], ['workshop', 'waste', 50], ['rad', 'life', 37], ['rad', 'med', 56], ['rad', 'food', 73],
-    ['gh', 't1', 30], ['t1', 'life', 30], ['gh', 't2', 12], ['t2', 'lab', 12], ['water', 't3', 19], ['t3', 'reactor', 19], ['reactor', 't4', 89], ['t4', 'workshop', 89],
-    ['reactor', 't5', 101], ['t5', 'waste', 101], ['rad', 't6', 53], ['t6', 'workshop', 53], ['rad', 'lock', 55, 'inner'], ['lock', 'pad', 55, 'outer']
-  ];
+  // Puertas: [sala A, sala B, x, y de la puerta, tipo]. World comprueba que la posición es una frontera real entre ambas salas.
+  const LINKS = [['bridge', 'hall', 55, 25], ['bridge', 'water', 66, 18], ['hall', 'life', 43, 28], ['hall', 'food', 69, 28], ['hall', 'kitchen', 49, 31], ['hall', 'kitchen', 62, 31], ['life', 'med', 43, 46], ['kitchen', 'med', 49, 44], ['med', 'food', 69, 47], ['water', 'food', 73, 24], ['life', 'samples', 33, 48], ['lab', 'samples', 23, 50], ['workshop', 'waste', 96, 50], ['rad', 'life', 37, 51], ['rad', 'med', 56, 51], ['rad', 'food', 73, 51], ['gh', 't1', 29, 30], ['t1', 'life', 33, 30], ['gh', 't2', 12, 41], ['t2', 'lab', 12, 44], ['water', 't3', 79, 19], ['t3', 'reactor', 83, 19], ['reactor', 't4', 89, 41], ['t4', 'workshop', 89, 44], ['reactor', 't5', 101, 41], ['t5', 'waste', 101, 44], ['rad', 't6', 79, 53], ['t6', 'workshop', 83, 53], ['rad', 'lock', 55, 67, 'inner'], ['lock', 'pad', 55, 70, 'outer']];
 
   const SHELTER = [64, 56, 76, 64];
   const LOCK = { x: 55.5, inY: 64.8, outY: 72.2 };
@@ -3120,7 +3116,7 @@ const Layout = (function () {
     // Almacén de alimentos
     ['shelf', 75, 27, 3, 2], ['shelf', 75, 31, 3, 2], ['shelf', 71, 33, 3, 2], ['shelf', 71, 37, 3, 2], ['cold', 75, 36, 3, 3], ['crate', 72, 42, 2, 2], ['crate', 75, 42, 2, 2],
     // Invernadero
-    ['tank', 23, 33, 2, 2], ['tank', 6, 33, 2, 2], ['seedrack', 21, 22, 6, 2], ['seedrack', 21, 26, 6, 2], ['bin', 8, 36, 2, 2], ['pipe', 6, 22, 14, 1], ['pipe', 6, 28, 14, 1], ['vent', 14, 35, 2, 2], ['vent', 10, 31, 2, 2],
+    ['tank', 23, 33, 2, 2], ['tank', 6, 33, 2, 2], ['seedrack', 21, 22, 6, 2], ['seedrack', 21, 26, 6, 2], ['bin', 8, 36, 2, 2], ['pipe', 6, 22, 14, 1], ['pipe', 6, 28, 14, 1], ['seedrack', 10, 33, 6, 2], ['seedrack', 17, 33, 4, 2], ['vent', 15, 36, 2, 2], ['vent', 20, 37, 2, 2],
     // Laboratorio
     ['benchs', 8, 48, 6, 2], ['benchs', 15, 48, 6, 2], ['table', 8, 53, 4, 2], ['table', 15, 53, 4, 2], ['rack', 20, 53, 2, 2],
     // Almacén de muestras
@@ -3156,21 +3152,19 @@ const Layout = (function () {
   const SAMPLES_OUT = { moon: [[47.5, 75.5], [66.5, 77.5], [41.5, 79], [72.5, 73.5]], mars: [[45.5, 76.5], [69.5, 78.5], [38.5, 74], [74.5, 74.5]] };
   const REACTOR_C = [96, 27];
 
-  /** Rutas de exploración (huellas del rover) y elementos del exterior. Determinista por escenario. */
+  /** Terreno exterior: rutas de exploración (huellas del rover), estructuras y geografía propia de cada escenario. Determinista. */
   function scenery(scen, isBase) {
     let seed = scen === 'mars' ? 90210 : 4242;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const mars = scen === 'mars';
+    const mars = scen === 'mars', X = (v) => v + OX, Y = (v) => v + OY;
     const props = [], boxes = [];
+    const T = (pts) => pts.map((p) => [X(p[0]), Y(p[1])]);
     const tracks = [
-      [[55.5, 71], [55.5, 74], [56, 78]],
-      [[55.5, 74], [34, 76], [16, 72], [8, 66]],
-      [[56, 78], [80, 78], [96, 72], [104, 66]],
-      [[55.5, 74], [48, 70], [30, 68], [22, 60]],
-      [[80, 78], [92, 62], [100, 70]],
-      [[56, 76], [58, 64.2]]
+      T([[55.5, 71], [55.5, 74], [56, 78]]), T([[55.5, 74], [34, 76], [16, 72], [8, 66], [2, 56]]), T([[56, 78], [80, 78], [96, 72], [104, 66], [118, 60]]),
+      T([[55.5, 74], [48, 70], [30, 68], [22, 60]]), T([[80, 78], [92, 62], [100, 70]]), T([[56, 76], [58, 64.2]]),
+      T([[96, 72], [112, 82], [124, 84]]), T([[34, 76], [30, 86], [40, 92]])
     ];
-    const padC = [56, 78], padR = 6.5;
+    const padC = [X(56), Y(78)], padR = 6.5;
     const near = (x, y, w, h, pad) => boxes.some((b) => x < b[2] + pad && x + w > b[0] - pad && y < b[3] + pad && y + h > b[1] - pad);
     const onTrack = (x, y, rad) => { for (const t of tracks) for (let i = 1; i < t.length; i++) { const a = t[i - 1], b = t[i], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1; let u = ((x - a[0]) * dx + (y - a[1]) * dy) / l2; u = Math.max(0, Math.min(1, u)); if (Math.hypot(x - (a[0] + u * dx), y - (a[1] + u * dy)) < rad) return true; } return false; };
     const baseNear = (x, y, w, h, m) => { for (let yy = Math.floor(y) - m; yy <= y + h + m; yy++) for (let xx = Math.floor(x) - m; xx <= x + w + m; xx++) if (isBase(xx, yy)) return true; return false; };
@@ -3186,42 +3180,49 @@ const Layout = (function () {
       }
       return false;
     };
-    // Estructuras fijas (iguales en ambos escenarios, con la misma lógica de base)
     put('pad', padC[0] - padR, padC[1] - padR, padR * 2, padR * 2, false);
-    // Paneles solares: campos estratégicos
-    const arrays = mars ? [[88, 2, 108, 11], [3, 60, 22, 70], [84, 60, 106, 70]] : [[84, 2, 108, 10], [30, 2, 44, 9], [2, 2, 22, 9]];
-    for (const a of arrays) for (let x = a[0]; x + 3 <= a[2]; x += 4.5) for (let y = a[1]; y + 2.2 <= a[3]; y += 3.4) if (!baseNear(x, y, 3, 2, 2) && !onTrack(x + 1.5, y + 1, 2.5)) put('solar', x, y, 3, 2, true, { tilt: rnd() });
+    // Paneles solares en campos estratégicos (la Luna: junto al ecuador de la base, al norte y al este; Marte: campos grandes al este y al sur)
+    const arrays = mars ? [[96, 4, 128, 16], [76, 100 - OY - 8, 100, 92]] : [[84, -2, 116, 6], [24, -2, 46, 6], [2, -2, 22, 8], [112, 38, 126, 60]];
+    for (const a of arrays) for (let x = X(a[0]); x + 3 <= X(a[2]); x += 4.5) for (let y = Y(a[1]); y + 2.2 <= Y(a[3]); y += 3.4) if (y > 1.5 && x + 3 <= W - 2 && y + 2 <= H - 2 && !baseNear(x, y, 3, 2, 2) && !onTrack(x + 1.5, y + 1, 2.5)) put('solar', x, y, 3, 2, true, { tilt: rnd() });
     // Antenas de comunicaciones
-    (mars ? [[24, 5], [64, 5]] : [[50, 5], [64, 7], [12, 12]]).forEach((p) => { if (!baseNear(p[0], p[1], 2, 2, 1)) put('antenna', p[0], p[1], 2, 2, true, { dish: rnd() * 6 }); });
-    // Contenedores de suministro y módulos auxiliares
-    [[96, 63, 2, 1], [98, 63, 2, 1], [97, 64.5, 2, 1], [100, 66, 2, 1]].forEach((b, i) => put('container', b[0], b[1], b[2] + 0.5, b[3] + 0.5, true, { c: i }));
-    put('auxdome', 10, 62, 4, 4, true); put('auxtank', 16, 66, 3, 3, true); put('auxdome', mars ? 24 : 20, 72, 4, 4, true, { shelter: true });
-    put('tripod', 86, 71, 2, 2, true); put('tripod', 28, 62, 2, 2, true, { s: 1 });
-    // Vehículos aparcados
-    put('vehicle', 48, 74, 4, 3, true, { v: 0 }); put('vehicle', mars ? 66 : 64, 73, 4, 3, true, { v: 1 });
-    // Rocas y formaciones
-    const nBig = mars ? 26 : 18, nSmall = mars ? 70 : 90;
-    for (let i = 0; i < nBig; i++) place(mars ? 'mesa' : 'rock', mars ? 2.5 + rnd() * 2.5 : 1.6 + rnd() * 1.4, mars ? 2 + rnd() * 2 : 1.4 + rnd() * 1.2, true, 20, mars ? [0, 0, W, H] : [0, 0, W, H], { r: rnd() }, 1);
-    for (let i = 0; i < nSmall; i++) place('pebble', 0.6 + rnd() * 0.7, 0.5 + rnd() * 0.5, false, 8, [0, 0, W, H], { r: rnd() }, 0.2);
-    // Cráteres (la Luna: muchos y marcados; Marte: pocos y erosionados) y dunas (solo Marte)
+    (mars ? [[24, 3], [64, 4], [-6, 40]] : [[50, 3], [64, 5], [12, 8], [116, 20]]).forEach((q) => { if (!baseNear(X(q[0]), Y(q[1]), 2, 2, 1)) put('antenna', X(q[0]), Y(q[1]), 2, 2, true, { dish: rnd() * 6 }); });
+    // Contenedores de suministro, módulos auxiliares y equipos científicos
+    [[96, 63, 2, 1], [98, 63, 2, 1], [97, 64.5, 2, 1], [100, 66, 2, 1], [102, 63, 2, 1]].forEach((b, i) => put('container', X(b[0]), Y(b[1]), b[2] + 0.5, b[3] + 0.5, true, { c: i }));
+    put('auxdome', X(10), Y(62), 4, 4, true); put('auxtank', X(16), Y(66), 3, 3, true); put('auxdome', X(mars ? 24 : 20), Y(72), 4, 4, true, { shelter: true });
+    put('auxtank', X(104), Y(52), 3, 3, true); put('auxdome', X(114), Y(46), 4, 4, true);
+    put('tripod', X(86), Y(71), 2, 2, true); put('tripod', X(28), Y(62), 2, 2, true, { s: 1 }); put('tripod', X(110), Y(70), 2, 2, true, { s: 1 });
+    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 }); put('vehicle', X(mars ? 66 : 64), Y(73), 4, 3, true, { v: 1 });
+    // Geografía propia: la Luna con cráteres marcados y bloques sueltos; Marte con dunas, mesas y polvo
     const craters = [], dunes = [];
-    const nCr = mars ? 7 : 30;
-    for (let i = 0; i < nCr; i++) {
-      const r = mars ? 2 + rnd() * 3 : 1.2 + rnd() * (i < 8 ? 6.5 : 2.4), x = r + rnd() * (W - 2 * r), y = r + rnd() * (H - 2 * r);
-      if (baseNear(x - r, y - r, r * 2, r * 2, 2) || onTrack(x, y, r + 1.5) || Math.hypot(x - padC[0], y - padC[1]) < padR + r) continue;
-      craters.push({ x, y, r });
+    if (mars) {
+      [[118, 74, 18], [112, 4, 14], [8, 86, 14], [40, 84, 10], [-2, 20, 8]].forEach((q) => dunes.push({ x: q[0] + 6, y: q[1] + 4, w: q[2] + 4, a: rnd() * 0.5 - 0.25 }));
+      for (let i = 0, n = 0; i < 400 && n < 6; i++) { const k = { x: 8 + rnd() * (W - 16), y: 8 + rnd() * (H - 16), r: 2 + rnd() * 3 }; if (!baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) && !onTrack(k.x, k.y, k.r + 1.5)) { craters.push(k); n++; } }
+      [[4, 24], [128, 40], [120, 88], [4, 66]].forEach((q) => { for (let k = 0; k < 5; k++) place('mesa', 3 + rnd() * 3, 2.4 + rnd() * 2, true, 12, [q[0] - 6, q[1] - 7, q[0] + 8, q[1] + 8], { r: rnd() }, 0.3); });
+    } else {
+      [[22, 14, 9], [124, 24, 8], [112, 90, 11], [10, 84, 7], [70, 6, 6], [126, 66, 6], [92, 94, 5]].forEach((q) => craters.push({ x: q[0], y: q[1], r: q[2] }));
+      for (let i = 0, n = 0; i < 800 && n < 26; i++) { const k = { x: 4 + rnd() * (W - 8), y: 4 + rnd() * (H - 8), r: 1.2 + rnd() * 2.6 }; if (!baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) && !onTrack(k.x, k.y, k.r + 1.5) && Math.hypot(k.x - padC[0], k.y - padC[1]) > padR + k.r) { craters.push(k); n++; } }
     }
-    if (mars) for (let i = 0; i < 16; i++) {
-      const w = 6 + rnd() * 10, x = rnd() * (W - w), y = rnd() * (H - 4);
-      if (baseNear(x, y - 2, w, 6, 2)) continue;
-      dunes.push({ x, y, w, a: rnd() * 0.5 - 0.25 });
-    }
-    // Luces exteriores
-    const lamps = [[52, 70.5], [59.5, 70.5], [48, 77], [64, 77], [40, 54], [3, 44], [108, 44], [56, 11]];
-    return { props, tracks, craters, dunes, pad: { c: padC, r: padR }, lamps };
+    const nBig = mars ? 22 : 30, nSmall = mars ? 130 : 160;
+    for (let i = 0; i < nBig; i++) place(mars ? 'mesa' : 'rock', mars ? 2.5 + rnd() * 2.5 : 1.6 + rnd() * 1.6, mars ? 2 + rnd() * 2 : 1.4 + rnd() * 1.4, true, 20, [0, 0, W, H], { r: rnd() }, 1);
+    for (let i = 0; i < nSmall; i++) place('pebble', 0.6 + rnd() * 0.7, 0.5 + rnd() * 0.5, false, 8, [0, 0, W, H], { r: rnd() }, 0.2);
+    const okC = craters.filter((k) => !(baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) || onTrack(k.x, k.y, k.r + 1.5) || Math.hypot(k.x - padC[0], k.y - padC[1]) < padR + k.r));
+    const okD = dunes.filter((u) => !baseNear(u.x, u.y - 2, u.w, 6, 2));
+    const lamps = [[52, 70.5], [59.5, 70.5], [48, 77], [64, 77], [40, 54], [3, 44], [108, 44], [56, 11], [92, 62], [20, 70]].map((q) => [X(q[0]), Y(q[1])]);
+    return { props, tracks, craters: okC, dunes: okD, pad: { c: padC, r: padR }, lamps };
   }
 
-  return { W, H, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
+  // Desplazamiento de todo el diseño para dejar un margen de terreno alrededor de la base
+  for (const k in ROOMS) for (const sp of ROOMS[k].s) { sp.x0 += OX; sp.x1 += OX; sp.y0 += OY; sp.y1 += OY; }
+  for (const f of FURN) { f[1] += OX; f[2] += OY; }
+  for (const c of CONSOLES) { c[2] += OX; c[3] += OY; }
+  for (const q of PLANTERS) { q[0] += OX; q[1] += OY; }
+  for (const k in SPOTS) for (const q of SPOTS[k]) { q[0] += OX; q[1] += OY; }
+  for (const k in SAMPLES_OUT) for (const q of SAMPLES_OUT[k]) { q[0] += OX; q[1] += OY; }
+  for (const q of LINKS) { q[2] += OX; q[3] += OY; }
+  SHELTER[0] += OX; SHELTER[1] += OY; SHELTER[2] += OX; SHELTER[3] += OY;
+  LOCK.x += OX; LOCK.inY += OY; LOCK.outY += OY; START[0] += OX; START[1] += OY; REACTOR_C[0] += OX; REACTOR_C[1] += OY;
+
+  return { W, H, OX, OY, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
 })();
 
 /* =====================================================================
@@ -3324,13 +3325,13 @@ const Art = (function () {
     if (kind === 'grate' || kind === 'tube') { c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 2; for (let i = -(bb[3] - bb[1]); i < bb[2] - bb[0]; i += 9) { c.beginPath(); c.moveTo(bb[0] + i, bb[1]); c.lineTo(bb[0] + i + (bb[3] - bb[1]), bb[3]); c.stroke(); } }
     if (kind === 'checker') cell((px, py, x, y) => { if ((x + y) % 2) { c.fillStyle = 'rgba(255,230,200,.10)'; c.fillRect(px, py, TS, TS); } });
     if (kind === 'crates') { cell((px, py) => { c.strokeStyle = 'rgba(255,255,255,.05)'; c.strokeRect(px + .5, py + .5, TS - 1, TS - 1); }); c.strokeStyle = 'rgba(255,214,70,.45)'; c.lineWidth = 3; c.setLineDash([14, 10]); const mx = (bb[0] + bb[2]) / 2; c.beginPath(); c.moveTo(mx, bb[1] + TS); c.lineTo(mx, bb[3] - TS); c.stroke(); c.setLineDash([]); }
-    if (kind === 'soil') { cell((px, py, x, y) => { c.fillStyle = 'rgba(' + (((x * 13 + y * 7) % 3) ? '20,60,34' : '60,110,60') + ',.10)'; c.fillRect(px, py, TS, TS); }); for (let i = 0; i < 380; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(110,200,110,.25)' : 'rgba(30,80,40,.35)'; c.fillRect(bb[0] + rnd() * (bb[2] - bb[0]), bb[1] + rnd() * (bb[3] - bb[1]), 2, 3); } c.strokeStyle = 'rgba(200,180,120,.22)'; c.lineWidth = 12; for (const row of [18.5, 24.5, 30]) { c.beginPath(); c.moveTo(bb[0], row * TS + 54); c.lineTo(bb[2], row * TS + 54); c.stroke(); } }
+    if (kind === 'soil') { cell((px, py, x, y) => { c.fillStyle = 'rgba(' + (((x * 13 + y * 7) % 3) ? '20,60,34' : '60,110,60') + ',.10)'; c.fillRect(px, py, TS, TS); }); for (let i = 0; i < 380; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(110,200,110,.25)' : 'rgba(30,80,40,.35)'; c.fillRect(bb[0] + rnd() * (bb[2] - bb[0]), bb[1] + rnd() * (bb[3] - bb[1]), 2, 3); } c.strokeStyle = 'rgba(200,180,120,.22)'; c.lineWidth = 12; for (const row of [18.5, 24.5, 30]) { c.beginPath(); c.moveTo(bb[0], (row + 10) * TS + 54); c.lineTo(bb[2], (row + 10) * TS + 54); c.stroke(); } }
     if (kind === 'hex') { c.strokeStyle = 'rgba(180,170,255,.14)'; c.lineWidth = 1; const s = 14, hh = s * Math.sqrt(3); for (let y = bb[1]; y < bb[3] + hh; y += hh) for (let x = bb[0]; x < bb[2] + s * 3; x += s * 3) for (const o of [0, 1]) { const cx = x + (o ? s * 1.5 : 0), cy = y + (o ? hh / 2 : 0); c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c[i ? 'lineTo' : 'moveTo'](cx + s * Math.cos(a), cy + s * Math.sin(a)); } c.closePath(); c.stroke(); } }
     if (kind === 'hazard') { cell((px, py, x, y) => { c.strokeStyle = 'rgba(255,255,255,.06)'; c.strokeRect(px + 1.5, py + 1.5, TS - 3, TS - 3); }); }
     if (kind === 'bay') {
       cell((px, py, x, y) => { c.fillStyle = (x + y) % 2 ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.05)'; c.fillRect(px, py, TS, TS); });
-      c.strokeStyle = 'rgba(255,214,70,.55)'; c.lineWidth = 4; c.setLineDash([26, 16]); for (const yy of [53.6, 65.1]) { c.beginPath(); c.moveTo(35 * TS, yy * TS); c.lineTo(77 * TS, yy * TS); c.stroke(); } c.setLineDash([]);
-      c.strokeStyle = 'rgba(255,255,255,.30)'; c.lineWidth = 6; const lx = d.LOCK.x * TS; c.beginPath(); c.moveTo(lx, 57 * TS); c.lineTo(lx, 64 * TS); c.moveTo(lx - 22, 62.4 * TS); c.lineTo(lx, 64.2 * TS); c.lineTo(lx + 22, 62.4 * TS); c.stroke();
+      c.strokeStyle = 'rgba(255,214,70,.55)'; c.lineWidth = 4; c.setLineDash([26, 16]); for (const yy of [53.6 + 10, 65.1 + 10]) { c.beginPath(); c.moveTo((35 + 12) * TS, yy * TS); c.lineTo((77 + 12) * TS, yy * TS); c.stroke(); } c.setLineDash([]);
+      c.strokeStyle = 'rgba(255,255,255,.30)'; c.lineWidth = 6; const lx = d.LOCK.x * TS; c.beginPath(); c.moveTo(lx, 67 * TS); c.lineTo(lx, 74 * TS); c.moveTo(lx - 22, 72.4 * TS); c.lineTo(lx, 74.2 * TS); c.lineTo(lx + 22, 72.4 * TS); c.stroke();
     }
   }
 
@@ -3395,14 +3396,16 @@ const Art = (function () {
     const TS = d.TS, w = d.W * TS, h = d.H * TS, mars = d.scen === 'mars';
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
     const rnd = rngOf(mars ? 777 : 313), rk = Object.keys(d.rooms);
-    const sdx = mars ? 16 : 26, sdy = mars ? 20 : 34; // sombras: Luna, largas y marcadas; Marte, más suaves
+    const sdx = mars ? 22 : 36, sdy = mars ? 28 : 46; // sombras: Luna, largas y marcadas; Marte, más suaves
     terrain(c, d, rnd);
     // sombras de la base y de los elementos exteriores sobre el terreno
-    c.save(); try { c.filter = 'blur(' + (mars ? 7 : 3) + 'px)'; } catch (e) { /* sin filtro */ }
-    c.fillStyle = 'rgba(8,10,20,' + (mars ? 0.34 : 0.5) + ')';
-    for (const k of rk) { roomPath(c, d.rooms[k], TS * 1.0, TS); c.save(); c.translate(sdx, sdy); c.fill(); c.restore(); }
-    for (const p of d.props) if (p.solid) propShadow(c, d, p, sdx * 0.7, sdy * 0.7, mars ? 0.3 : 0.42);
-    c.restore();
+    { // sombras en un lienzo auxiliar de menor resolución (se escala suavizado: barato y sin filtros costosos)
+      const k = mars ? 0.3 : 0.55, sh = document.createElement('canvas'); sh.width = Math.ceil(w * k); sh.height = Math.ceil(h * k);
+      const sc2 = sh.getContext('2d'); sc2.scale(k, k); sc2.fillStyle = '#0a0c16';
+      for (const rk2 of rk) { roomPath(sc2, d.rooms[rk2], TS * 1.0, TS); sc2.save(); sc2.translate(sdx, sdy); sc2.fill(); sc2.restore(); }
+      for (const p of d.props) if (p.solid) { sc2.globalAlpha = 0.85; propShadow(sc2, d, p, sdx * 0.7, sdy * 0.7, 1); sc2.globalAlpha = 1; }
+      c.save(); c.globalAlpha = mars ? 0.42 : 0.62; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(sh, 0, 0, w, h); c.restore();
+    }
     // cimientos y casco exterior (silueta completa, sin techo: se ve el interior)
     for (const k of rk) { const def = d.rooms[k], G = GROUP[def.g]; roomPath(c, def, TS * 1.45, TS); c.fillStyle = G.found; c.fill(); c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 2; c.stroke(); }
     for (const k of rk) {
@@ -3482,6 +3485,9 @@ const World = (function () {
   const locked = (room) => !!(curS && curS.camp && MAIN[room] && !curS.camp.unlocked[room]);
   let bots = [], parts = [], cam = { x: 0, y: 0, z: 1 }, airlock = { st: 'in', t: 0 }, lastT = 0, reduced = false, zoomMul = 1, fitAll = false;
   const isTube = (r) => /^t\d/.test(r || '');
+  let fxVeh = null, steamT = 0;
+  /** Llegada de un vehículo: un rover regresa por la ruta del este hasta la plataforma. */
+  function vehicleArrival() { const tr0 = scenery && scenery.tracks[2]; if (tr0) fxVeh = { t: 0, path: tr0.slice().reverse() }; }
 
   /* ---------- Construcción: formas → cuadrícula ---------- */
   function build() {
@@ -3500,12 +3506,13 @@ const World = (function () {
     }
     // Puertas: se buscan en la frontera real entre dos salas (nunca sobre una esquina curva)
     const inRoom = (x, y, r) => y >= 0 && y < H && x >= 0 && x < W && (r === 'pad' ? grid[y][x] === OUT : roomAt[y][x] === r);
-    for (const [a, b, pref, kind] of Layout.LINKS) {
+    for (const [a, b, px, py, kind] of Layout.LINKS) {
+      const pref = [px, py];
       let best = null, bs = 1e9;
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
         if (grid[y][x] !== WALL) continue;
-        if (grid[y][x + 1] === WALL && ((inRoom(x, y - 1, a) && inRoom(x + 1, y - 1, a) && inRoom(x, y + 1, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x, y - 1, b) && inRoom(x + 1, y - 1, b) && inRoom(x, y + 1, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.abs(x - pref); if (sc < bs) { bs = sc; best = { x, y, w: 2, h: 1, v: false }; } }
-        if (grid[y + 1][x] === WALL && ((inRoom(x - 1, y, a) && inRoom(x - 1, y + 1, a) && inRoom(x + 1, y, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x - 1, y, b) && inRoom(x - 1, y + 1, b) && inRoom(x + 1, y, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.abs(y - pref); if (sc < bs) { bs = sc; best = { x, y, w: 1, h: 2, v: true }; } }
+        if (grid[y][x + 1] === WALL && ((inRoom(x, y - 1, a) && inRoom(x + 1, y - 1, a) && inRoom(x, y + 1, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x, y - 1, b) && inRoom(x + 1, y - 1, b) && inRoom(x, y + 1, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.hypot(x - pref[0], y - pref[1]); if (sc < bs) { bs = sc; best = { x, y, w: 2, h: 1, v: false }; } }
+        if (grid[y + 1][x] === WALL && ((inRoom(x - 1, y, a) && inRoom(x - 1, y + 1, a) && inRoom(x + 1, y, b) && inRoom(x + 1, y + 1, b)) || (inRoom(x - 1, y, b) && inRoom(x - 1, y + 1, b) && inRoom(x + 1, y, a) && inRoom(x + 1, y + 1, a)))) { const sc = Math.hypot(x - pref[0], y - pref[1]); if (sc < bs) { bs = sc; best = { x, y, w: 1, h: 2, v: true }; } }
       }
       if (!best) throw new Error('puerta sin posición: ' + a + '-' + b);
       for (let yy = best.y; yy < best.y + best.h; yy++) for (let xx = best.x; xx < best.x + best.w; xx++) { grid[yy][xx] = DOOR; roomAt[yy][xx] = null; }
@@ -3519,7 +3526,7 @@ const World = (function () {
     // Refugio contra la radiación: muros blindados con una entrada
     const S0 = SHELTER;
     for (let x = S0[0] - 1; x <= S0[2] + 1; x++) { F(x, S0[1] - 1, 1, 1, 'shieldwall'); F(x, S0[3] + 1, 1, 1, 'shieldwall'); }
-    for (let y = S0[1]; y <= S0[3]; y++) { if (y !== 59 && y !== 60) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
+    for (let y = S0[1]; y <= S0[3]; y++) { if (y !== S0[1] + 3 && y !== S0[1] + 4) F(S0[0] - 1, y, 1, 1, 'shieldwall'); F(S0[2] + 1, y, 1, 1, 'shieldwall'); }
     samples = Layout.SAMPLES_OUT[scen].map((p) => ({ x: p[0], y: p[1], taken: false }));
     // Terreno exterior
     scenery = Layout.scenery(scen, (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid[y][x] !== OUT);
@@ -3666,7 +3673,7 @@ const World = (function () {
     const rm = !reduced;
     if (rm && S) {
       const wc = Layout.ROOMS.water.s[0];
-      if (Math.random() < dt * 6) spawnP(70 + Math.random() * 3, 20 + Math.random(), '#7fe6ff', 'bub');
+      if (Math.random() < dt * 6) spawnP(Layout.OX + 70 + Math.random() * 3, Layout.OY + 20 + Math.random(), '#7fe6ff', 'bub');
       for (const inc of S.inc) if (!inc.res && inc.fix && Math.random() < dt * 5) { const sp2 = spot(inc.room, 0); spawnP(sp2[0] + (Math.random() - 0.5) * 3, sp2[1] - 1 + Math.random(), '#ffd36b', 'spark'); }
       if (S.mods && S.mods.spe > 0 && Math.random() < dt * 20) spawnP(player.x + (Math.random() - 0.5) * 20, player.y - 8, '#ffef9a', 'ray');
     }
@@ -3684,6 +3691,7 @@ const World = (function () {
     if (k === 'bub') { p.vy = -0.6; p.life = 1.6; }
     if (k === 'spark') { p.vx = (Math.random() - 0.5) * 3; p.vy = -1 - Math.random() * 2; p.life = 0.5; }
     if (k === 'ray') { p.vx = 0.8; p.vy = 14; p.life = 1.2; }
+    if (k === 'steam') { p.vy = -0.5; p.vx = (Math.random() - 0.5) * 0.4; p.life = 1.6; }
     parts.push(p);
   }
   function updateBot(b, dt, S) {
@@ -3691,7 +3699,7 @@ const World = (function () {
     if (!S) return;
     const c = S.crew.find((x) => x.role === b.role);
     let goal = null;
-    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? [70.5, 59.5] : [73.5, 62.5]; b.task = 'shelter'; }
+    if (c && c.zone === 'shelter' && !locked('rad')) { goal = b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]; b.task = 'shelter'; }
     else if (b.role === 'engineer') {
       const inc = S.inc.find((i) => !i.res && i.fix && S.t >= i.from);
       if (inc && !locked(inc.room)) { goal = spot(inc.room, 0); b.task = 'repair'; } else b.task = 'wander';
@@ -3844,6 +3852,15 @@ const World = (function () {
         ctx.fillStyle = lockC; ctx.fillRect(x + 4, y + half - 3, TS - 8, 3); ctx.fillRect(x + 4, y + 2 * TS - half, TS - 8, 3);
       }
     }
+    // Estado de eventos
+    const incA = (ty) => !!S && S.inc.some((i) => !i.res && i.type === ty && S.t >= i.from);
+    const stormD = incA('dust_storm'), stormR = incA('solar_storm'), pDrop = incA('power_drop');
+    const dim = S ? Math.max(pDrop ? 0.3 : 0, S.d && S.d.power < 0.12 ? 0.4 : 0) : 0;
+    if (dim > 0) { // interrupción eléctrica: la base se oscurece y parpadea; las consolas siguen encendidas
+      const fl = rm ? 1 : 0.8 + 0.2 * Math.sin(t * 17) * Math.sin(t * 5.3);
+      ctx.fillStyle = 'rgba(4,6,16,' + (dim * fl + 0.28) + ')'; ctx.fillRect(cam.x, cam.y, vw, vh);
+      ctx.fillStyle = 'rgba(255,60,40,' + (rm ? 0.08 : 0.04 + 0.05 * Math.abs(Math.sin(t * 3))) + ')'; for (const d of doors) ctx.fillRect(d.x * TS - 4, d.y * TS - 4, d.w * TS + 8, d.h * TS + 8);
+    }
     // Jardineras: luz LED, riego, sensor de humedad, etiquetas e indicadores (las plantas se dibujan como entidades)
     const plantEnts = [];
     if (S) for (const f of furn) if (f.kind === 'planter') {
@@ -3880,6 +3897,37 @@ const World = (function () {
       ctx.fillRect(x + 7, y + 7, TS - 14, TS - 16);
       Icons.draw(ctx, Icons.byEmoji(cn.icon) || 'gear', x + TS / 2, y - 8, 15, alert ? '#ff9a9a' : '#bfe9ff');
     }
+    // Efectos ambientales (baratos): ventiladores, turbinas, pantallas, baterías, balizas y farolas
+    const inV = (x, y, w, h) => x * TS + w * TS > cam.x && x * TS < cam.x + vw && y * TS + h * TS > cam.y && y * TS < cam.y + vh;
+    for (const f of furn) {
+      if (!inV(f.x, f.y, f.w, f.h)) continue;
+      const x = f.x * TS, y = f.y * TS, w = f.w * TS, h = f.h * TS;
+      if (f.kind === 'vent') { ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * 5 + f.x); ctx.strokeStyle = 'rgba(210,220,240,.55)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.min(w, h) * 0.38, 0); ctx.stroke(); } ctx.restore(); }
+      if (f.kind === 'turbine') { const pw = S && S.pw && S.pw.rea != null ? Math.max(0.15, S.pw.rea) : 0.6; ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rm ? 0 : t * (2 + 6 * pw) + f.x); ctx.strokeStyle = 'rgba(255,214,150,.75)'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(w / 2 - 6, 0); ctx.stroke(); } ctx.restore(); }
+      if (f.kind === 'holo') { const g = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w * 0.75); g.addColorStop(0, 'rgba(79,170,255,' + (rm ? 0.22 : 0.16 + 0.1 * Math.sin(t * 2)) + ')'); g.addColorStop(1, 'rgba(79,170,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - w / 2, y - h / 2, w * 2, h * 2); }
+      if (f.kind === 'battery' && S) { const lv = clampN(S.d.power || 0, 0, 1); for (let k = 0; k < 3; k++) { ctx.fillStyle = lv > (k + 0.5) / 3 ? '#8fe36b' : 'rgba(255,255,255,.12)'; ctx.fillRect(x + 6, y + 6 + k * 7, w - 12, 5); } }
+      if (f.kind === 'reactor' && S) { const lv = (S.pw && S.pw.rea) || 0.5; const rg = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w / 2); rg.addColorStop(0, 'rgba(255,200,120,' + (0.10 + 0.16 * lv + (rm ? 0 : 0.06 * Math.sin(t * 3))) + ')'); rg.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w / 2, 0, 7); ctx.fill(); }
+    }
+    if (!rm && S) { steamT += 1 / 60; if (steamT > 0.25) { steamT = 0; for (const f of furn) if (f.kind === 'turbine' && inV(f.x, f.y, f.w, f.h)) spawnP(f.x + f.w / 2 + (Math.random() - 0.5), f.y + 0.3, 'rgba(255,255,255,.5)', 'steam'); } }
+    if (scenery) {
+      for (const p of props) if (p.k === 'antenna' && inV(p.x, p.y, p.w, p.h)) { const cx = (p.x + p.w / 2) * TS, cy = (p.y + p.h / 2) * TS, ph = (rm ? 0 : t * 2 + p.dish) % 3; ctx.fillStyle = (rm || Math.sin(t * 4 + p.dish) > 0) ? '#ff5a5a' : '#661a1a'; ctx.beginPath(); ctx.arc(cx + 2, cy - 36, 4, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 - ph / 6) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + 2, cy - 36, 8 + ph * 14, -1.2, 0.3); ctx.stroke(); }
+      for (const l of scenery.lamps) if (Math.abs(l[0] * TS - (cam.x + vw / 2)) < vw && Math.abs(l[1] * TS - (cam.y + vh / 2)) < vh) { const a = rm ? 0.5 : 0.35 + 0.15 * Math.sin(t * 3 + l[0]); ctx.fillStyle = 'rgba(255,230,160,' + a + ')'; ctx.beginPath(); ctx.arc(l[0] * TS, l[1] * TS - 6, 9, 0, 7); ctx.fill(); }
+    }
+    // Esclusa: luz giratoria de advertencia mientras cicla
+    if (airlock.st.startsWith('cycle')) { const lx = LOCK.x * TS, ly = (LOCK.inY + 3.3) * TS, a = 0.5 + 0.5 * Math.sin(t * 8); const g = ctx.createRadialGradient(lx, ly, 2, lx, ly, 90); g.addColorStop(0, 'rgba(255,170,40,' + (0.55 * a) + ')'); g.addColorStop(1, 'rgba(255,170,40,0)'); ctx.fillStyle = g; ctx.fillRect(lx - 90, ly - 90, 180, 180); }
+    // Incidente radiológico: el refugio late en ámbar con el trébol de radiación
+    if (stormR) { const sx = SHELTER[0] * TS, sy = SHELTER[1] * TS, sw = (SHELTER[2] - SHELTER[0] + 1) * TS, sh = (SHELTER[3] - SHELTER[1] + 1) * TS, a = rm ? 0.5 : 0.35 + 0.3 * Math.abs(Math.sin(t * 3)); ctx.strokeStyle = 'rgba(255,194,74,' + a + ')'; ctx.lineWidth = 8; ctx.strokeRect(sx, sy, sw, sh); ctx.fillStyle = 'rgba(255,194,74,' + a * 0.15 + ')'; ctx.fillRect(sx, sy, sw, sh); Icons.draw(ctx, 'shield', sx + sw / 2, sy + sh / 2, 42, 'rgba(255,214,120,' + a + ')'); }
+    // Llegada de un vehículo por la ruta de exploración
+    if (fxVeh) {
+      fxVeh.t += 1 / 60; const pth = fxVeh.path, u = Math.min(1, fxVeh.t / 9); let tot = 0; const seg = []; for (let i = 1; i < pth.length; i++) { const l = Math.hypot(pth[i][0] - pth[i - 1][0], pth[i][1] - pth[i - 1][1]); seg.push(l); tot += l; }
+      let dist = u * tot, i = 0; while (i < seg.length - 1 && dist > seg[i]) { dist -= seg[i]; i++; }
+      const a = pth[i], b = pth[i + 1] || a, k = seg[i] ? dist / seg[i] : 0, vx = (a[0] + (b[0] - a[0]) * k) * TS, vy = (a[1] + (b[1] - a[1]) * k) * TS, ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      ctx.save(); ctx.translate(vx, vy); ctx.rotate(ang);
+      ctx.fillStyle = 'rgba(255,240,180,.25)'; ctx.beginPath(); ctx.moveTo(26, -9); ctx.lineTo(120, -34); ctx.lineTo(120, 34); ctx.lineTo(26, 9); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1c1f27'; ctx.fillRect(-26, -22, 52, 8); ctx.fillRect(-26, 14, 52, 8); ctx.fillStyle = '#e8ebf2'; rr(ctx, -28, -16, 56, 32, 9); ctx.fill(); ctx.fillStyle = '#26345e'; ctx.fillRect(10, -11, 12, 22); ctx.fillStyle = '#ff9a3d'; ctx.fillRect(-24, -4, 14, 8); ctx.restore();
+      if (!rm && Math.random() < 0.6) spawnP(vx / TS - Math.cos(ang) * 1.2, vy / TS + 0.5, scen === 'mars' ? 'rgba(216,150,98,.5)' : 'rgba(190,190,200,.45)', 'steam');
+      if (fxVeh.t > 11) fxVeh = null;
+    }
     // Rover fuera
     // Muestras
     for (const s of samples) if (!s.taken) { const x = s.x * TS, y = s.y * TS; ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffe1a8'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -3896,7 +3944,7 @@ const World = (function () {
       Icons.draw(ctx, 'lock', cx, cy - 26, 26, '#ffc24a'); ctx.fillStyle = '#ffc24a'; ctx.fillText(tr(DATA.ROOMS[k]), cx, cy + 4);
     }
     // Partículas
-    for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : 2, 0, 7); ctx.fill(); } }
+    for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; if (p.k === 'ray') ctx.fillRect(p.x * TS, p.y * TS, 2, 10); else { ctx.beginPath(); ctx.arc(p.x * TS, p.y * TS, p.k === 'bub' ? 3 : p.k === 'steam' ? 4 + p.t * 7 : 2, 0, 7); ctx.fill(); } }
     ctx.globalAlpha = 1;
     // Esclusa: estado
     if (airlock.st.startsWith('cycle')) { ctx.fillStyle = 'rgba(255,194,74,.9)'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText((airlock.st === 'cycle_out' ? (LANG === 'es' ? 'Despresurizando… ' : 'Depressurizing… ') : (LANG === 'es' ? 'Presurizando… ' : 'Pressurizing… ')) + Math.ceil(3 - airlock.t) + ' s', LOCK.x * TS, (LOCK.inY + 1.8) * TS); }
@@ -3910,6 +3958,12 @@ const World = (function () {
       ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
       if (o.crit) { ctx.fillStyle = 'rgba(255,40,40,' + (rm ? 0.08 : 0.06 + 0.06 * Math.sin(t * 4)) + ')'; ctx.fillRect(0, 0, cw, ch); }
     }
+    // Marte: viento y polvo permanentes, y tormenta de polvo como acontecimiento; motas de polvo en suspensión
+    if (S && (stormD || scen === 'mars')) {
+      const k = stormD ? 1 : 0.16; ctx.fillStyle = 'rgba(205,125,70,' + (0.2 * k + (stormD && !rm ? 0.06 * Math.sin(t * 1.3) : 0)) + ')'; ctx.fillRect(0, 0, cw, ch);
+      if (!rm) { ctx.strokeStyle = 'rgba(240,190,140,' + 0.35 * k + ')'; ctx.lineWidth = 2 * dpr; for (let i = 0; i < (stormD ? 70 : 12); i++) { const sx = ((i * 173.7 + t * (stormD ? 900 : 150)) % (cw + 200)) - 100, sy = (i * 97.3 + Math.sin(t + i) * 30) % ch; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - (stormD ? 60 : 20) * dpr, sy + 6 * dpr); ctx.stroke(); } }
+    }
+    if (!rm && S) { ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 26; i++) ctx.fillRect(((i * 131 + t * 6 * (1 + (i % 3))) % cw), ((i * 89 + t * 3) % ch), 1.6 * dpr, 1.6 * dpr); }
     // Flecha guía hacia el objetivo (el marcador de una llamada tiene prioridad)
     const tgt = marker ? marker.p : o.target;
     if (marker) { const mx = (marker.p[0] * TS - cam.x) * zoom, my = (marker.p[1] * TS - cam.y) * zoom; ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(mx, my, (16 + (rm ? 0 : 6 * Math.sin(t * 5))) * dpr, 0, 7); ctx.stroke(); }
@@ -3974,7 +4028,7 @@ const World = (function () {
   function zoom(f) { zoomMul = clampN(zoomMul * f, 0.45, 2.4); fitAll = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; },
+  return { route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
     _test: { blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return samples; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
@@ -5287,6 +5341,7 @@ const Game = (function () {
       return true;
     }
     if (k === 'camp.basic') { call({ key: 'campbasic', sev: 'info', who: 'commander', title: es ? 'Familiarización terminada' : 'Familiarization complete', desc: es ? 'Ya conoces las siete secciones. Las misiones avanzadas están disponibles en la consola de mando.' : 'You know all seven sections. Advanced missions are available at the command console.', target: World.consolePos('cmd'), console: 'cmd' }); return true; }
+    if (k === 'rover.back') { World.vehicleArrival(); call({ key: 'rv' + e.n, sev: 'info', who: 'scientist', title: es ? 'El rover ha vuelto' : 'The rover is back', desc: (es ? 'Trae ' : 'It brought ') + p.n + (es ? ' muestras. Llévalas al almacén de muestras.' : ' samples. Take them to the sample storage.'), loc: tr(DATA.ROOMS.samples), target: World.roomCenter('samples') }); return true; }
     if (k === 'camp.exp') { const g = ND.GUIDE[p.room] || 'commander'; call({ key: 'cx' + p.id, sev: 'info', who: g, title: (es ? '¡Misión completada! ' : 'Mission complete! ') + tr(ND.CAMP[p.id].t), desc: p.room ? (es ? 'Se ha abierto: ' : 'Now open: ') + tr(DATA.ROOMS[p.room]) + '. ' + (es ? 'Ve a conocerla: te espero allí.' : 'Go and see it: I will meet you there.') : (es ? 'Las trece instalaciones ya están abiertas.' : 'All thirteen facilities are now open.'), loc: p.room ? tr(DATA.ROOMS[p.room]) : '', target: p.room ? World.roomCenter(p.room) : null }); World.setAct('all', 'celebrate', 3); return true; }
     if (k === 'camp.exp.start') { const C = ND.CAMP[p.id]; call({ key: 'csx' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva ampliación: ' : 'New expansion: ') + tr(C.t), desc: tr(C.b) }); return true; }
     if (k === 'camp.start') { const C = ND.CAMP[p.id]; call({ key: 'cs' + p.id, sev: 'info', who: 'commander', title: (es ? 'Nueva misión: ' : 'New mission: ') + tr(C.t), desc: tr(C.b) }); return true; }

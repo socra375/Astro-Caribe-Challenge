@@ -99,13 +99,13 @@ const Art = (function () {
     if (kind === 'grate' || kind === 'tube') { c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 2; for (let i = -(bb[3] - bb[1]); i < bb[2] - bb[0]; i += 9) { c.beginPath(); c.moveTo(bb[0] + i, bb[1]); c.lineTo(bb[0] + i + (bb[3] - bb[1]), bb[3]); c.stroke(); } }
     if (kind === 'checker') cell((px, py, x, y) => { if ((x + y) % 2) { c.fillStyle = 'rgba(255,230,200,.10)'; c.fillRect(px, py, TS, TS); } });
     if (kind === 'crates') { cell((px, py) => { c.strokeStyle = 'rgba(255,255,255,.05)'; c.strokeRect(px + .5, py + .5, TS - 1, TS - 1); }); c.strokeStyle = 'rgba(255,214,70,.45)'; c.lineWidth = 3; c.setLineDash([14, 10]); const mx = (bb[0] + bb[2]) / 2; c.beginPath(); c.moveTo(mx, bb[1] + TS); c.lineTo(mx, bb[3] - TS); c.stroke(); c.setLineDash([]); }
-    if (kind === 'soil') { cell((px, py, x, y) => { c.fillStyle = 'rgba(' + (((x * 13 + y * 7) % 3) ? '20,60,34' : '60,110,60') + ',.10)'; c.fillRect(px, py, TS, TS); }); for (let i = 0; i < 380; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(110,200,110,.25)' : 'rgba(30,80,40,.35)'; c.fillRect(bb[0] + rnd() * (bb[2] - bb[0]), bb[1] + rnd() * (bb[3] - bb[1]), 2, 3); } c.strokeStyle = 'rgba(200,180,120,.22)'; c.lineWidth = 12; for (const row of [18.5, 24.5, 30]) { c.beginPath(); c.moveTo(bb[0], row * TS + 54); c.lineTo(bb[2], row * TS + 54); c.stroke(); } }
+    if (kind === 'soil') { cell((px, py, x, y) => { c.fillStyle = 'rgba(' + (((x * 13 + y * 7) % 3) ? '20,60,34' : '60,110,60') + ',.10)'; c.fillRect(px, py, TS, TS); }); for (let i = 0; i < 380; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(110,200,110,.25)' : 'rgba(30,80,40,.35)'; c.fillRect(bb[0] + rnd() * (bb[2] - bb[0]), bb[1] + rnd() * (bb[3] - bb[1]), 2, 3); } c.strokeStyle = 'rgba(200,180,120,.22)'; c.lineWidth = 12; for (const row of [18.5, 24.5, 30]) { c.beginPath(); c.moveTo(bb[0], (row + 10) * TS + 54); c.lineTo(bb[2], (row + 10) * TS + 54); c.stroke(); } }
     if (kind === 'hex') { c.strokeStyle = 'rgba(180,170,255,.14)'; c.lineWidth = 1; const s = 14, hh = s * Math.sqrt(3); for (let y = bb[1]; y < bb[3] + hh; y += hh) for (let x = bb[0]; x < bb[2] + s * 3; x += s * 3) for (const o of [0, 1]) { const cx = x + (o ? s * 1.5 : 0), cy = y + (o ? hh / 2 : 0); c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c[i ? 'lineTo' : 'moveTo'](cx + s * Math.cos(a), cy + s * Math.sin(a)); } c.closePath(); c.stroke(); } }
     if (kind === 'hazard') { cell((px, py, x, y) => { c.strokeStyle = 'rgba(255,255,255,.06)'; c.strokeRect(px + 1.5, py + 1.5, TS - 3, TS - 3); }); }
     if (kind === 'bay') {
       cell((px, py, x, y) => { c.fillStyle = (x + y) % 2 ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.05)'; c.fillRect(px, py, TS, TS); });
-      c.strokeStyle = 'rgba(255,214,70,.55)'; c.lineWidth = 4; c.setLineDash([26, 16]); for (const yy of [53.6, 65.1]) { c.beginPath(); c.moveTo(35 * TS, yy * TS); c.lineTo(77 * TS, yy * TS); c.stroke(); } c.setLineDash([]);
-      c.strokeStyle = 'rgba(255,255,255,.30)'; c.lineWidth = 6; const lx = d.LOCK.x * TS; c.beginPath(); c.moveTo(lx, 57 * TS); c.lineTo(lx, 64 * TS); c.moveTo(lx - 22, 62.4 * TS); c.lineTo(lx, 64.2 * TS); c.lineTo(lx + 22, 62.4 * TS); c.stroke();
+      c.strokeStyle = 'rgba(255,214,70,.55)'; c.lineWidth = 4; c.setLineDash([26, 16]); for (const yy of [53.6 + 10, 65.1 + 10]) { c.beginPath(); c.moveTo((35 + 12) * TS, yy * TS); c.lineTo((77 + 12) * TS, yy * TS); c.stroke(); } c.setLineDash([]);
+      c.strokeStyle = 'rgba(255,255,255,.30)'; c.lineWidth = 6; const lx = d.LOCK.x * TS; c.beginPath(); c.moveTo(lx, 67 * TS); c.lineTo(lx, 74 * TS); c.moveTo(lx - 22, 72.4 * TS); c.lineTo(lx, 74.2 * TS); c.lineTo(lx + 22, 72.4 * TS); c.stroke();
     }
   }
 
@@ -170,14 +170,16 @@ const Art = (function () {
     const TS = d.TS, w = d.W * TS, h = d.H * TS, mars = d.scen === 'mars';
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
     const rnd = rngOf(mars ? 777 : 313), rk = Object.keys(d.rooms);
-    const sdx = mars ? 16 : 26, sdy = mars ? 20 : 34; // sombras: Luna, largas y marcadas; Marte, más suaves
+    const sdx = mars ? 22 : 36, sdy = mars ? 28 : 46; // sombras: Luna, largas y marcadas; Marte, más suaves
     terrain(c, d, rnd);
     // sombras de la base y de los elementos exteriores sobre el terreno
-    c.save(); try { c.filter = 'blur(' + (mars ? 7 : 3) + 'px)'; } catch (e) { /* sin filtro */ }
-    c.fillStyle = 'rgba(8,10,20,' + (mars ? 0.34 : 0.5) + ')';
-    for (const k of rk) { roomPath(c, d.rooms[k], TS * 1.0, TS); c.save(); c.translate(sdx, sdy); c.fill(); c.restore(); }
-    for (const p of d.props) if (p.solid) propShadow(c, d, p, sdx * 0.7, sdy * 0.7, mars ? 0.3 : 0.42);
-    c.restore();
+    { // sombras en un lienzo auxiliar de menor resolución (se escala suavizado: barato y sin filtros costosos)
+      const k = mars ? 0.3 : 0.55, sh = document.createElement('canvas'); sh.width = Math.ceil(w * k); sh.height = Math.ceil(h * k);
+      const sc2 = sh.getContext('2d'); sc2.scale(k, k); sc2.fillStyle = '#0a0c16';
+      for (const rk2 of rk) { roomPath(sc2, d.rooms[rk2], TS * 1.0, TS); sc2.save(); sc2.translate(sdx, sdy); sc2.fill(); sc2.restore(); }
+      for (const p of d.props) if (p.solid) { sc2.globalAlpha = 0.85; propShadow(sc2, d, p, sdx * 0.7, sdy * 0.7, 1); sc2.globalAlpha = 1; }
+      c.save(); c.globalAlpha = mars ? 0.42 : 0.62; c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(sh, 0, 0, w, h); c.restore();
+    }
     // cimientos y casco exterior (silueta completa, sin techo: se ve el interior)
     for (const k of rk) { const def = d.rooms[k], G = GROUP[def.g]; roomPath(c, def, TS * 1.45, TS); c.fillStyle = G.found; c.fill(); c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 2; c.stroke(); }
     for (const k of rk) {

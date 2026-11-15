@@ -40,15 +40,15 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   // Colisión con pared: ir hacia arriba mucho tiempo no debe atravesar y < 2 (pared en y=1)
   await page.keyboard.down('w'); await page.waitForTimeout(2500); await page.keyboard.up('w');
   const p2 = await page.evaluate(() => [World.player.x, World.player.y]);
-  ok('Colisión con paredes/objetos', p2[1] >= 12.9 && p2[1] < p0[1], JSON.stringify(p2));
+  ok('Colisión con paredes/objetos', p2[1] >= 22.9 && p2[1] < p0[1], JSON.stringify(p2));
   // Puerta: teletransportar cerca de la puerta del puente y bajar
-  await page.evaluate(() => { World.player.x = 56; World.player.y = 23.4; });
+  await page.evaluate(() => { World.player.x = 68; World.player.y = 33.4; });
   await page.keyboard.down('s'); await page.waitForTimeout(1200); await page.keyboard.up('s');
   const p3 = await page.evaluate(() => [World.player.y, World.roomName(World.player.x, World.player.y), World._test.doors[0].open]);
-  ok('Puerta automática se abre y deja pasar al atrio', p3[0] > 26.3 && p3[1] === 'hall', JSON.stringify(p3));
+  ok('Puerta automática se abre y deja pasar al atrio', p3[0] > 36.3 && p3[1] === 'hall', JSON.stringify(p3));
   if (shots) await page.screenshot({ path: shots + '/02_game.png' });
   // Interacción: consola de mando
-  await page.evaluate(() => { World.player.x = 50.5; World.player.y = 17.4; });
+  await page.evaluate(() => { World.player.x = 62.5; World.player.y = 27.4; });
   await page.waitForTimeout(400);
   ok('Indicador de interacción', await page.locator('#prompt').isVisible(), await page.locator('#actBtn').textContent());
   await page.keyboard.press('e');
@@ -187,10 +187,10 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await skipTalk();
   const un0 = await pg.evaluate(() => Object.keys(Game.S.camp.unlocked).sort().join(','));
   ok('Al empezar están abiertos puente, dormitorios, enfermería, reactor y soporte vital', un0 === 'bridge,life,med,reactor,water', un0);
-  await pg.evaluate(() => { World.player.x = 31.5; World.player.y = 30.6; });
+  await pg.evaluate(() => { World.player.x = 43.5; World.player.y = 40.6; });
   await pg.keyboard.down('a'); await pg.waitForTimeout(1100); await pg.keyboard.up('a');
   const yb = await pg.evaluate(() => World.player.x);
-  ok('La puerta de una sección bloqueada no deja pasar', yb > 29.4, yb.toFixed(2));
+  ok('La puerta de una sección bloqueada no deja pasar', yb > 41.4, yb.toFixed(2));
   ok('Se explica qué abre la sección bloqueada', /se abre al completar/.test(await pg.locator('#actBtn').textContent()));
   // Misión c1 con acciones reales
   await pg.evaluate(() => Game._debug.openConsole('cmd')); await pg.getByRole('tab', { name: /Recursos/ }).click(); await closeAll(pg);
@@ -302,11 +302,11 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
     const out = { have: need.filter((k) => R[k]).length, bad: [], nodesOk: true, unreachable: [], doors: T.doors.length };
     const rm = (x, y) => T.roomAt[y] && T.roomAt[y][x];
     for (const d of T.doors) { const a = d.v ? [rm(d.x - 1, d.y), rm(d.x + 1, d.y)] : [rm(d.x, d.y - 1), rm(d.x, d.y + 1)]; if (!a[0] || !a[1] || a[0] === a[1]) out.nodesOk = false, out.bad.push('puerta@' + d.x + ',' + d.y); }
-    World.player.x = 56; World.player.y = 21.5;
+    World.player.x = 68; World.player.y = 31.5;
     const savedUn = Game.S.camp.unlocked; Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 };
     for (const k of need) { const r = World.route(k); if (!r) out.unreachable.push(k); }
-    out.consoles = Layout.CONSOLES.filter((c) => { const p = World.consolePos(c[0]); return !p || !T.findPath(56, 21.5, p[0], p[1]); }).map((c) => c[0]);
-    out.samples = T.samples.filter((q) => !T.findPath(55.5, 71.5, q.x, q.y)).length;
+    out.consoles = Layout.CONSOLES.filter((c) => { const p = World.consolePos(c[0]); return !p || !T.findPath(68, 31.5, p[0], p[1]); }).map((c) => c[0]);
+    out.samples = T.samples.filter((q) => !T.findPath(67.5, 81.5, q.x, q.y)).length;
     Game.S.camp.unlocked = savedUn;
     return out;
   });
@@ -399,6 +399,63 @@ const ok = (name, cond, extra) => { results.push([cond ? 'PASS' : 'FAIL', name, 
   await pg.evaluate(() => { World.setPlayerRole('medic'); Sim.setPlayerRole(Game.S, 'medic'); Game._debug.openConsole('med'); });
   ok('La médica ve una revisión detallada de la tripulación que el comandante no ve', medCmd === 0 && (await pg.getByText(/Revisión detallada de la médica/).isVisible()));
   await closeAll(pg); await pg.evaluate(() => { World.setPlayerRole('commander'); Sim.setPlayerRole(Game.S, 'commander'); });
+  // ---- Rediseño del mapa: silueta, exterior planetario, puertas, zoom, efectos y rendimiento ----
+  const rd = await pg.evaluate(async () => {
+    const T = World._test, out = {}, R = World.RECTS;
+    // salas no rectangulares: su número de celdas es menor que el de su caja delimitadora
+    out.shaped = Object.keys(R).filter((k) => !/^t\d/.test(k)).filter((k) => { let n = 0; const b = R[k]; for (let y = b[1]; y <= b[3]; y++) for (let x = b[0]; x <= b[2]; x++) if (T.roomAt[y][x] === k) n++; return n < (b[2] - b[0] + 1) * (b[3] - b[1] + 1) * 0.985; }).length;
+    out.sizes = new Set(Object.keys(R).filter((k) => !/^t\d/.test(k)).map((k) => (R[k][2] - R[k][0] + 1) + 'x' + (R[k][3] - R[k][1] + 1))).size;
+    out.vdoor = T.doors.filter((d) => d.v).length; out.hdoor = T.doors.filter((d) => !d.v).length;
+    out.tubes = Object.keys(R).filter((k) => /^t\d/.test(k)).length;
+    // exterior: el terreno bordea la base por todos los lados y sus rutas son navegables
+    const props = T.props, sc = T.scenery;
+    out.kindsMoon = [...new Set(props.map((p) => p.k))].sort().join(',');
+    out.badTracks = []; sc.tracks.forEach((t, ti) => t.slice(1).forEach((q, i) => { const a1 = T.standAt(t[i][0], t[i][1]), b1 = T.standAt(q[0], q[1]); if (!T.findPath(a1[0], a1[1], b1[0], b1[1])) out.badTracks.push(ti + ':' + i); })); out.tracksOk = out.badTracks.length === 0;
+    out.lockToPad = !!T.findPath(Layout.LOCK.x, Layout.LOCK.outY + 0.5, sc.pad.c[0], sc.pad.c[1]);
+    // un objeto exterior sólido bloquea el paso
+    const cont = props.find((p) => p.k === 'container'); let blockedOk = false;
+    if (cont) { World.player.x = cont.x - 0.8; World.player.y = cont.y + cont.h / 2; const x0 = World.player.x; for (let i = 0; i < 40; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); blockedOk = World.player.x < cont.x - 0.25 && World.player.x >= x0; }
+    out.blockedOk = blockedOk;
+    // puertas verticales: se abren y dejan pasar
+    const vd = T.doors.find((d) => d.v && d.kind === 'auto' && d.rooms.every((r) => !['gh', 'lab', 'food', 'kitchen', 'samples', 'workshop', 'waste', 'rad'].includes(r)));
+    let vpass = false;
+    if (vd) { Game.S.camp.unlocked = { bridge: 1, life: 1, med: 1, reactor: 1, water: 1, gh: 1, lab: 1, rad: 1, food: 1, kitchen: 1, samples: 1, workshop: 1, waste: 1 }; World.player.x = vd.x - 1.3; World.player.y = vd.y + 1; for (let i = 0; i < 60; i++) World.update(0.05, Game.S, { x: 1, y: 0 }); vpass = World.player.x > vd.x + 1.2; }
+    out.vpass = vpass;
+    return out;
+  });
+  ok('Las salas tienen formas y tamaños distintos (no son rectángulos iguales)', rd.shaped >= 9 && rd.sizes >= 9, JSON.stringify([rd.shaped, rd.sizes]));
+  ok('Módulos unidos por túneles presurizados y puertas horizontales y verticales', rd.tubes >= 6 && rd.vdoor >= 8 && rd.hdoor >= 8, JSON.stringify([rd.tubes, rd.vdoor, rd.hdoor]));
+  ok('Exterior: paneles, antenas, contenedores, vehículos, plataforma y rocas', ['antenna', 'container', 'pad', 'solar', 'vehicle', 'rock'].every((k) => rd.kindsMoon.includes(k)), rd.kindsMoon);
+  ok('Las rutas de exploración y la plataforma son navegables desde la esclusa', rd.tracksOk && rd.lockToPad, JSON.stringify([rd.badTracks, rd.lockToPad]));
+  ok('Los objetos exteriores sólidos bloquean el paso', rd.blockedOk);
+  ok('Una puerta vertical se abre y deja pasar', rd.vpass);
+  const geo = await pg.evaluate(() => {
+    const sig = (sc) => { World.init(sc); const T = World._test; return { kinds: [...new Set(T.props.map((p) => p.k))].sort().join(','), craters: T.scenery.craters.length, dunes: T.scenery.dunes.length, first: T.props.filter((p) => p.k === 'rock' || p.k === 'mesa').slice(0, 4).map((p) => p.x + ':' + p.y).join('|') }; };
+    const a = sig('moon'), b = sig('mars'); World.init(Game.S.scen); return { a, b };
+  });
+  ok('Luna y Marte tienen geografía distinta (cráteres y rocas / dunas y mesas), no solo otro color', geo.a.craters > geo.b.craters + 10 && geo.b.dunes >= 3 && geo.a.dunes === 0 && geo.b.kinds.includes('mesa') && !geo.a.kinds.includes('mesa') && geo.a.first !== geo.b.first, JSON.stringify(geo));
+  const zm = await pg.evaluate(async () => { const z0 = World.camZoom; return z0; });
+  await pg.keyboard.press('+'); await pg.waitForTimeout(250); const z1 = await pg.evaluate(() => World.camZoom);
+  await pg.keyboard.press('-'); await pg.keyboard.press('-'); await pg.waitForTimeout(250); const z2 = await pg.evaluate(() => World.camZoom);
+  ok('Zoom con + y −', z1 > zm * 1.1 && z2 < z1 * 0.8, JSON.stringify([zm, z1, z2]));
+  await pg.keyboard.press('z'); await pg.waitForTimeout(250); const f1 = await pg.evaluate(() => World.fit); const zf = await pg.evaluate(() => World.camZoom);
+  await pg.keyboard.press('z'); await pg.waitForTimeout(250); const f2 = await pg.evaluate(() => World.fit);
+  ok('La vista general (Z) muestra la base completa y se puede salir de ella', f1 === true && f2 === false && zf < z2, JSON.stringify([f1, f2, zf, z2]));
+  const fxr = await pg.evaluate(async () => {
+    const cv = document.querySelector('#game'), ctx = cv.getContext('2d'), S = Game.S, out = {};
+    const lum = () => { const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let s = 0; for (let i = 0; i < d.length; i += 64) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 64); };
+    const had = S.inc.slice(); S.inc = []; World.render(ctx, S, { dpr: 1 }); const a = lum();
+    S.inc = [{ id: 951, type: 'power_drop', sev: 'warn', room: 'reactor', sys: 'solar', from: 0, res: false, prog: 0, fix: false, dur: 40 }]; World.render(ctx, S, { dpr: 1 }); const b = lum();
+    S.inc = [{ id: 952, type: 'dust_storm', sev: 'warn', room: 'reactor', sys: 'solar', from: 0, res: false, prog: 0, fix: false, dur: 40 }]; World.render(ctx, S, { dpr: 1 }); const c2 = lum();
+    S.inc = [{ id: 953, type: 'solar_storm', sev: 'crit', room: 'rad', sys: 'shield', from: 0, res: false, prog: 0, fix: false, dur: 40 }]; World.render(ctx, S, { dpr: 1 }); const d2 = lum();
+    S.inc = had; World.vehicleArrival(); for (let i = 0; i < 90; i++) World.render(ctx, S, { dpr: 1 });
+    const t0 = performance.now(); for (let i = 0; i < 40; i++) World.render(ctx, S, { dpr: 1 }); out.frame = (performance.now() - t0) / 40;
+    World.init(S.scen); const t1 = performance.now(); World.render(ctx, S, { dpr: 1 }); out.build = performance.now() - t1;
+    out.l = [a, b, c2, d2]; return out;
+  });
+  ok('Un corte eléctrico oscurece la base y la tormenta de polvo cambia su aspecto', fxr.l[1] < fxr.l[0] * 0.92 && Math.abs(fxr.l[2] - fxr.l[0]) > 1, JSON.stringify(fxr.l));
+  ok('El incidente radiológico y la llegada de un vehículo se dibujan sin errores', fxr.l[3] > 0);
+  ok('Rendimiento: dibujado por fotograma y construcción del arte dentro de los límites', fxr.frame < 40 && fxr.build < 4000, JSON.stringify([Math.round(fxr.frame * 10) / 10, Math.round(fxr.build)]));
   // ---- Rutinas de los NPC (día y noche) ----
   const rout = await pg.evaluate(() => {
     const X = Sim.create({ seed: 8, noEv: true, mode: 'adv', skipCamp: true }); X.t = 24 + 12; // día 2, 12:00

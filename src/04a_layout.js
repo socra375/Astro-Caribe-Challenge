@@ -7,7 +7,8 @@
    Unidades: baldosas de 32 px.
    ===================================================================== */
 const Layout = (function () {
-  const W = 112, H = 82;
+  const OX = 12, OY = 10; // margen de terreno alrededor de la base
+  const W = 136, H = 100;
   const R = (x0, y0, x1, y1) => ({ t: 'r', x0, y0, x1, y1 });
   const RR = (x0, y0, x1, y1, r) => ({ t: 'rr', x0, y0, x1, y1, r });
   const CH = (x0, y0, x1, y1, c, k) => ({ t: 'ch', x0, y0, x1, y1, c, k: k || 'tl,tr,bl,br' });
@@ -58,13 +59,8 @@ const Layout = (function () {
   };
   const ROOMCOL = { bridge: '#4f7dff', hall: '#8aa0d8', life: '#b07cff', gh: '#3ddc84', reactor: '#ff9a3d', water: '#38d6ff', rad: '#c9ced8', lab: '#9a8cff', kitchen: '#ff8f6b', med: '#5fd3e8', food: '#c8d44a', samples: '#4fe0c9', waste: '#8fbf6a', workshop: '#b8b8c4', lock: '#ffc24a' };
 
-  // Puertas: [sala A, sala B, posición preferida (x o y a lo largo del borde), tipo]
-  const LINKS = [
-    ['bridge', 'hall', 55], ['bridge', 'water', 18], ['hall', 'life', 28], ['hall', 'food', 28], ['hall', 'kitchen', 49], ['hall', 'kitchen', 62],
-    ['life', 'med', 46], ['kitchen', 'med', 49], ['med', 'food', 47], ['water', 'food', 73], ['life', 'samples', 48], ['lab', 'samples', 50], ['workshop', 'waste', 50], ['rad', 'life', 37], ['rad', 'med', 56], ['rad', 'food', 73],
-    ['gh', 't1', 30], ['t1', 'life', 30], ['gh', 't2', 12], ['t2', 'lab', 12], ['water', 't3', 19], ['t3', 'reactor', 19], ['reactor', 't4', 89], ['t4', 'workshop', 89],
-    ['reactor', 't5', 101], ['t5', 'waste', 101], ['rad', 't6', 53], ['t6', 'workshop', 53], ['rad', 'lock', 55, 'inner'], ['lock', 'pad', 55, 'outer']
-  ];
+  // Puertas: [sala A, sala B, x, y de la puerta, tipo]. World comprueba que la posición es una frontera real entre ambas salas.
+  const LINKS = [['bridge', 'hall', 55, 25], ['bridge', 'water', 66, 18], ['hall', 'life', 43, 28], ['hall', 'food', 69, 28], ['hall', 'kitchen', 49, 31], ['hall', 'kitchen', 62, 31], ['life', 'med', 43, 46], ['kitchen', 'med', 49, 44], ['med', 'food', 69, 47], ['water', 'food', 73, 24], ['life', 'samples', 33, 48], ['lab', 'samples', 23, 50], ['workshop', 'waste', 96, 50], ['rad', 'life', 37, 51], ['rad', 'med', 56, 51], ['rad', 'food', 73, 51], ['gh', 't1', 29, 30], ['t1', 'life', 33, 30], ['gh', 't2', 12, 41], ['t2', 'lab', 12, 44], ['water', 't3', 79, 19], ['t3', 'reactor', 83, 19], ['reactor', 't4', 89, 41], ['t4', 'workshop', 89, 44], ['reactor', 't5', 101, 41], ['t5', 'waste', 101, 44], ['rad', 't6', 79, 53], ['t6', 'workshop', 83, 53], ['rad', 'lock', 55, 67, 'inner'], ['lock', 'pad', 55, 70, 'outer']];
 
   const SHELTER = [64, 56, 76, 64];
   const LOCK = { x: 55.5, inY: 64.8, outY: 72.2 };
@@ -87,7 +83,7 @@ const Layout = (function () {
     // Almacén de alimentos
     ['shelf', 75, 27, 3, 2], ['shelf', 75, 31, 3, 2], ['shelf', 71, 33, 3, 2], ['shelf', 71, 37, 3, 2], ['cold', 75, 36, 3, 3], ['crate', 72, 42, 2, 2], ['crate', 75, 42, 2, 2],
     // Invernadero
-    ['tank', 23, 33, 2, 2], ['tank', 6, 33, 2, 2], ['seedrack', 21, 22, 6, 2], ['seedrack', 21, 26, 6, 2], ['bin', 8, 36, 2, 2], ['pipe', 6, 22, 14, 1], ['pipe', 6, 28, 14, 1], ['vent', 14, 35, 2, 2], ['vent', 10, 31, 2, 2],
+    ['tank', 23, 33, 2, 2], ['tank', 6, 33, 2, 2], ['seedrack', 21, 22, 6, 2], ['seedrack', 21, 26, 6, 2], ['bin', 8, 36, 2, 2], ['pipe', 6, 22, 14, 1], ['pipe', 6, 28, 14, 1], ['seedrack', 10, 33, 6, 2], ['seedrack', 17, 33, 4, 2], ['vent', 15, 36, 2, 2], ['vent', 20, 37, 2, 2],
     // Laboratorio
     ['benchs', 8, 48, 6, 2], ['benchs', 15, 48, 6, 2], ['table', 8, 53, 4, 2], ['table', 15, 53, 4, 2], ['rack', 20, 53, 2, 2],
     // Almacén de muestras
@@ -123,21 +119,19 @@ const Layout = (function () {
   const SAMPLES_OUT = { moon: [[47.5, 75.5], [66.5, 77.5], [41.5, 79], [72.5, 73.5]], mars: [[45.5, 76.5], [69.5, 78.5], [38.5, 74], [74.5, 74.5]] };
   const REACTOR_C = [96, 27];
 
-  /** Rutas de exploración (huellas del rover) y elementos del exterior. Determinista por escenario. */
+  /** Terreno exterior: rutas de exploración (huellas del rover), estructuras y geografía propia de cada escenario. Determinista. */
   function scenery(scen, isBase) {
     let seed = scen === 'mars' ? 90210 : 4242;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const mars = scen === 'mars';
+    const mars = scen === 'mars', X = (v) => v + OX, Y = (v) => v + OY;
     const props = [], boxes = [];
+    const T = (pts) => pts.map((p) => [X(p[0]), Y(p[1])]);
     const tracks = [
-      [[55.5, 71], [55.5, 74], [56, 78]],
-      [[55.5, 74], [34, 76], [16, 72], [8, 66]],
-      [[56, 78], [80, 78], [96, 72], [104, 66]],
-      [[55.5, 74], [48, 70], [30, 68], [22, 60]],
-      [[80, 78], [92, 62], [100, 70]],
-      [[56, 76], [58, 64.2]]
+      T([[55.5, 71], [55.5, 74], [56, 78]]), T([[55.5, 74], [34, 76], [16, 72], [8, 66], [2, 56]]), T([[56, 78], [80, 78], [96, 72], [104, 66], [118, 60]]),
+      T([[55.5, 74], [48, 70], [30, 68], [22, 60]]), T([[80, 78], [92, 62], [100, 70]]), T([[56, 76], [58, 64.2]]),
+      T([[96, 72], [112, 82], [124, 84]]), T([[34, 76], [30, 86], [40, 92]])
     ];
-    const padC = [56, 78], padR = 6.5;
+    const padC = [X(56), Y(78)], padR = 6.5;
     const near = (x, y, w, h, pad) => boxes.some((b) => x < b[2] + pad && x + w > b[0] - pad && y < b[3] + pad && y + h > b[1] - pad);
     const onTrack = (x, y, rad) => { for (const t of tracks) for (let i = 1; i < t.length; i++) { const a = t[i - 1], b = t[i], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1; let u = ((x - a[0]) * dx + (y - a[1]) * dy) / l2; u = Math.max(0, Math.min(1, u)); if (Math.hypot(x - (a[0] + u * dx), y - (a[1] + u * dy)) < rad) return true; } return false; };
     const baseNear = (x, y, w, h, m) => { for (let yy = Math.floor(y) - m; yy <= y + h + m; yy++) for (let xx = Math.floor(x) - m; xx <= x + w + m; xx++) if (isBase(xx, yy)) return true; return false; };
@@ -153,40 +147,47 @@ const Layout = (function () {
       }
       return false;
     };
-    // Estructuras fijas (iguales en ambos escenarios, con la misma lógica de base)
     put('pad', padC[0] - padR, padC[1] - padR, padR * 2, padR * 2, false);
-    // Paneles solares: campos estratégicos
-    const arrays = mars ? [[88, 2, 108, 11], [3, 60, 22, 70], [84, 60, 106, 70]] : [[84, 2, 108, 10], [30, 2, 44, 9], [2, 2, 22, 9]];
-    for (const a of arrays) for (let x = a[0]; x + 3 <= a[2]; x += 4.5) for (let y = a[1]; y + 2.2 <= a[3]; y += 3.4) if (!baseNear(x, y, 3, 2, 2) && !onTrack(x + 1.5, y + 1, 2.5)) put('solar', x, y, 3, 2, true, { tilt: rnd() });
+    // Paneles solares en campos estratégicos (la Luna: junto al ecuador de la base, al norte y al este; Marte: campos grandes al este y al sur)
+    const arrays = mars ? [[96, 4, 128, 16], [76, 100 - OY - 8, 100, 92]] : [[84, -2, 116, 6], [24, -2, 46, 6], [2, -2, 22, 8], [112, 38, 126, 60]];
+    for (const a of arrays) for (let x = X(a[0]); x + 3 <= X(a[2]); x += 4.5) for (let y = Y(a[1]); y + 2.2 <= Y(a[3]); y += 3.4) if (y > 1.5 && x + 3 <= W - 2 && y + 2 <= H - 2 && !baseNear(x, y, 3, 2, 2) && !onTrack(x + 1.5, y + 1, 2.5)) put('solar', x, y, 3, 2, true, { tilt: rnd() });
     // Antenas de comunicaciones
-    (mars ? [[24, 5], [64, 5]] : [[50, 5], [64, 7], [12, 12]]).forEach((p) => { if (!baseNear(p[0], p[1], 2, 2, 1)) put('antenna', p[0], p[1], 2, 2, true, { dish: rnd() * 6 }); });
-    // Contenedores de suministro y módulos auxiliares
-    [[96, 63, 2, 1], [98, 63, 2, 1], [97, 64.5, 2, 1], [100, 66, 2, 1]].forEach((b, i) => put('container', b[0], b[1], b[2] + 0.5, b[3] + 0.5, true, { c: i }));
-    put('auxdome', 10, 62, 4, 4, true); put('auxtank', 16, 66, 3, 3, true); put('auxdome', mars ? 24 : 20, 72, 4, 4, true, { shelter: true });
-    put('tripod', 86, 71, 2, 2, true); put('tripod', 28, 62, 2, 2, true, { s: 1 });
-    // Vehículos aparcados
-    put('vehicle', 48, 74, 4, 3, true, { v: 0 }); put('vehicle', mars ? 66 : 64, 73, 4, 3, true, { v: 1 });
-    // Rocas y formaciones
-    const nBig = mars ? 26 : 18, nSmall = mars ? 70 : 90;
-    for (let i = 0; i < nBig; i++) place(mars ? 'mesa' : 'rock', mars ? 2.5 + rnd() * 2.5 : 1.6 + rnd() * 1.4, mars ? 2 + rnd() * 2 : 1.4 + rnd() * 1.2, true, 20, mars ? [0, 0, W, H] : [0, 0, W, H], { r: rnd() }, 1);
-    for (let i = 0; i < nSmall; i++) place('pebble', 0.6 + rnd() * 0.7, 0.5 + rnd() * 0.5, false, 8, [0, 0, W, H], { r: rnd() }, 0.2);
-    // Cráteres (la Luna: muchos y marcados; Marte: pocos y erosionados) y dunas (solo Marte)
+    (mars ? [[24, 3], [64, 4], [-6, 40]] : [[50, 3], [64, 5], [12, 8], [116, 20]]).forEach((q) => { if (!baseNear(X(q[0]), Y(q[1]), 2, 2, 1)) put('antenna', X(q[0]), Y(q[1]), 2, 2, true, { dish: rnd() * 6 }); });
+    // Contenedores de suministro, módulos auxiliares y equipos científicos
+    [[96, 63, 2, 1], [98, 63, 2, 1], [97, 64.5, 2, 1], [100, 66, 2, 1], [102, 63, 2, 1]].forEach((b, i) => put('container', X(b[0]), Y(b[1]), b[2] + 0.5, b[3] + 0.5, true, { c: i }));
+    put('auxdome', X(10), Y(62), 4, 4, true); put('auxtank', X(16), Y(66), 3, 3, true); put('auxdome', X(mars ? 24 : 20), Y(72), 4, 4, true, { shelter: true });
+    put('auxtank', X(104), Y(52), 3, 3, true); put('auxdome', X(114), Y(46), 4, 4, true);
+    put('tripod', X(86), Y(71), 2, 2, true); put('tripod', X(28), Y(62), 2, 2, true, { s: 1 }); put('tripod', X(110), Y(70), 2, 2, true, { s: 1 });
+    put('vehicle', X(48), Y(74), 4, 3, true, { v: 0 }); put('vehicle', X(mars ? 66 : 64), Y(73), 4, 3, true, { v: 1 });
+    // Geografía propia: la Luna con cráteres marcados y bloques sueltos; Marte con dunas, mesas y polvo
     const craters = [], dunes = [];
-    const nCr = mars ? 7 : 30;
-    for (let i = 0; i < nCr; i++) {
-      const r = mars ? 2 + rnd() * 3 : 1.2 + rnd() * (i < 8 ? 6.5 : 2.4), x = r + rnd() * (W - 2 * r), y = r + rnd() * (H - 2 * r);
-      if (baseNear(x - r, y - r, r * 2, r * 2, 2) || onTrack(x, y, r + 1.5) || Math.hypot(x - padC[0], y - padC[1]) < padR + r) continue;
-      craters.push({ x, y, r });
+    if (mars) {
+      [[118, 74, 18], [112, 4, 14], [8, 86, 14], [40, 84, 10], [-2, 20, 8]].forEach((q) => dunes.push({ x: q[0] + 6, y: q[1] + 4, w: q[2] + 4, a: rnd() * 0.5 - 0.25 }));
+      for (let i = 0, n = 0; i < 400 && n < 6; i++) { const k = { x: 8 + rnd() * (W - 16), y: 8 + rnd() * (H - 16), r: 2 + rnd() * 3 }; if (!baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) && !onTrack(k.x, k.y, k.r + 1.5)) { craters.push(k); n++; } }
+      [[4, 24], [128, 40], [120, 88], [4, 66]].forEach((q) => { for (let k = 0; k < 5; k++) place('mesa', 3 + rnd() * 3, 2.4 + rnd() * 2, true, 12, [q[0] - 6, q[1] - 7, q[0] + 8, q[1] + 8], { r: rnd() }, 0.3); });
+    } else {
+      [[22, 14, 9], [124, 24, 8], [112, 90, 11], [10, 84, 7], [70, 6, 6], [126, 66, 6], [92, 94, 5]].forEach((q) => craters.push({ x: q[0], y: q[1], r: q[2] }));
+      for (let i = 0, n = 0; i < 800 && n < 26; i++) { const k = { x: 4 + rnd() * (W - 8), y: 4 + rnd() * (H - 8), r: 1.2 + rnd() * 2.6 }; if (!baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) && !onTrack(k.x, k.y, k.r + 1.5) && Math.hypot(k.x - padC[0], k.y - padC[1]) > padR + k.r) { craters.push(k); n++; } }
     }
-    if (mars) for (let i = 0; i < 16; i++) {
-      const w = 6 + rnd() * 10, x = rnd() * (W - w), y = rnd() * (H - 4);
-      if (baseNear(x, y - 2, w, 6, 2)) continue;
-      dunes.push({ x, y, w, a: rnd() * 0.5 - 0.25 });
-    }
-    // Luces exteriores
-    const lamps = [[52, 70.5], [59.5, 70.5], [48, 77], [64, 77], [40, 54], [3, 44], [108, 44], [56, 11]];
-    return { props, tracks, craters, dunes, pad: { c: padC, r: padR }, lamps };
+    const nBig = mars ? 22 : 30, nSmall = mars ? 130 : 160;
+    for (let i = 0; i < nBig; i++) place(mars ? 'mesa' : 'rock', mars ? 2.5 + rnd() * 2.5 : 1.6 + rnd() * 1.6, mars ? 2 + rnd() * 2 : 1.4 + rnd() * 1.4, true, 20, [0, 0, W, H], { r: rnd() }, 1);
+    for (let i = 0; i < nSmall; i++) place('pebble', 0.6 + rnd() * 0.7, 0.5 + rnd() * 0.5, false, 8, [0, 0, W, H], { r: rnd() }, 0.2);
+    const okC = craters.filter((k) => !(baseNear(k.x - k.r, k.y - k.r, k.r * 2, k.r * 2, 2) || onTrack(k.x, k.y, k.r + 1.5) || Math.hypot(k.x - padC[0], k.y - padC[1]) < padR + k.r));
+    const okD = dunes.filter((u) => !baseNear(u.x, u.y - 2, u.w, 6, 2));
+    const lamps = [[52, 70.5], [59.5, 70.5], [48, 77], [64, 77], [40, 54], [3, 44], [108, 44], [56, 11], [92, 62], [20, 70]].map((q) => [X(q[0]), Y(q[1])]);
+    return { props, tracks, craters: okC, dunes: okD, pad: { c: padC, r: padR }, lamps };
   }
 
-  return { W, H, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
+  // Desplazamiento de todo el diseño para dejar un margen de terreno alrededor de la base
+  for (const k in ROOMS) for (const sp of ROOMS[k].s) { sp.x0 += OX; sp.x1 += OX; sp.y0 += OY; sp.y1 += OY; }
+  for (const f of FURN) { f[1] += OX; f[2] += OY; }
+  for (const c of CONSOLES) { c[2] += OX; c[3] += OY; }
+  for (const q of PLANTERS) { q[0] += OX; q[1] += OY; }
+  for (const k in SPOTS) for (const q of SPOTS[k]) { q[0] += OX; q[1] += OY; }
+  for (const k in SAMPLES_OUT) for (const q of SAMPLES_OUT[k]) { q[0] += OX; q[1] += OY; }
+  for (const q of LINKS) { q[2] += OX; q[3] += OY; }
+  SHELTER[0] += OX; SHELTER[1] += OY; SHELTER[2] += OX; SHELTER[3] += OY;
+  LOCK.x += OX; LOCK.inY += OY; LOCK.outY += OY; START[0] += OX; START[1] += OY; REACTOR_C[0] += OX; REACTOR_C[1] += OY;
+
+  return { W, H, OX, OY, has, ROOMS, ROOMCOL, LINKS, SHELTER, LOCK, START, FURN, CONSOLES, PLANTERS, SPOTS, SAMPLES_OUT, REACTOR_C, scenery, R, RR, CH };
 })();
