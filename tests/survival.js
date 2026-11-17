@@ -73,18 +73,18 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
 
   /* ---- 3. Hambre: 72 h seguidas sin alimentos ---- */
   await fresh();
-  const keep = () => { const S = Game.S; for (const k of ['o2', 'water', 'power']) S.r[k].v = S.r[k].max; S.sys.o2.conc = 21; };
+  const keep = () => { const S = Game.S; for (const k of ['o2', 'water', 'power', 'well']) S.r[k].v = S.r[k].max; S.sys.o2.conc = 21; };
   const f1 = await pg.evaluate(() => {
     const S = Game.S; S.r.food.v = 0; const out = { warns: [] };
-    for (let i = 0; i < 40; i++) { for (const k of ['o2', 'water', 'power']) S.r[k].v = S.r[k].max; Sim.step(S, 1); out.warns.push(...Surv.warnings(S)); }
+    for (let i = 0; i < 40; i++) { for (const k of ['o2', 'water', 'power', 'well']) S.r[k].v = S.r[k].max; S.inc.length = 0; Sim.step(S, 1); out.warns.push(...Surv.warnings(S)); }
     out.h = Surv.hunger(S); Game._debug.surv.survFrame(0.05); out.filter = document.getElementById('game').style.filter; out.ended = !!S.ended; return out;
   });
   ok('Sin comida primero hay avisos y la visión se vuelve borrosa y oscura', f1.warns.includes('food.zero') && f1.warns.includes('food.late') && f1.h.blur > 0.5 && f1.h.dark > 0.1 && /blur/.test(f1.filter) && !f1.ended, JSON.stringify([f1.warns, f1.h, f1.filter]));
-  await pg.evaluate(() => { const S = Game.S; for (let i = 0; i < 45 && !S.ended; i++) { for (const k of ['o2', 'water', 'power']) S.r[k].v = S.r[k].max; Sim.step(S, 1); } });
+  await pg.evaluate(() => { const S = Game.S; for (let i = 0; i < 45 && !S.ended; i++) { for (const k of ['o2', 'water', 'power', 'well']) S.r[k].v = S.r[k].max; S.inc.length = 0; Sim.step(S, 1); } });
   g = await toPanel('food', shots && shots + '/go-food.png');
   ok('A las 72 h sin comida: desmayo y GAME OVER con la causa', g.kind === 'food' && /72 horas/.test(g.txt) && g.ended.kind === 'dead', g.txt.slice(0, 100));
   await retryOk('Hambre');
-  const f2 = await pg.evaluate(() => { const S = Game.S; S.r.food.v = 0; for (let i = 0; i < 50; i++) { for (const k of ['o2', 'water', 'power']) S.r[k].v = S.r[k].max; Sim.step(S, 1); } S.r.food.v = 30; for (let i = 0; i < 60; i++) { for (const k of ['o2', 'water', 'power']) S.r[k].v = S.r[k].max; S.r.food.v = Math.max(S.r.food.v, 30); Sim.step(S, 1); } return { z: S.z.food, ended: !!S.ended }; });
+  const f2 = await pg.evaluate(() => { const S = Game.S; S.r.food.v = 0; for (let i = 0; i < 50; i++) { for (const k of ['o2', 'water', 'power', 'well']) S.r[k].v = S.r[k].max; S.inc.length = 0; Sim.step(S, 1); } S.r.food.v = 30; for (let i = 0; i < 60; i++) { for (const k of ['o2', 'water', 'power', 'well']) S.r[k].v = S.r[k].max; S.r.food.v = Math.max(S.r.food.v, 30); Sim.step(S, 1); } return { z: S.z.food, ended: !!S.ended }; });
   ok('Conseguir comida a tiempo reinicia la cuenta y no hay derrota', f2.z === 0 && !f2.ended, JSON.stringify(f2));
 
   /* ---- 4. Radiación: dosis al límite ---- */

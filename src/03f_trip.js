@@ -1,8 +1,7 @@
 /* =====================================================================
    TRIP — viaje espacial previo al aterrizaje (motor puro, sin dibujo).
-   Encendido en secuencia lógica, navegación con correcciones, soporte vital
-   con eventos, comunicación con Tierra y consecuencias pequeñas que nunca
-   bloquean la campaña. Todos los valores son SIMULADOS (educativos).
+   Encendido en secuencia lógica y lanzamiento; el crucero es una animación
+   (sin minijuegos) y no deja consecuencias negativas. Todos los valores son SIMULADOS (educativos).
    ===================================================================== */
 const Trip = (function () {
   const T = (es, en) => ({ es, en });
@@ -19,26 +18,6 @@ const Trip = (function () {
   };
   const T_NEED = { es: 'Todavía no: primero hace falta ', en: 'Not yet: first you need ' };
   const SAFETY_CHECK = [T('Cinturones y asientos', 'Belts and seats'), T('Compuertas selladas', 'Hatches sealed'), T('Presión de cabina', 'Cabin pressure'), T('Trayectoria de ascenso', 'Ascent path')];
-
-  /* ---------- Navegación (valores simulados) ---------- */
-  const NAV_TOL = 5; // grados
-  const angdiff = (a, b) => { let d = ((b - a + 540) % 360) - 180; return d; };
-  /** Rumbo objetivo simulado según el destino. */
-  const bearing = (sc) => (sc === 'mars' ? 112 : 68);
-  /** Tamaño de la desviación: Control Tierra la reduce si se le reportó el estado. */
-  const devSize = (n, reported, adv) => { const base = [16, -22][n % 2] * (adv ? 1.15 : 1); return Math.round(base * (reported ? 0.7 : 1)); };
-
-  /* ---------- Soporte vital (valores simulados) ---------- */
-  const LS_EV = {
-    A: { id: 'A', t: T('Consumo elevado', 'High consumption'), d: T('La tripulación respira más rápido por el esfuerzo del lanzamiento: la demanda de oxígeno sube. Una sección recibe menos aire del que necesita.', 'The crew breathes faster after launch effort: oxygen demand rises. One section gets less air than it needs.'), c: T('El oxígeno no se «rellena»: se reparte. Si una sección recibe poco, hay que regular la distribución.', 'Oxygen is not simply refilled: it is shared out. If one section gets too little, you regulate the distribution.') },
-    B: { id: 'B', t: T('Filtro saturado', 'Saturated filter'), d: T('El filtro que retira el dióxido de carbono (CO₂) está lleno y el CO₂ de la cabina empieza a subir.', 'The filter that removes carbon dioxide (CO₂) is full and cabin CO₂ starts to rise.'), c: T('Respirar produce CO₂. La filtración lo retira; sin ella, el aire se vuelve pesado aunque haya oxígeno.', 'Breathing makes CO₂. Filtration removes it; without it the air gets heavy even with oxygen left.') },
-    C: { id: 'C', t: T('Distribución irregular', 'Uneven distribution'), d: T('Una sección recibe un flujo distinto al previsto. La válvula necesita un pequeño ajuste hasta igualar la marca.', 'One section gets a different flow than planned. The valve needs a small adjustment to match the mark.'), c: T('La circulación mantiene el aire parejo. Regular una válvula es un ajuste, no una emergencia.', 'Circulation keeps air even. Regulating a valve is an adjustment, not an emergency.') },
-    D: { id: 'D', t: T('Sistema estabilizado', 'System stabilized'), d: T('El soporte vital vuelve a condiciones estables.', 'Life support is back to stable conditions.'), c: T('Circulación, filtración y regulación trabajan juntas: ninguna basta por sí sola.', 'Circulation, filtration and regulation work together: none is enough alone.') }
-  };
-  const FILTER_STEPS = [T('Aislar el filtro saturado', 'Isolate the saturated filter'), T('Pasar al filtro de reserva', 'Switch to the spare filter'), T('Verificar el CO₂', 'Check the CO₂')];
-  const SECT = [T('Cabina de mando', 'Command cabin'), T('Zona de descanso', 'Rest area'), T('Bodega de carga', 'Cargo hold')];
-  /** Estado de un indicador: verde estable, amarillo atención, rojo crítico. */
-  const lvl = { o2: (v) => (v >= 19.5 ? 'g' : v >= 18 ? 'y' : 'r'), co2: (v) => (v <= 0.5 ? 'g' : v <= 1 ? 'y' : 'r'), pr: (v) => (v >= 98 && v <= 104 ? 'g' : v >= 94 ? 'y' : 'r'), filt: (v) => (v >= 40 ? 'g' : v >= 15 ? 'y' : 'r') };
 
   /* ---------- Estado ---------- */
   function fresh(S) { return { v: 1, scen: S.scen, done: false, stage: 'cabin', on: {}, errs: 0, nav: { aligned: false, devs: 0, fixed: 0, auto: 0, errs: 0 }, ls: { errs: 0, ev: {}, helped: 0 }, rep: false, q: { nav: null, ls: null }, safety: false, launched: false };
@@ -67,5 +46,5 @@ const Trip = (function () {
     if (typeof S.morale === 'number') { const d = t.q.ls === 'good' ? 4 : t.q.ls === 'ok' ? 0 : -6; S.morale = Math.max(0, Math.min(100, S.morale + d)); out.morale = d; }
     L.trip = out; return out;
   }
-  return { SYS, SYS_T, PRE, WHO, WHAT, T_NEED, SAFETY_CHECK, NAV_TOL, angdiff, bearing, devSize, LS_EV, FILTER_STEPS, SECT, lvl, fresh, ensure, press, allOn, navQuality, lsQuality, applyToLand };
+  return { SYS, SYS_T, PRE, WHO, WHAT, T_NEED, SAFETY_CHECK, fresh, ensure, press, allOn, navQuality, lsQuality, applyToLand };
 })();

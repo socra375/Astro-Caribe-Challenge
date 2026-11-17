@@ -1,6 +1,6 @@
 /* =====================================================================
    TRIPART — dibujo del viaje: cabina con la tripulación, lanzamiento y
-   panel de navegación. Canvas 2D, sin imágenes. Reutiliza Chars (los mismos
+   crucero por el espacio (Sol, planetas cercanos y estrellas). Canvas 2D, sin imágenes. Reutiliza Chars (los mismos
    astronautas del juego) y LandArt (nave, planeta, polvo).
    ===================================================================== */
 const TripArt = (function () {
@@ -60,28 +60,87 @@ const TripArt = (function () {
     if (u > 0.9) { c.fillStyle = 'rgba(255,255,255,' + (u - 0.9) * 6 + ')'; c.fillRect(0, 0, w, h); }
   }
 
-  /** Brújula de navegación (valores simulados): rumbo de la nave, rumbo objetivo y diferencia. */
-  function compass(c, cx, cy, R, t, heading, target, tol, sc) {
-    c.save(); c.translate(cx, cy);
-    const diff = Math.abs(Trip.angdiff(heading, target)), col = diff <= tol ? '#6fffa0' : diff <= 15 ? '#ffc857' : '#ff6b6b';
-    c.fillStyle = 'rgba(8,14,34,.82)'; c.beginPath(); c.arc(0, 0, R, 0, TAU); c.fill(); c.strokeStyle = '#3a4570'; c.lineWidth = 3; c.stroke();
-    c.strokeStyle = '#5a6890'; c.lineWidth = 1.5; for (let a = 0; a < 360; a += 10) { const r0 = a % 90 === 0 ? R * 0.86 : R * 0.92, rad = (a - 90) * Math.PI / 180; c.beginPath(); c.moveTo(Math.cos(rad) * r0, Math.sin(rad) * r0); c.lineTo(Math.cos(rad) * R * 0.97, Math.sin(rad) * R * 0.97); c.stroke(); }
-    // arco entre rumbo y objetivo
-    const a0 = (heading - 90) * Math.PI / 180, a1 = (target - 90) * Math.PI / 180; c.strokeStyle = col; c.lineWidth = 7; c.beginPath(); c.arc(0, 0, R * 0.74, a0, a0 + Trip.angdiff(heading, target) * Math.PI / 180, Trip.angdiff(heading, target) < 0); c.stroke();
-    // objetivo (triángulo verde en el borde)
-    c.save(); c.rotate((target) * Math.PI / 180); c.fillStyle = '#6fffa0'; c.beginPath(); c.moveTo(0, -R * 0.98); c.lineTo(-R * 0.06, -R * 0.82); c.lineTo(R * 0.06, -R * 0.82); c.closePath(); c.fill(); c.strokeStyle = 'rgba(111,255,160,.35)'; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -R * 0.8); c.stroke(); c.setLineDash([]); c.restore();
-    // nave (apunta hacia arriba cuando el rumbo es 0)
-    c.save(); c.rotate(heading * Math.PI / 180); c.scale(R / 150, R / 150); c.fillStyle = '#e8ecf5'; c.strokeStyle = '#4b5166'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -46); c.lineTo(14, 20); c.lineTo(0, 12); c.lineTo(-14, 20); c.closePath(); c.fill(); c.stroke(); c.fillStyle = '#ff8a3d'; c.fillRect(-10, 16, 20, 5); c.fillStyle = '#16314f'; c.beginPath(); c.ellipse(0, -22, 4, 7, 0, 0, TAU); c.fill(); c.restore();
-    c.fillStyle = col; c.font = 'bold ' + Math.round(R * 0.16) + 'px system-ui'; c.textAlign = 'center'; c.fillText(Math.round(diff) + '°', 0, R * 0.5);
+  /* ---------- Crucero: la nave viaja por el espacio ---------- */
+  const es2 = () => (typeof LANG !== 'undefined' ? LANG === 'es' : true);
+  /** Planeta genérico con luz del Sol (esquina superior izquierda), bandas y anillo opcionales. */
+  function ball(c, x, y, R, o) {
+    if (R < 0.6) { c.fillStyle = o.c1; c.beginPath(); c.arc(x, y, Math.max(1, R), 0, TAU); c.fill(); return; }
+    if (o.ring) { c.save(); c.translate(x, y); c.rotate(-0.35); c.strokeStyle = 'rgba(225,205,170,.55)'; c.lineWidth = R * 0.16; c.beginPath(); c.ellipse(0, 0, R * 1.75, R * 0.5, 0, Math.PI, TAU); c.stroke(); c.restore(); }
+    c.save(); c.beginPath(); c.arc(x, y, R, 0, TAU); c.clip();
+    const g = c.createRadialGradient(x - R * 0.4, y - R * 0.4, R * 0.1, x, y, R * 1.05); g.addColorStop(0, o.c0); g.addColorStop(0.55, o.c1); g.addColorStop(1, o.c2); c.fillStyle = g; c.fillRect(x - R, y - R, R * 2, R * 2);
+    if (o.bands) for (let i = 0; i < o.bands; i++) { c.fillStyle = 'rgba(' + o.bc + ',' + (0.12 + 0.12 * hs(i + o.seed)) + ')'; c.fillRect(x - R, y - R + (i + 0.4 + hs(i * 3 + o.seed) * 0.4) * (2 * R / o.bands), 2 * R, R * 0.14); }
+    if (o.land) { c.fillStyle = o.land; for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(x + (hs(i + 4) - 0.5) * R * 1.2, y + (hs(i + 9) - 0.5) * R * 1.1, R * (0.18 + hs(i) * 0.22), R * (0.12 + hs(i + 2) * 0.16), hs(i) * 3, 0, TAU); c.fill(); } }
+    if (o.cloud) { c.fillStyle = 'rgba(255,255,255,.28)'; for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(x + (hs(i + 20) - 0.5) * R, y + (hs(i + 30) - 0.5) * R * 1.3, R * 0.5, R * 0.07, 0.3, 0, TAU); c.fill(); } }
+    const sh = c.createRadialGradient(x - R * 0.55, y - R * 0.55, R * 0.4, x + R * 0.35, y + R * 0.35, R * 1.35); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,10,.62)'); c.fillStyle = sh; c.fillRect(x - R, y - R, R * 2, R * 2);
     c.restore();
-    return col;
+    if (o.atm) { c.strokeStyle = o.atm; c.lineWidth = Math.max(1, R * 0.05); c.beginPath(); c.arc(x, y, R * 1.02, Math.PI * 0.9, Math.PI * 1.75); c.stroke(); }
+    if (o.ring) { c.save(); c.translate(x, y); c.rotate(-0.35); c.strokeStyle = 'rgba(225,205,170,.7)'; c.lineWidth = R * 0.16; c.beginPath(); c.ellipse(0, 0, R * 1.75, R * 0.5, 0, 0, Math.PI); c.stroke(); c.restore(); }
   }
-
-  /** Espacio del viaje: estrellas, el planeta de destino creciendo y la nave en el fondo. */
-  function space(c, w, h, t, u, scen) {
-    c.fillStyle = '#02040c'; c.fillRect(0, 0, w, h); stars(c, w, h, t, 180, 1);
-    const R = lerp(0.05, 0.16, ease(u)) * h; LandArt.planet(c, w * 0.78, h * 0.2, R, scen, t, null);
-    if (scen !== 'mars') { c.fillStyle = '#4a86d8'; c.beginPath(); c.arc(w * 0.1, h * 0.22, h * 0.025 * (1 - u * 0.6), 0, TAU); c.fill(); }
+  const BODY = {
+    earth: { c0: '#8fd0ff', c1: '#2f7bff', c2: '#0b2a6b', land: 'rgba(80,200,120,.85)', cloud: 1, atm: 'rgba(140,200,255,.6)', seed: 1 },
+    moon: { c0: '#f2f4fa', c1: '#aeb4c6', c2: '#3a3f55', seed: 2 },
+    venus: { c0: '#fff2c9', c1: '#e8c37a', c2: '#6b4a1c', bands: 5, bc: '255,255,255', seed: 3 },
+    mercury: { c0: '#d8d2c8', c1: '#8f877b', c2: '#3a352e', seed: 4 },
+    jupiter: { c0: '#f4dcc0', c1: '#c8935c', c2: '#5a3820', bands: 9, bc: '120,70,40', seed: 5 },
+    marsfar: { c0: '#ffb27a', c1: '#c4562e', c2: '#4a1d10', seed: 6 }
+  };
+  /** Nombre y etiqueta de un cuerpo (bilingüe). */
+  const BN = { sun: ['Sol', 'Sun'], earth: ['Tierra', 'Earth'], moon: ['Luna', 'Moon'], mars: ['Marte', 'Mars'], venus: ['Venus', 'Venus'], mercury: ['Mercurio', 'Mercury'], jupiter: ['Júpiter', 'Jupiter'] };
+  const bn = (k) => BN[k][es2() ? 0 : 1];
+  /**
+   * Animación del crucero (sin controles): estrellas con paralaje, el Sol, planetas cercanos, la Tierra que se aleja y el destino que crece.
+   * u = avance del viaje 0–1. Devuelve los cuerpos visibles para etiquetas y pruebas.
+   */
+  function voyage(c, w, h, t, u, scen) {
+    const mars = scen === 'mars', e = ease(u), seen = [];
+    const bg = c.createLinearGradient(0, 0, w, h); bg.addColorStop(0, '#0a0a24'); bg.addColorStop(0.5, '#02040c'); bg.addColorStop(1, '#0c0722'); c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    // nebulosas lejanas
+    for (const [nx, ny, nr, col] of [[0.7, 0.3, 0.55, '90,70,200'], [0.25, 0.8, 0.5, '40,90,200']]) { const dx = (nx - u * 0.04) * w, g = c.createRadialGradient(dx, ny * h, 0, dx, ny * h, nr * Math.max(w, h)); g.addColorStop(0, 'rgba(' + col + ',.20)'); g.addColorStop(1, 'rgba(' + col + ',0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+    // estrellas con tres capas de paralaje (las cercanas pasan más rápido)
+    for (const [n, sp, sz, a] of [[90, 4, 1, 0.55], [60, 10, 1.4, 0.75], [34, 24, 2, 0.95]]) for (let i = 0; i < n; i++) {
+      const x = (((hs(i * 1.7 + sp) * w * 1.1 - (t * sp + u * sp * 40)) % w) + w) % w, y = hs(i * 3.1 + sp) * h, tw = 0.65 + 0.35 * Math.sin(t * 2 + i);
+      c.fillStyle = 'rgba(225,235,255,' + (a * tw) + ')'; c.fillRect(x, y, sz, sz);
+    }
+    // el Sol (arriba a la izquierda): corona, rayos y reflejo
+    const sx = w * 0.13 - u * w * 0.03, sy = h * 0.2, SR = h * 0.1;
+    for (const [rr0, al] of [[9, 0.07], [5.5, 0.12], [3.2, 0.2], [1.9, 0.35]]) { const g = c.createRadialGradient(sx, sy, SR * 0.5, sx, sy, SR * rr0); g.addColorStop(0, 'rgba(255,214,120,' + al + ')'); g.addColorStop(1, 'rgba(255,170,60,0)'); c.fillStyle = g; c.beginPath(); c.arc(sx, sy, SR * rr0, 0, TAU); c.fill(); }
+    c.save(); c.translate(sx, sy); c.rotate(t * 0.05); c.strokeStyle = 'rgba(255,224,150,.22)'; c.lineWidth = 2; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, L = SR * (2.2 + 0.9 * hs(i) + 0.15 * Math.sin(t * 2 + i)); c.beginPath(); c.moveTo(Math.cos(a) * SR * 1.1, Math.sin(a) * SR * 1.1); c.lineTo(Math.cos(a) * L, Math.sin(a) * L); c.stroke(); } c.restore();
+    const sg = c.createRadialGradient(sx - SR * 0.2, sy - SR * 0.2, SR * 0.1, sx, sy, SR); sg.addColorStop(0, '#fffbe6'); sg.addColorStop(0.5, '#ffd25e'); sg.addColorStop(1, '#ff9a2e'); c.fillStyle = sg; c.beginPath(); c.arc(sx, sy, SR, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,230,160,.10)'; c.lineWidth = 3; c.beginPath(); c.moveTo(sx, sy); c.lineTo(w * 0.62, h * 0.62); c.stroke();
+    seen.push({ k: 'sun', x: sx, y: sy, R: SR });
+    // planetas cercanos (pasan lentamente por el fondo)
+    const far = [['mercury', sx + h * 0.2 - u * w * 0.03, sy + h * 0.05, h * 0.014], ['venus', w * 0.47 - u * w * 0.16, h * 0.15, h * 0.034], ['jupiter', w * 0.66 - u * w * 0.08, h * 0.1, h * 0.05]];
+    if (!mars) far.push(['marsfar', w * 0.9 - u * w * 0.04, h * 0.3, h * 0.014]);
+    for (const [k, x, y, R] of far) { ball(c, x, y, R, Object.assign({ ring: false }, BODY[k])); seen.push({ k: k === 'marsfar' ? 'mars' : k, x, y, R }); }
+    // el destino crece
+    const dk = mars ? 'mars' : 'moon', dx = lerp(w * 0.9, w * 0.77, e), dy = lerp(h * 0.44, h * 0.5, e), dR = lerp(h * 0.03, h * 0.22, Math.pow(u, 1.6));
+    if (mars) LandArt.planet(c, dx, dy, dR, 'mars', t, null); else LandArt.planet(c, dx, dy, dR, 'moon', t, null);
+    seen.push({ k: dk, x: dx, y: dy, R: dR, dest: true });
+    // la Tierra se aleja (con la Luna cuando el destino es Marte, o junto a ella cuando es la Luna)
+    const ex = lerp(w * 0.17, -w * 0.06, e), ey = lerp(h * 0.8, h * 0.88, e), eR = lerp(h * 0.24, h * 0.045, e);
+    ball(c, ex, ey, eR, BODY.earth); seen.push({ k: 'earth', x: ex, y: ey, R: eR });
+    if (!mars) { /* la Luna es el destino; no hace falta otra */ } else { const ma = t * 0.3, mx = ex + Math.cos(ma) * eR * 2.2, my = ey + Math.sin(ma) * eR * 0.6; ball(c, mx, my, Math.max(1.2, eR * 0.25), BODY.moon); }
+    // la nave, de lado, apuntando al destino
+    const shx = w * (0.42 + 0.015 * Math.sin(t * 0.7)), shy = h * 0.5 + Math.sin(t * 1.3) * h * 0.012, tilt = Math.atan2(dy - shy, dx - shx) * 0.35, sc = h / 470;
+    for (let i = 0; i < 18; i++) { const k = i / 18; c.fillStyle = 'rgba(' + (255 - k * 80) + ',' + (190 - k * 60) + ',' + (110 + k * 100) + ',' + (0.38 * (1 - k)) + ')'; c.beginPath(); c.ellipse(shx - 70 * sc - k * h * 0.3, shy, h * 0.026 * (1 - k * 0.7), h * 0.01 * (1 - k * 0.6), 0, 0, TAU); c.fill(); }
+    c.save(); c.translate(shx, shy); c.rotate(Math.PI / 2 + tilt); LandArt.shipSide(c, 0, 76 * sc, sc * 0.95, { t, scen: 'moon', legs: 0, flame: 0.85 + 0.15 * Math.sin(t * 30), beacon: 'ok' }); c.restore();
+    // líneas de velocidad
+    c.strokeStyle = 'rgba(200,225,255,.25)'; c.lineWidth = 1.2; for (let i = 0; i < 7; i++) { const y = hs(i * 5.3) * h, x = (((hs(i) * w - t * (w * 0.8 + i * 40)) % (w + 200)) + w + 200) % (w + 200) - 100, L = 40 + hs(i + 2) * 90; c.beginPath(); c.moveTo(x, y); c.lineTo(x + L, y); c.stroke(); }
+    return seen;
   }
-  return { cabin, launch, compass, space, SYSCOL, ease };
+  /** Etiquetas de los cuerpos y barra de progreso del viaje (valores orientativos). */
+  function voyageHud(c, w, h, u, scen, seen) {
+    const mars = scen === 'mars', fs = Math.round(Math.max(11, h * 0.026));
+    c.font = fs + 'px system-ui'; c.textAlign = 'center'; c.lineJoin = 'round';
+    for (const b of seen) { if (b.k === 'sun' && u > 0.85) continue; const ly = b.y + (b.k === 'sun' ? b.R * 1.6 : b.R * 1.25 + fs * 1.1); if (b.R < 2 && b.k !== 'mars') continue; if (b.x < 20 || b.x > w - 20 || ly > h - fs * 4) continue; c.strokeStyle = 'rgba(0,0,10,.8)'; c.lineWidth = 4; c.fillStyle = b.dest ? '#ffd36b' : '#cfe0ff'; c.strokeText(bn(b.k), b.x, ly); c.fillText(bn(b.k), b.x, ly); }
+    const bx = w * 0.14, bw = w * 0.72, by = h - fs * 2.3;
+    c.fillStyle = 'rgba(8,12,30,.7)'; c.fillRect(bx - 8, by - fs * 1.7, bw + 16, fs * 3.6); c.strokeStyle = 'rgba(140,160,255,.4)'; c.strokeRect(bx - 8, by - fs * 1.7, bw + 16, fs * 3.6);
+    c.fillStyle = 'rgba(80,100,200,.35)'; c.fillRect(bx, by, bw, 6); const g = c.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, '#38d6ff'); g.addColorStop(1, '#a98bff'); c.fillStyle = g; c.fillRect(bx, by, bw * u, 6);
+    c.fillStyle = '#8fd0ff'; c.beginPath(); c.arc(bx, by + 3, 6, 0, TAU); c.fill(); c.fillStyle = mars ? '#d9784f' : '#c9ced9'; c.beginPath(); c.arc(bx + bw, by + 3, 6, 0, TAU); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(bx + bw * u, by + 3, 5, 0, TAU); c.fill();
+    const total = mars ? 225e6 : 384400, left = Math.round(total * (1 - u)), nf = (v) => v.toLocaleString(es2() ? 'es-DO' : 'en-US');
+    c.textAlign = 'left'; c.fillStyle = '#cfe0ff'; c.fillText(bn('earth'), bx, by - fs * 0.5); c.textAlign = 'right'; c.fillText(bn(mars ? 'mars' : 'moon'), bx + bw, by - fs * 0.5);
+    c.textAlign = 'center'; c.fillStyle = '#ffd36b'; c.fillText((es2() ? 'Faltan ≈ ' : 'Remaining ≈ ') + nf(left) + ' km · ' + Math.round(u * 100) + ' %', w / 2, by + fs * 1.4);
+    c.fillStyle = 'rgba(200,215,255,.55)'; c.font = Math.round(fs * 0.8) + 'px system-ui'; c.fillText(es2() ? 'Distancias orientativas y escala no real' : 'Approximate distances, not to scale', w / 2, by - fs * 1.1);
+  }
+  return { cabin, launch, voyage, voyageHud, SYSCOL, ease };
 })();
