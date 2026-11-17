@@ -193,14 +193,14 @@ const pushInc = (pg, type, o) => pg.evaluate(([t, o]) => { const S = Game.S, T =
   ok('Ruta segura: activa la pista del rover y marca un punto de interés en el radar de la expedición', cons.route === true);
   const cons2 = await E(async () => {
     const S = Game.S, e = EL.ensure(S), o = {}; S.inc = []; EL.setScale(S, 0.25); e.cool = {}; e.out = [];
-    const wait = (n) => { for (let i = 0; i < n; i++) Sim.step(S, 1); };
+    const wait = (n, cond) => { for (let i = 0; i < (cond ? 90 : n); i++) { if (cond && cond()) return; Sim.step(S, 1); } }; // con condición, espera la respuesta de Tierra hasta 90 h (una tormenta alarga el retraso según la semilla)
     // agricultura: plaga real → la plaga queda identificada
-    const pl = Sim.plantsList(S); pl[0].p.pest = true; pl[0].p.pestKnown = false; EL.send(S, 'agri_check'); wait(14); o.pest = pl[0].p.pestKnown === true; o.agriReply = /plagas/.test(e.hist.filter((h) => h.dir === 'in').pop().text.es);
+    const pl = Sim.plantsList(S); pl[0].p.pest = true; pl[0].p.pestKnown = false; EL.send(S, 'agri_check'); wait(14, () => pl[0].p.pestKnown === true); o.pest = pl[0].p.pestKnown === true; o.agriReply = /plagas/.test(e.hist.filter((h) => h.dir === 'in').pop().text.es);
     // medicina: dosis alta → orden de refugio
-    S.crew[0].dose = S.limit * 0.7; EL.send(S, 'med_check'); wait(14); o.med = [e.orders.some((q) => q.k === 'shelter'), /radiación es alta/.test(e.hist.filter((h) => h.dir === 'in').pop().text.es)];
+    S.crew[0].dose = S.limit * 0.7; EL.send(S, 'med_check'); wait(14, () => e.orders.some((q) => q.k === 'shelter') && /radiación es alta/.test((e.hist.filter((h) => h.dir === 'in').pop() || { text: { es: '' } }).text.es)); o.med = [e.orders.some((q) => q.k === 'shelter'), /radiación es alta/.test(e.hist.filter((h) => h.dir === 'in').pop().text.es)];
     // ciencia: enviar datos de una muestra analizada
     const smp = { id: 'MS-901', seq: 901, origin: 'field', t: S.t, cat: 'rock', label: null, state: 'stored', slot: 'A2', an: 'done', ok: true, sci: 12, loc: 'base', name: { es: 'Basalto', en: 'Basalt' }, kind: 'rock', int: 3, site: 'f04' }; S.sampleList.push(smp);
-    const sc0 = S.science; e.prop = []; Sim.step(S, 0.3); o.prop = e.prop.some((p) => p.intent === 'sci_sample'); const pid = e.prop.find((p) => p.intent === 'sci_sample').id; Game._debug.el.accept(pid); wait(14); o.sci = [smp.sent === true, S.science > sc0, /basalto|Basalto|roca/i.test(e.hist.filter((h) => h.dir === 'in').pop().text.es)];
+    const sc0 = S.science; e.prop = []; Sim.step(S, 0.3); o.prop = e.prop.some((p) => p.intent === 'sci_sample'); const pid = e.prop.find((p) => p.intent === 'sci_sample').id; Game._debug.el.accept(pid); wait(14, () => smp.sent === true && S.science > sc0); o.sci = [smp.sent === true, S.science > sc0, /basalto|Basalto|roca/i.test(e.hist.filter((h) => h.dir === 'in').pop().text.es)];
     return o;
   });
   ok('Agricultura: un informe de sensores con plaga real hace que Tierra la identifique en las plantas', cons2.pest && cons2.agriReply, JSON.stringify(cons2));

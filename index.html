@@ -494,7 +494,7 @@ const DATA = (function () {
   const ROOMS = {
     bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
     reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, elc1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc3: { es: 'Elevador de tripulación', en: 'Crew elevator' }, water: { es: 'Soporte vital', en: 'Life support' },
-    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
+    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, garage: { es: 'Garaje del rover', en: 'Rover garage' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
     hall: { es: 'Atrio central', en: 'Central atrium' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
@@ -839,12 +839,12 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null, amb = null, ambVol = 0.6, ambMix = {};
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); startAmb(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; applyAmb(); }
   // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
   const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
   function startMusic() {
@@ -857,6 +857,31 @@ const Sfx = (function () {
     } catch (e) { mus = null; }
   }
   function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
+  // Ambiente por capas (zumbido del reactor, ventilación, motor del elevador, viento y respiración del traje). Cada capa tiene su volumen 0–1.
+  function noiseBuf(sec) { const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); let p = 0; for (let i = 0; i < n; i++) { p = p * 0.2 + (Math.random() * 2 - 1) * 0.8; d[i] = p; } return b; }
+  function startAmb() {
+    if (!ctx || amb) return;
+    try {
+      const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(master);
+      const nb = noiseBuf(2), layer = (src, filt, ftype, fq) => { const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = ftype; f.frequency.value = fq; g.gain.value = 0; src.connect(f); f.connect(g); g.connect(bus); return { f, g }; };
+      const hum = [55, 110.6, 165.3].map((fr, i) => { const o = ctx.createOscillator(); o.type = i ? 'triangle' : 'sine'; o.frequency.value = fr; o.start(); return o; }), humL = layer(hum[0], null, 'lowpass', 420); hum[1].connect(humL.f); hum[2].connect(humL.f);
+      const noise = (fq, ftype) => { const s2 = ctx.createBufferSource(); s2.buffer = nb; s2.loop = true; s2.start(); return layer(s2, null, ftype, fq); };
+      const vent = noise(520, 'bandpass'), wind = noise(700, 'lowpass'), suit = noise(2600, 'highpass');
+      const mo = ctx.createOscillator(); mo.type = 'sawtooth'; mo.frequency.value = 58; mo.start(); const motor = layer(mo, null, 'lowpass', 380);
+      const ro = ctx.createOscillator(); ro.type = 'square'; ro.frequency.value = 38; ro.start(); const rover = layer(ro, null, 'lowpass', 220);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.22; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(suit.g.gain); lfo.start(); // respiración
+      amb = { bus, hum, humL, vent, wind, suit, motor, mo, rover };
+      applyAmb();
+    } catch (e) { amb = null; }
+  }
+  const AMBG = { reactor: 0.16, vent: 0.05, wind: 0.14, suit: 0.035, motor: 0.12, rover: 0.14 };
+  function applyAmb() {
+    if (!ctx || !amb) return; const t = ctx.currentTime, on = sfxOn && !muted, m = ambMix, k = on ? ambVol : 0, set = (L, key) => L.g.gain.setTargetAtTime((m[key] || 0) * AMBG[key] * k, t, 0.35);
+    set(amb.humL, 'reactor'); set(amb.vent, 'vent'); set(amb.wind, 'wind'); set(amb.motor, 'motor'); set(amb.rover, 'rover');
+    amb.suit.g.gain.setTargetAtTime((m.suit || 0) * AMBG.suit * k, t, 0.35);
+    const un = m.reactorUnstable || 0; amb.hum[0].detune.setTargetAtTime(un * 60, t, 0.5); amb.hum[1].detune.setTargetAtTime(-un * 90, t, 0.5);
+    amb.mo.frequency.setTargetAtTime(52 + (m.motorSpeed || 0) * 30, t, 0.3);
+  }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
@@ -892,7 +917,7 @@ const Sfx = (function () {
   };
   const RADIO_SND = { rcon: 1, rtx: 1, rrx: 1, rnoise: 1, rend: 1 };
   return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : RADIO_SND[k] ? radioVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
-    setSfx: (v) => { sfxOn = !!v; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setSfx: (v) => { sfxOn = !!v; applyAmb(); }, setAmbVol: (v) => { ambVol = clampN(+v, 0, 1); applyAmb(); }, setAmbient: (m) => { ambMix = m || {}; applyAmb(); }, get amb() { return ambMix; }, get ambReady() { return !!amb; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
     setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();
@@ -1246,7 +1271,7 @@ const Voice = (function () {
     profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
   }
   // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
-  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAmb: 0.6, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
   for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
   function persist() { Store.set('audio', cfg); }
 
@@ -3542,7 +3567,9 @@ const Trip = (function () {
 const Station = (function () {
   const T = (es, en) => ({ es, en });
   const FLOORS = [1, 2, 3];
-  const FLOOR_T = { 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
+  /** Garaje del rover: nivel G (suelo 4 del mundo). Dock donde aparca el rover (coordenadas del garaje). */
+  const GARAGE = 4, GDOCK = [96, 74];
+  const FLOOR_T = { 4: T('Nivel G · Garaje', 'Level G · Garage'), 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
   const KINDS = {
     crew: { stops: [1, 2, 3], at: 1, name: T('Elevador de tripulación', 'Crew elevator'), secPerFloor: 2.2 },
     rover: { stops: [0, 2], at: 0, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
@@ -3603,12 +3630,13 @@ const Station = (function () {
   function step(S, dt) {
     let arrived = false;
     for (const kind of Object.keys(KINDS)) {
-      const e = E(S, kind); if (e.st === 'idle') continue;
+      const e = E(S, kind); if (kind === 'rover' && e.st === 'idle' && S.station.roverAt === 'garage' && S.sys && S.sys.rover) S.sys.rover.batt = Math.min(100, S.sys.rover.batt + dt * 0.9); // se carga en el dock
+      if (e.st === 'idle') continue;
       e.t += dt;
       if (e.st === 'closing' && e.t >= DOOR_S) { e.st = 'moving'; e.t = 0; e.p = 0; }
       else if (e.st === 'moving') {
         const dur = Math.max(0.01, travelS(kind, e.at, e.to)); e.p = Math.min(1, e.t / dur);
-        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; }
+        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') { S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; if (S.ex) { const R0 = S.ex.rover, c0 = e.at === 2 ? GDOCK : PLAT.c; R0.x = c0[0]; R0.y = c0[1]; R0.a = 0; R0.v = 0; } } }
       } else if (e.st === 'opening' && e.t >= DOOR_S) { e.st = 'idle'; e.t = 0; arrived = true; }
     }
     return arrived;
@@ -3620,6 +3648,8 @@ const Station = (function () {
   /** ¿Se ve el rover en la superficie? No si está guardado en el garaje ni mientras la plataforma baja con él. */
   const roverVisible = (S) => { const st = ensure(S); return st.roverAt !== 'garage' && st.elev.rover.st !== 'moving'; };
   const roverStored = (S) => ensure(S).roverAt === 'garage';
+  /** ¿Está el rover aparcado en el dock del garaje (plataforma abajo y quieta)? */
+  const roverInGarage = (S) => { const st = ensure(S); return st.roverAt === 'garage' && st.elev.rover.st !== 'moving'; };
   /** Plataforma del rover (coordenadas del mundo exterior): el rover aparca en su centro. */
   const PLAT = { x: 70.5, y: 86.4, w: 7, h: 6.4, c: [74, 89.6], panel: [74, 93.4] };
   /** ¿Está el rover bien colocado sobre la plataforma? (centrado, alineado, quieto y sin conductor) */
@@ -3644,7 +3674,7 @@ const Station = (function () {
   /** ¿Está la cabina del elevador de tripulación en el piso f con las puertas abiertas (o abriéndose)? */
   const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, GARAGE, GDOCK, roverVisible, roverStored, roverInGarage, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();
 /* =====================================================================
    Surv: supervivencia y derrota. Motor puro (sin DOM) para que se pueda probar.
@@ -4543,7 +4573,14 @@ const Layout = (function () {
   const fl = (r) => FLOOR_OF[r] || 1;
   const roomOfPt = (x, y) => { for (const k in ROOMS) for (const sp of ROOMS[k].s) if (has(sp, x, y)) return k; return null; };
   const FNAME = { 1: { es: 'Piso 1 · Operaciones', en: 'Floor 1 · Operations' }, 2: { es: 'Piso 2 · Exploración', en: 'Floor 2 · Exploration' }, 3: { es: 'Piso 3 · Energía', en: 'Floor 3 · Energy' } };
-  const FLOORS = [1, 2, 3].map((id) => {
+  // Nivel G · Garaje del rover (suelo 4): sala transitable bajo la plataforma exterior. No tiene elevador de tripulación: se llega con la plataforma del rover o por la escalera de servicio.
+  FLOOR_OF.garage = 4;
+  ROOMS.garage = { s: [RR(82, 62, 119, 85, 3)], g: 'tec', floor: 'bay', col: ['#23283a', '#2a3044'] };
+  ROOMCOL.garage = '#c9ced8'; FNAME[4] = { es: 'Nivel G · Garaje', en: 'Level G · Garage' };
+  FURN.push(['dock', 92, 71, 9, 7], ['pipe', 84, 64, 33, 1], ['tools', 84, 66, 4, 2], ['benchs', 104, 66, 6, 2], ['rack', 114, 66, 2, 3], ['battery', 85, 81, 2, 2], ['battery', 88, 81, 2, 2], ['battery', 91, 81, 2, 2], ['crate', 110, 79, 2, 2], ['crate', 113, 79, 2, 2], ['crate', 110, 82, 2, 2], ['vent', 84, 72, 2, 2], ['vent', 116, 72, 2, 2], ['lockers', 84, 76, 2, 3], ['holo', 98, 80, 5, 2]);
+  CONSOLES.push(['glift', 'garage', 91, 69, 'use', '🛗'], ['gcon', 'garage', 100, 66, 'manage', '🔧'], ['gstairs', 'garage', 112, 69, 'use', '🪜']);
+  SPOTS.garage = [[112, 72], [96, 80]];
+  const FLOORS = [1, 2, 3, 4].map((id) => {
     const rooms = {}; for (const k in ROOMS) if (fl(k) === id) rooms[k] = ROOMS[k];
     const real = (r) => r === 'pad' || rooms[r];
     return {
@@ -4551,7 +4588,7 @@ const Layout = (function () {
       LINKS: LINKS.filter((l) => real(l[0]) && real(l[1]) && (l[0] === 'pad' || l[1] === 'pad' || (fl(l[0]) === id && fl(l[1]) === id))),
       FURN: FURN.filter((f) => fl(roomOfPt(f[1] + f[3] / 2, f[2] + f[4] / 2) || 'bridge') === id),
       CONSOLES: CONSOLES.filter((c) => fl(c[1]) === id), PLANTERS: id === 1 ? PLANTERS : [], SHELTER: id === 2 ? SHELTER : null,
-      elev: SPOTS['elc' + id][0]
+      elev: (SPOTS['elc' + id] || SPOTS.garage)[0], elevRoom: id === 4 ? 'garage' : 'elc' + id
     };
   });
   const roomFloor = (r) => fl(r);
@@ -5688,7 +5725,7 @@ const World = (function () {
     }
     // Solidez
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (!D.ground && grid[y][x] === OUT); // solo la planta baja tiene exterior
-    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug', 'catwalk', 'warn'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
+    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug', 'catwalk', 'warn', 'dock'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
     if (D.ground) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
     if (D.ground) {
@@ -5722,13 +5759,30 @@ const World = (function () {
     const was = fidx; fidx = n - 1; loadSlot(FL[fidx]);
     try { return fn(); } finally { const o = FL[fidx]; o.staticCv = staticCv; o.mapCv = mapCv; o.pathCache = pathCache; o.roomCache = roomCache; fidx = was; loadSlot(FL[fidx]); }
   }
-  /** Trayecto de un NPC en el elevador: entra en la cabina, tarda según los pisos y sale junto al elevador de destino (no se teletransporta). */
-  function startRide(b, to) { b.ride = { to, t: 0, dur: Station.DOOR_S * 2 + Station.travelS('crew', b.floor || 1, to) }; b.moving = false; b.path = []; }
-  function stepRide(b, dt) {
-    b.ride.t += dt; if (b.ride.t < b.ride.dur) return;
+  /** ¿Se ve el rover en el piso actual? En la planta baja (exterior) cuando está arriba; en el nivel G cuando está aparcado en el dock. */
+  const rvis = () => !!curS && (FL[fidx].D.id === 4 ? Station.roverInGarage(curS) : !!FL[fidx].D.ground && Station.roverVisible(curS));
+  /** Coloca al jugador junto a un punto de un piso (garaje o superficie) tras usar la plataforma o la escalera de servicio. */
+  function placeNear(f, x, y) { if (!setFloor(f)) return false; const p = standAt(x, y, null); player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true; }
+  let npcFrozen = false; // solo para pruebas: los NPC no se mueven
+  /** Trayecto de un NPC en el elevador. mode 'in': ya subió a la cabina real (Station) y espera a que llegue; 'timed': respaldo con el mismo tiempo cuando la cabina no sirve (avería o espera larga), así no se queda atrapado. */
+  function startRide(b, to, mode) { b.ride = { to, t: 0, st: mode || 'timed', dur: Station.DOOR_S * 2 + Station.travelS('crew', b.floor || 1, to) }; b.moving = false; b.path = []; }
+  function finishRide(b) {
     const to = b.ride.to, p = withFloor(to, () => spot('elc' + to, 0));
-    b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.path = []; b.wait = 1.5; b.dir = 2;
+    b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.rw = 0; b.path = []; b.wait = 1.5; b.dir = 2;
   }
+  function stepRide(b, dt) {
+    const r = b.ride, S = curS; r.t += dt;
+    if (r.st === 'in' && S && S.station) {
+      const e = Station.ensure(S).elev.crew;
+      if (e.st === 'idle' && e.at === r.to) { Station.leave(S, 'crew', 'npc:' + b.role); return finishRide(b); }
+      if (r.t < r.dur + 30) return; // espera a que la cabina real termine el trayecto
+      Station.leave(S, 'crew', 'npc:' + b.role); return finishRide(b); // seguridad: nunca queda atrapado
+    }
+    if (r.t < r.dur) return;
+    finishRide(b);
+  }
+  /** ¿Va el jugador dentro de la cabina (en el piso donde está ahora)? Entonces los NPC no la llaman: se llevaría al jugador. */
+  const playerInCabin = (st) => player.floor === st.at && withFloor(st.at, () => room(player.x, player.y)) === 'elc' + st.at;
   /** Piso al que pertenece un punto (coordenadas originales de la base): el piso donde esa celda es sala o puerta; si no, la planta baja (exterior). */
   function floorOfPoint(x, y) {
     const tx = Math.floor(x), ty = Math.floor(y);
@@ -5737,12 +5791,12 @@ const World = (function () {
   }
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
   function prewarmFloor(f) { withFloor(f, () => { if (!staticCv) buildStatic(); }); }
-  function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
+  function prewarm() { for (let f = 1; f <= Math.min(3, FL.length); f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
   function arrive(n, outside) {
     if (!setFloor(n)) return false; const D = FL[fidx].D; let p = null;
     if (outside) { const d = doors.find((q) => q.elev === n); if (d) p = standAt(d.x + 0.5 + (Math.sign(d.x + 0.5 - D.elev[0]) || -1) * 2.4, d.y + d.h / 2, null); } // delante de la puerta del elevador
-    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
+    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, D.elevRoom || 'elc' + n);
     player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true;
   }
   /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
@@ -5827,7 +5881,7 @@ const World = (function () {
 
   /* ---------- Colisión ---------- */
   function roverBlocks(x, y) {
-    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !Station.roverVisible(curS)) return false;
+    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !rvis()) return false;
     for (const b of Rover.body(E.rover.x, E.rover.y, E.rover.a)) if (Math.hypot(b[0] - x, b[1] - y) < b[2] * 0.95) return true;
     return false;
   }
@@ -5835,7 +5889,7 @@ const World = (function () {
     const tx = Math.floor(x), ty = Math.floor(y);
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) { const B = Field.B; return x < B.x0 || y < B.y0 || x > B.x1 || y > B.y1 || Field.hit(x, y, 0, false) || roverBlocks(x, y); }
     if (grid[ty][tx] === DOOR) { const d = doorAt(tx, ty); return !d || d.open < 0.6; }
-    return solid[ty][tx] || (grid[ty][tx] === OUT && roverBlocks(x, y));
+    return solid[ty][tx] || ((grid[ty][tx] === OUT || FL[fidx].D.id === 4) && roverBlocks(x, y)); // el rover aparcado en el dock del garaje también es un obstáculo
   }
   function doorAt(x, y) { return doors.find((d) => x >= d.x && x < d.x + d.w && y >= d.y && y < d.y + d.h); }
   function canStand(x, y, r) { return !blocked(x - r, y - r) && !blocked(x + r, y - r) && !blocked(x - r, y + r) && !blocked(x + r, y + r); }
@@ -5878,7 +5932,7 @@ const World = (function () {
     if (!player.moving) player.anim += dt * 8;
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
-    for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
+    for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (npcFrozen) continue; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
     // las puertas de los otros pisos también se abren para los NPC que las cruzan (si no, quedarían atrapados dentro de una puerta cerrada)
     const other = {}; for (const bt of bots) if (!bt.ride && !onF(bt)) (other[bt.floor || 1] = other[bt.floor || 1] || []).push(bt);
     for (const f in other) withFloor(+f, () => { for (const d of doors) { const cx = d.x + d.w / 2, cy = d.y + d.h / 2, want = d.kind === 'auto' && other[f].some((e) => Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0); d.open = clampN(d.open + (want ? 3 : -3) * dt, 0, 1); if (!want) for (const e of other[f]) if (Math.floor(e.x) >= d.x && Math.floor(e.x) < d.x + d.w && Math.floor(e.y) >= d.y && Math.floor(e.y) < d.y + d.h) d.open = Math.max(d.open, 0.7); } });
@@ -5942,8 +5996,29 @@ const World = (function () {
     b.anim += dt * 7;
     if (!S) return;
     const myF = b.floor || 1, fl = (room) => Layout.roomFloor(room), elev = () => spot('elc' + myF, 0);
-    // ¿está en la puerta del elevador y necesita otro piso? → sube a la cabina
-    if (b.viaTo && b.viaTo !== myF) { const e = elev(); if (Math.hypot(e[0] - b.x, e[1] - b.y) < 1.4 && !b.path.length) { startRide(b, b.viaTo); return; } } else b.viaTo = null;
+    function follow() {
+      if (b.path.length) {
+        const n = b.path[0], dx = n[0] - b.x, dy = n[1] - b.y, d = Math.hypot(dx, dy), sp = 2.6 * dt;
+        if (d <= sp) { b.x = n[0]; b.y = n[1]; b.path.shift(); }
+        else { b.x += (dx / d) * sp; b.y += (dy / d) * sp; b.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); }
+        b.moving = true;
+      } else b.moving = false;
+    }
+    // ¿necesita otro piso? → espera fuera de la puerta, llama a la cabina real y sube cuando llega (sin cabina utilizable, trayecto propio)
+    if (b.viaTo && b.viaTo !== myF) {
+      const st = Station.ensure(S).elev.crew, here = st.at === myF && st.st === 'idle' && !st.broken, ec = elev(), near = Math.hypot(ec[0] - b.x, ec[1] - b.y) < 1.4;
+      b.rw = (b.rw || 0) + dt;
+      const walk = (t) => { if (!b.path.length && Math.hypot(t[0] - b.x, t[1] - b.y) > 0.9) b.path = (findPath(b.x, b.y, t[0], t[1]) || []).slice(1); };
+      if (st.broken || b.rw > 45) { if (near && !b.path.length) { startRide(b, b.viaTo, 'timed'); return; } walk(ec); }
+      else if (here) {
+        if (near && !b.path.length) { if (st.occ.length === 0 && Station.board(S, 'crew', 'npc:' + b.role).ok && Station.call(S, 'crew', b.viaTo).ok) { startRide(b, b.viaTo, 'in'); return; } }
+        else walk(ec);
+      } else {
+        const d0 = doors.find((q) => q.elev === myF), D0 = FL[fidx].D, ws = d0 ? standAt(d0.x + 0.5 + (Math.sign(d0.x + 0.5 - D0.elev[0]) || -1) * 2.4, d0.y + d0.h / 2, null) : ec;
+        walk(ws); if (st.st === 'idle' && !playerInCabin(st) && Math.hypot(ws[0] - b.x, ws[1] - b.y) < 1.5) Station.call(S, 'crew', myF);
+      }
+      follow(); return;
+    } else { b.viaTo = null; b.rw = 0; }
     const c = S.crew.find((x) => x.role === b.role);
     let goal = null, goalF = myF;
     if (c && c.zone === 'shelter' && !locked('rad')) { goalF = 2; goal = myF === 2 ? (b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]) : elev(); b.task = 'shelter'; }
@@ -5968,12 +6043,7 @@ const World = (function () {
         }
       }
     }
-    if (b.path.length) {
-      const n = b.path[0], dx = n[0] - b.x, dy = n[1] - b.y, d = Math.hypot(dx, dy), sp = 2.6 * dt;
-      if (d <= sp) { b.x = n[0]; b.y = n[1]; b.path.shift(); }
-      else { b.x += (dx / d) * sp; b.y += (dy / d) * sp; b.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); }
-      b.moving = true;
-    } else b.moving = false;
+    follow();
   }
 
   /* ---------- Interacción ---------- */
@@ -6015,7 +6085,7 @@ const World = (function () {
   function roverFree(x, y, a) { for (const b of Rover.body(x, y, a)) if (!circleFree(b[0], b[1], b[2])) return false; return true; }
   const standOK = (x, y) => { noRov = true; const v = canStand(x, y, 0.3); noRov = false; return v; };
   function boardRover() {
-    const E = curS && curS.ex; if (!E) return 'err'; if (!Station.roverVisible(curS)) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
+    const E = curS && curS.ex; if (!E) return 'err'; if (!rvis() || !FL[fidx].D.ground) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
     const sd = Rover.sides(), dl = Math.hypot(player.x - sd.left[0], player.y - sd.left[1]), dr = Math.hypot(player.x - sd.right[0], player.y - sd.right[1]), side = dl < dr ? sd.left : sd.right;
     boardAnim = { kind: 'in', t: 0, dur: 0.7, fx: player.x, fy: player.y, sx: side[0], sy: side[1] }; player.act = null; collect = null; Sfx.play('door'); return null;
   }
@@ -6055,7 +6125,7 @@ const World = (function () {
     if (shelIn) return { id: 'x:shelx', verb: 'leave', icon: '🚪', d: 0, q: Field.G.shel.find((z) => z.id === shelIn) };
     let best = null, bd = 9; const px = player.x, py = player.y, R = E.rover, sd = Rover.sides();
     const cons = (d, it) => { if (d < bd) { bd = d; best = Object.assign(it, { d }); } };
-    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = Station.roverVisible(curS);
+    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = rvis();
     if (dh < 1.6 && rv) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
     if (dr < 3.3 && rv) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
     { const P = Station.PLAT, dp = Math.hypot(px - P.panel[0], py - (P.panel[1] + 0.9)); if (dp < 2.2) cons(dp * 0.9, { id: 'x:rplat', verb: 'use', icon: '🛗' }); }
@@ -6078,8 +6148,8 @@ const World = (function () {
     const R = E.rover, ev = Ex.env(S, R.x, R.y), nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.7 : 1);
     const seated = R.occ || (boardAnim && boardAnim.kind === 'in' && boardAnim.t / boardAnim.dur > 0.9);
     const bd = boardAnim ? Math.sin(Math.min(1, boardAnim.t / boardAnim.dur) * Math.PI) : 0;
-    ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
-    if (Station.roverVisible(S)) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
+    if (FL[fidx].D.ground) ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
+    if (rvis()) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
     ents.push({ y: 1e6, f: () => {
       Rover.drawParts(c);
       if (collect) { const x = collect.x * TS, y = collect.y * TS, u = collect.t / collect.dur; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y - 6, 20, 0, 7); c.stroke(); c.strokeStyle = '#6fffa0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y - 6, 20, -Math.PI / 2, -Math.PI / 2 + u * 6.283); c.stroke(); }
@@ -6122,7 +6192,7 @@ const World = (function () {
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
-    const R = E.rover; if (Station.roverVisible(curS)) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
+    const R = E.rover; if (rvis()) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(X(player.x), Y(player.y), 4.5, 0, 7); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
     return true;
   }
@@ -6219,6 +6289,11 @@ const World = (function () {
         c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
         break;
       }
+      case 'dock': { // plataforma de aparcamiento del rover en el garaje: placa con franjas, luces y rieles
+        c.fillStyle = '#10141f'; rr(c, x, y, w, h, 8); c.fill(); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([14, 10]); rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.stroke(); c.setLineDash([]);
+        c.fillStyle = '#2b3347'; rr(c, x + 14, y + 14, w - 28, h - 28, 6); c.fill(); c.strokeStyle = 'rgba(160,180,230,.35)'; c.lineWidth = 2; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x + 14 + (w - 28) * i / 4, y + 14); c.lineTo(x + 14 + (w - 28) * i / 4, y + h - 14); c.stroke(); }
+        const on = curS && Station.roverInGarage(curS), a2 = 0.5 + 0.5 * Math.sin(lastT * 4); for (const [lx, ly] of [[x + 10, y + 10], [x + w - 10, y + 10], [x + 10, y + h - 10], [x + w - 10, y + h - 10]]) { c.fillStyle = on ? '#6fffa0' : 'rgba(255,170,60,' + (0.5 + 0.5 * a2) + ')'; c.beginPath(); c.arc(lx, ly, 4, 0, 6.2832); c.fill(); }
+        break; }
       case 'warn': { // zona restringida: borde de franjas de advertencia
         c.strokeStyle = 'rgba(255,194,74,.55)'; c.lineWidth = 6; c.setLineDash([22, 16]); c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]);
         c.strokeStyle = 'rgba(20,20,26,.6)'; c.lineWidth = 6; c.setLineDash([16, 22]); c.lineDashOffset = -22; c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]); c.lineDashOffset = 0; break;
@@ -6395,6 +6470,7 @@ const World = (function () {
     const eva = !!(S && S.ex && S.ex.suit.on), inRov = !!(S && S.ex && S.ex.rover.occ) && !boardAnim, cargo = !!(S && S.ex && S.ex.hand.length);
     if (!inRov && !shelIn) ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? (cargo ? 'carry' : 'walk') : (cargo && !player.act && pPose === 'idle' ? 'carry' : pPose), player.moving, o.youLabel || '', eva) });
     if (FL[fidx].D.ground) exRender(ctx, S, ents, t, rm, vw, vh, o);
+    else if (rvis() && S && S.ex) { const R = S.ex.rover; ents.push({ y: R.y, f: () => Rover.draw(ctx, S, t, { occ: false, role: player.role, boarding: 0, night: false, storeOpen: false, rm }) }); } // el rover aparcado en el dock del garaje
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     roomVeil(ctx);
     // Secciones bloqueadas: velo con la forma real de cada sala
@@ -6506,9 +6582,9 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, prewarmFloor, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, get mainFloors() { return Math.min(3, FL.length); }, placeNear, rvis, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, prewarmFloor, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
-    _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
+    _test: { freeze: (v) => { npcFrozen = !!v; }, setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();
 /* =====================================================================
    MINIGAMES — 6 minijuegos 2D originales (Canvas). Cada definición:
@@ -7134,6 +7210,7 @@ const Game = (function () {
     if (running && S) tickRadio(dt);
     if (running && S && !paused && !S.ended && S.station) Station.step(S, dt); // el elevador sigue su trayecto aunque haya un panel abierto
     if (running && S) rideFrame(dt); // el cambio de piso lo completa este controlador, no el panel
+    if (running && S) ambFrame(dt); else if (!running) ambStop();
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended && !rideOn();
       if (live) {
@@ -7336,7 +7413,7 @@ const Game = (function () {
     bed: { es: 'Cabinas', en: 'Bunks' }, med: { es: 'Enfermería', en: 'Medical bay' }, rec: { es: 'Sala de bienestar', en: 'Wellbeing corner' },
     gh: { es: 'Panel del invernadero', en: 'Greenhouse panel' }, reactor: { es: 'Panel de energía', en: 'Power panel' }, solar: { es: 'Orientar paneles solares', en: 'Aim solar panels' },
     balance: { es: 'Balance energético', en: 'Energy balance' }, water: { es: 'Reciclaje de agua', en: 'Water recycling' }, o2: { es: 'Calibrar oxígeno', en: 'Calibrate oxygen' },
-    tele: { es: 'Teletransporte de pisos', en: 'Floor teleporter' }, call1: { es: 'Llamar al elevador', en: 'Call the elevator' }, call2: { es: 'Llamar al elevador', en: 'Call the elevator' }, call3: { es: 'Llamar al elevador', en: 'Call the elevator' }, elev1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev3: { es: 'Elevador de tripulación', en: 'Crew elevator' },
+    tele: { es: 'Teletransporte de pisos', en: 'Floor teleporter' }, glift: { es: 'Plataforma del rover', en: 'Rover platform' }, gcon: { es: 'Taller del garaje', en: 'Garage workshop' }, gstairs: { es: 'Escalera de servicio', en: 'Service stairs' }, call1: { es: 'Llamar al elevador', en: 'Call the elevator' }, call2: { es: 'Llamar al elevador', en: 'Call the elevator' }, call3: { es: 'Llamar al elevador', en: 'Call the elevator' }, elev1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elev3: { es: 'Elevador de tripulación', en: 'Crew elevator' },
     shield: { es: 'Blindaje y refugio', en: 'Shielding & shelter' }, rover: { es: 'Rover explorador', en: 'Explorer rover' }, isru: { es: 'Extractor de hielo', en: 'Ice extractor' },
     lock: { es: 'Esclusa', en: 'Airlock' }, suit: { es: 'Traje y expedición', en: 'Suit & expedition' }, wardrobe: { es: 'Vestuario', en: 'Wardrobe' }, lab: { es: 'Análisis de muestras', en: 'Sample analysis' }, spec: { es: 'Espectrómetro', en: 'Spectrometer' }, log: { es: 'Registro de investigaciones', en: 'Research log' }
   };
@@ -7352,7 +7429,7 @@ const Game = (function () {
     if (c.id === 'spec') Sim.campFlag(S, 'spec_open');
     if (c.id === 'log') Sim.campFlag(S, 'log_open');
     if (c.id === 'med') Sim.campFlag(S, 'med_open');
-    const map = { call1: () => elevatorPanel(1), call2: () => elevatorPanel(2), call3: () => elevatorPanel(3), tele: teleportPanel, elev1: () => elevatorPanel(1), elev2: () => elevatorPanel(2), elev3: () => elevatorPanel(3), cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
+    const map = { call1: () => elevatorPanel(1), call2: () => elevatorPanel(2), call3: () => elevatorPanel(3), tele: teleportPanel, glift: roverLiftPanel, gcon: garagePanel, gstairs: () => serviceStairs(World.floor === 4 ? 2 : 4), elev1: () => elevatorPanel(1), elev2: () => elevatorPanel(2), elev3: () => elevatorPanel(3), cmd: () => openCmd('missions'), comms: commsPanel, earth: () => earthList(), bed: () => confirmDecision('sleep', {}, '🛏️ ' + _('rest')), rec: () => confirmDecision('rec', {}, '🎲 ' + consoleName('rec')),
       med: medPanel, gh: ghPanel, reactor: reactorPanel, solar: () => miniIntro('solar', {}), balance: () => miniIntro('balance', {}), water: waterPanel, o2: () => miniIntro('o2', {}),
       shield: shieldPanel, store: storePanel, kitchen: kitchenPanel, sampler: samplePanel, work: workPanel, wastec: wastePanel, rover: roverPanel, isru: isruPanel, lock: lockPanel, lab: labPanel, spec: specPanel, log: researchPanel };
     (map[c.id] || (() => {}))();
@@ -8360,7 +8437,7 @@ const Game = (function () {
       clampC(); e.preventDefault();
     });
 
-    const floorBtns = h('div', { class: 'row', 'data-floors': '1' }, ...Station.FLOORS.map((f) => btn((f === st.floor ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + f + ' · ' + tr(Station.FLOOR_T[f]).split('· ')[1], () => { st.floor = f; st.sel = null; st.route = false; st.cx = D.W / 2; st.cy = D.H / 2; st.z = 1; floorBtns.querySelectorAll('button').forEach((b, i) => { b.textContent = (i + 1 === f ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + (i + 1) + ' · ' + tr(Station.FLOOR_T[i + 1]).split('· ')[1]; b.classList.toggle('primary', i + 1 === f); }); card(); }, f === st.floor ? 'sm primary' : 'sm', { 'data-act': 'mapfloor-' + f })), h('span', { class: 'small muted' }, es ? 'Elevadores: 🛗 tripulación (pisos 1-3) · 🚙 rover (garaje ↔ exterior)' : 'Elevators: 🛗 crew (floors 1-3) · 🚙 rover (garage ↔ outside)'));
+    const floorBtns = h('div', { class: 'row', 'data-floors': '1' }, ...Station.FLOORS.concat([Station.GARAGE]).map((f) => btn((f === st.floor ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + f + ' · ' + tr(Station.FLOOR_T[f]).split('· ')[1], () => { st.floor = f; st.sel = null; st.route = false; st.cx = D.W / 2; st.cy = D.H / 2; st.z = 1; floorBtns.querySelectorAll('button').forEach((b, i) => { b.textContent = (i + 1 === f ? '● ' : '') + (es ? 'Piso ' : 'Floor ') + (i + 1) + ' · ' + tr(Station.FLOOR_T[i + 1]).split('· ')[1]; b.classList.toggle('primary', i + 1 === f); }); card(); }, f === st.floor ? 'sm primary' : 'sm', { 'data-act': 'mapfloor-' + f })), h('span', { class: 'small muted' }, es ? 'Elevadores: 🛗 tripulación (pisos 1-3) · 🚙 rover (garaje ↔ exterior)' : 'Elevators: 🛗 crew (floors 1-3) · 🚙 rover (garage ↔ outside)'));
     const tools = h('div', { class: 'row' },
       btn('＋', () => zoom(1.25), 'sm', { 'aria-label': 'Zoom +' }), btn('－', () => zoom(0.8), 'sm', { 'aria-label': 'Zoom -' }),
       btn('📍 ' + (es ? 'Centrar en mí' : 'Center on me'), () => { st.cx = World.player.x; st.cy = World.player.y; if (st.z < 2) st.z = 2; clampC(); }, 'sm'),
@@ -8520,7 +8597,7 @@ const Game = (function () {
      ===================================================================== */
   function applyAudio() {
     const c = Voice.cfg;
-    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music); Sfx.setAmbVol(c.vAmb == null ? 0.6 : c.vAmb);
   }
   let subEl = null, subT = 0;
   const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' }, earth_control: { es: 'Control Tierra', en: 'Earth Control' } };
@@ -8579,6 +8656,7 @@ const Game = (function () {
         h('h3', null, es ? 'Volúmenes' : 'Volumes'),
         sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
         sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Ambiente (reactor, elevador, viento)' : 'Ambience (reactor, elevator, wind)', () => (c.vAmb == null ? 0.6 : c.vAmb), (v) => { c.vAmb = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Radio EarthLink' : 'EarthLink radio', () => c.vRadio, (v) => { c.vRadio = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
@@ -9573,48 +9651,60 @@ const Game = (function () {
      en un piso distinto al de la cabina. Mientras dura el viaje el juego queda quieto. */
   let ride = null;
   const rideOn = () => !!ride;
+  const G_LAB = () => lt('Nivel G · Garaje', 'Level G · Garage'), S_LAB = () => lt('Superficie', 'Surface');
+  /** kind: 'lift' (elevador de tripulación), 'stairs' (escalera de emergencia), 'rlift' (plataforma del rover, con el jugador a bordo) o 'sstairs' (escalera de servicio entre la superficie y el garaje). */
   function startRide(kind, from, to, secs) {
     rideEnd(true);
-    const es = LANG === 'es', up = to > from;
+    const es = LANG === 'es', up = kind === 'rlift' || kind === 'sstairs' ? to < from : to > from, two = kind === 'rlift' || kind === 'sstairs';
     const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
     const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
-    const col = h('div', { class: 'elr-col' }, Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const col = h('div', { class: 'elr-col' }, two ? [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')] : Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
     const shaft = h('div', { class: 'elr-shaft' });
     const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
       shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
     document.getElementById('app').append(el);
-    ride = { kind, from, to, up, t: 0, total: Math.max(1, secs || 1), el, num, arrow, name, msg, doorL, doorR, shaft, col, e: 0, last: '', engine: 0 };
-    Sfx.play(kind === 'stairs' ? 'step' : 'door'); rideFrame(0);
+    ride = { kind, from, to, up, two, t: 0, total: Math.max(1, secs || 1), el, num, arrow, name, msg, doorL, doorR, shaft, col, e: 0, last: '', engine: 0 };
+    if (two && (kind === 'rlift' ? to === 2 : to === 4)) setTimeout(() => { try { World.prewarmFloor(4); } catch (e2) { /* se arma al llegar */ } }, 50); // el arte del garaje se prepara mientras dura la animación
+    Sfx.play(kind === 'stairs' || kind === 'sstairs' ? 'step' : 'door'); rideFrame(0);
   }
   function rideEnd(abort) {
     if (!ride) return; const r = ride; ride = null; r.el.remove();
     if (abort || !S) return;
     if (r.kind === 'lift') Station.leave(S, 'crew', 'player');
+    if (r.kind === 'rlift') Station.leave(S, 'rover', 'player');
+    if (r.kind === 'rlift' || r.kind === 'sstairs') {
+      const down = r.kind === 'rlift' ? r.to === 2 : r.to === 4;
+      if (down) World.placeNear(Station.GARAGE, Station.GDOCK[0], Station.GDOCK[1] + 5.2); else World.placeNear(2, Station.PLAT.x + Station.PLAT.w + 1.8, Station.PLAT.c[1]);
+      lastRoom = null; Sfx.play('ok'); toast((r.kind === 'rlift' ? '🛗 ' : '🪜 ') + (down ? G_LAB() : S_LAB()), '', 'ok'); return;
+    }
     arriveFloor(r.to, r.kind === 'stairs'); Sfx.play('ok');
     toast((r.kind === 'stairs' ? '🪜 ' : '🛗 ') + fname(r.to), '', 'ok');
   }
   /** Se llama en cada fotograma del juego (también con paneles abiertos; con el juego en pausa no avanza). */
   function rideFrame(dt) {
-    if (!ride || !S) return; const r = ride, e = Station.ensure(S).elev.crew, es = LANG === 'es';
+    if (!ride || !S) return; const r = ride, es = LANG === 'es', ek = r.kind === 'rlift' ? 'rover' : 'crew', e = Station.ensure(S).elev[ek];
     let lvl, open, state;
-    if (r.kind === 'stairs') {
+    if (r.kind === 'stairs' || r.kind === 'sstairs') {
       if (!paused) r.t += dt; const u = Math.min(1, r.t / r.total); lvl = r.from + (r.to - r.from) * u; open = 0; state = 'moving';
       if (u >= 1) return rideEnd();
     } else {
-      lvl = Station.level(S, 'crew'); open = Station.door(S, 'crew'); state = e.st; r.t += dt;
+      lvl = Station.level(S, ek); open = Station.door(S, ek); state = e.st; r.t += dt;
       if (e.st === 'idle' && e.at === r.to) return rideEnd();
       if (e.st === 'idle' && e.at !== r.to && r.t > 2) return rideEnd(true); // seguridad: el trayecto no empezó; no se deja la pantalla bloqueada
     }
-    const lv = Math.round(lvl);
-    r.num.textContent = String(lv); r.name.textContent = (es ? 'Piso ' : 'Floor ') + lv + ' · ' + fname(lv).replace(/^[^·]*·\s*/, '');
+    let lv, label, nm;
+    if (r.two) { const g = r.kind === 'rlift' ? lvl >= 1 : lvl >= 3; lv = g ? 'G' : 'S'; label = lv; nm = g ? G_LAB() : S_LAB(); }
+    else { const n = Math.round(lvl); lv = n; label = String(n); nm = (es ? 'Piso ' : 'Floor ') + n + ' · ' + fname(n).replace(/^[^·]*·\s*/, ''); }
+    r.num.textContent = label; r.name.textContent = nm;
     r.doorL.style.transform = 'translateX(' + (-open * 100).toFixed(1) + '%)'; r.doorR.style.transform = 'translateX(' + (open * 100).toFixed(1) + '%)';
     r.shaft.className = 'elr-shaft' + (state === 'moving' ? (r.up ? ' up' : ' down') : '');
-    for (const c of r.col.children) c.classList.toggle('on', +c.dataset.f === lv);
-    const txt = r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s' : 'Emergency stairs… ' + Math.max(0, Math.ceil(r.total - r.t)) + ' s')
-      : { closing: es ? 'Cerrando puertas…' : 'Closing doors…', moving: r.up ? (es ? 'Subiendo…' : 'Going up…') : (es ? 'Bajando…' : 'Going down…'), opening: es ? 'Abriendo puertas…' : 'Opening doors…', idle: es ? 'Puertas abiertas' : 'Doors open' }[state];
+    for (const c of r.col.children) c.classList.toggle('on', String(c.dataset.f) === String(lv));
+    const stairs = r.kind === 'stairs' || r.kind === 'sstairs', left = Math.max(0, Math.ceil(r.total - r.t));
+    const txt = r.kind === 'sstairs' ? (es ? 'Escalera de servicio… ' + left + ' s' : 'Service stairs… ' + left + ' s') : r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + left + ' s' : 'Emergency stairs… ' + left + ' s')
+      : { closing: es ? 'Cerrando puertas…' : 'Closing doors…', moving: r.kind === 'rlift' ? (r.to === 2 ? (es ? 'Bajando al garaje…' : 'Going down to the garage…') : (es ? 'Subiendo a la superficie…' : 'Going up to the surface…')) : r.up ? (es ? 'Subiendo…' : 'Going up…') : (es ? 'Bajando…' : 'Going down…'), opening: es ? 'Abriendo puertas…' : 'Opening doors…', idle: es ? 'Puertas abiertas' : 'Doors open' }[state];
     r.msg.textContent = txt;
     if (r.last !== state) { if (r.last && state === 'opening') Sfx.play('door'); r.last = state; }
-    if (state === 'moving') { r.engine -= dt; if (r.engine <= 0) { r.engine = 0.7; Sfx.play(r.kind === 'stairs' ? 'step' : 'engine'); } }
+    if (state === 'moving') { r.engine -= dt; if (r.engine <= 0) { r.engine = 0.7; Sfx.play(stairs ? 'step' : 'engine'); } }
   }
   /** Para volver al menú o empezar otra partida mientras se viaja. */
   const rideAbort = () => rideEnd(true);
@@ -9626,24 +9716,38 @@ const Game = (function () {
     const e = Station.ensure(S).elev.rover, st = Station.roverStored(S), es = LANG === 'es';
     return h('div', null, h('b', null, '🛗 ' + tr(Station.KINDS.rover.name)), h('div', { class: 'small' }, st ? lt('El rover está guardado en el garaje.', 'The rover is stored in the garage.') : roverLiftOk() ? lt('El rover está sobre la plataforma: listo para bajar.', 'The rover is on the platform: ready to go down.') : lt('Coloca el rover en el centro de la plataforma, alineado y parado.', 'Place the rover in the middle of the platform, aligned and stopped.')), h('div', { class: 'small' }, '👉 ' + lt('Pulsa E para abrir el panel.', 'Press E to open the panel.')));
   }
+  /** ¿Está el jugador sobre la plataforma de la superficie (para bajar junto al rover)? */
+  const onPlatform = () => { const P = Station.PLAT, p = World.player; return World.floor === 2 && p.x >= P.x - 0.4 && p.x <= P.x + P.w + 0.4 && p.y >= P.y - 0.4 && p.y <= P.y + P.h + 0.4; };
+  function serviceStairs(to) { const from = to === 4 ? 2 : 4; World.floor === (from === 4 ? 4 : 2) && startRide('sstairs', from, to, 6); }
   function roverLiftPanel() {
     const st0 = Station.ensure(S), e = st0.elev.rover, es = LANG === 'es';
     let timer = 0, msg = null; const body = h('div');
     const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), body), { sticky: true, onclose: () => clearInterval(timer) });
     const paint = () => {
       body.innerHTML = '';
-      const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle';
+      const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle', inG = World.floor === 4, plat = onPlatform();
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
-      body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-rlvl': lvl > 0.5 ? 'G' : '0' }, lvl > 0.5 ? 'G' : '0'), h('div', null, h('div', null, stN + ' · ' + (lvl > 0.5 ? lt('garaje', 'garage') : lt('superficie', 'surface'))), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round(d * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
-        h('p', { class: 'small' }, stored ? lt('El rover está guardado en el garaje, cargando.', 'The rover is stored in the garage, charging.') : roverLiftOk() ? '✔ ' + lt('El rover está bien colocado sobre la plataforma.', 'The rover is correctly placed on the platform.') : '⚠ ' + tr(Station.WHY.align)),
+      const btns = [];
+      if (idle && !e.broken) {
+        if (!inG && !stored) { btns.push(btn('⬇ ' + lt('Bajar el rover al garaje', 'Send the rover down'), () => go(2, false), 'primary', { 'data-act': 'rlift-down' })); if (plat) btns.push(btn('⬇ ' + lt('Bajar con el rover', 'Go down with the rover'), () => go(2, true), '', { 'data-act': 'rlift-down-ride' })); }
+        if (!inG && stored) btns.push(btn('⬆ ' + lt('Subir el rover a la superficie', 'Bring the rover up'), () => go(0, false), 'primary', { 'data-act': 'rlift-up' }), btn('🪜 ' + lt('Bajar al garaje por la escalera de servicio', 'Go down to the garage by the service stairs'), () => { pop(); serviceStairs(4); }, '', { 'data-act': 'gstairs-down' }));
+        if (!inG && !stored && !plat) btns.push(btn('🪜 ' + lt('Bajar al garaje por la escalera de servicio', 'Go down to the garage by the service stairs'), () => { pop(); serviceStairs(4); }, '', { 'data-act': 'gstairs-down' }));
+        if (inG && stored) btns.push(btn('⬆ ' + lt('Subir con el rover a la superficie', 'Go up with the rover'), () => go(0, true), 'primary', { 'data-act': 'rlift-up-ride' }), btn('⬆ ' + lt('Subir solo el rover', 'Send only the rover up'), () => go(0, false), '', { 'data-act': 'rlift-up' }));
+      }
+      body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-rlvl': lvl > 0.5 ? 'G' : '0' }, lvl > 0.5 ? 'G' : '0'), h('div', null, h('div', null, stN + ' · ' + (lvl > 0.5 ? lt('garaje', 'garage') : lt('superficie', 'surface'))), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round(d * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Nivel ', 'Level ') + lvl.toFixed(1)))),
+        h('p', { class: 'small' }, stored ? lt('El rover está aparcado en el garaje, cargando la batería.', 'The rover is parked in the garage, charging its battery.') : roverLiftOk() ? '✔ ' + lt('El rover está bien colocado sobre la plataforma.', 'The rover is correctly placed on the platform.') : '⚠ ' + tr(Station.WHY.align)),
+        plat && !stored && roverLiftOk() ? h('p', { class: 'small tag ok' }, '🧑‍🚀 ' + lt('Estás sobre la plataforma: puedes bajar con el rover.', 'You are on the platform: you can go down with the rover.')) : null,
         e.broken ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null,
         msg ? h('p', { class: 'small tag warn', 'data-msg': 'warn' }, '⚠ ' + msg) : null,
-        idle ? (stored ? btn('⬆ ' + lt('Subir el rover a la superficie', 'Bring the rover up'), () => go(0), 'primary', { 'data-act': 'rlift-up' }) : btn('⬇ ' + lt('Bajar el rover al garaje', 'Send the rover down'), () => go(2), 'primary', { 'data-act': 'rlift-down' })) : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.'))].filter(Boolean));
+        btns.length ? h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, btns) : (idle ? null : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.')))].filter(Boolean));
     };
-    const go = (to) => {
+    const go = (to, rider) => {
+      const from = e.at;
+      if (rider) { const b = Station.board(S, 'rover', 'player'); if (!b.ok) { msg = tr(Station.WHY[b.why] || Station.WHY.closed); Sfx.play('bad'); return paint(); } }
       const r = Station.call(S, 'rover', to, { roverOn: roverLiftOk() });
-      if (!r.ok) { msg = tr(Station.WHY[r.why] || Station.WHY.rover); if (r.why === 'rover') msg = tr(Station.WHY.align); Sfx.play('bad'); return paint(); }
-      msg = null; Sfx.play('door'); paint();
+      if (!r.ok) { if (rider) Station.leave(S, 'rover', 'player'); msg = tr(Station.WHY[r.why] || Station.WHY.rover); if (r.why === 'rover') msg = tr(Station.WHY.align); Sfx.play('bad'); return paint(); }
+      msg = null; Sfx.play('door');
+      if (rider) { pop(); startRide('rlift', from, to, r.s); } else paint();
     };
     let lastSt = e.st, tk = 0;
     timer = setInterval(() => {
@@ -9654,7 +9758,56 @@ const Game = (function () {
     }, 100);
     paint();
   }
-  const floorsDebug = { teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };
+  /** Taller del garaje (consola del nivel G): estado del rover, carga y reparación con materiales. */
+  function garagePanel() {
+    const es = LANG === 'es', E = S.ex, body = h('div'); let msg = null;
+    const s = push(panel('🔧 ' + lt('Taller del garaje', 'Garage workshop'), body));
+    const paint = () => {
+      body.innerHTML = '';
+      const rv = S.sys.rover, mat = S.r.mat.v, inG = Station.roverInGarage(S), cost = 6;
+      const row = (a, b, c) => h('tr', null, h('th', null, a), h('td', { class: c || '' }, b));
+      body.append(h('p', { class: 'small' }, inG ? lt('El rover está en su dock del garaje.', 'The rover is in its garage dock.') : lt('El rover no está en el garaje: está en la superficie.', 'The rover is not in the garage: it is on the surface.')),
+        h('table', null, h('tbody', null, row(lt('Integridad', 'Integrity'), Math.round(rv.h) + ' %', rv.h < 40 ? 'warn' : ''), row(lt('Batería', 'Battery'), Math.round(rv.batt) + ' %' + (inG && rv.batt < 100 ? ' · ' + lt('cargando', 'charging') : ''), rv.batt < 25 ? 'warn' : ''), row(lt('Muestras a bordo', 'Samples on board'), String(E ? E.rover.load.length : 0)), row(lt('Materiales', 'Materials'), mat.toFixed(0) + ' kg'))),
+        h('p', { class: 'small muted' }, lt('Los choques a más de 6 casillas por segundo dañan el rover; con la integridad en 0 se destruye con el conductor dentro. Aquí se repara con materiales.', 'Hits above 6 tiles per second damage the rover; at 0 integrity it is destroyed with the driver inside. Repair it here with materials.')),
+        msg ? h('p', { class: 'small tag ' + msg.k, 'data-msg': msg.k }, msg.t) : null,
+        btn('🔧 ' + lt('Reparar el rover (' + cost + ' kg de materiales)', 'Repair the rover (' + cost + ' kg of materials)'), () => {
+          if (rv.h >= 99.5) { msg = { k: 'info', t: lt('El rover ya está en perfecto estado.', 'The rover is already in perfect shape.') }; return paint(); }
+          if (S.r.mat.v < cost) { Sfx.play('bad'); msg = { k: 'warn', t: lt('Faltan materiales.', 'Not enough materials.') }; return paint(); }
+          S.r.mat.v -= cost; rv.h = 100; Sfx.play('ok'); msg = { k: 'ok', t: lt('Rover reparado: integridad al 100 %.', 'Rover repaired: integrity at 100 %.') }; paint();
+        }, 'primary', { 'data-act': 'garage-repair' }));
+    };
+    paint();
+  }
+
+  /* ---------- Sonido ambiental por zona ---------- */
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  /** Mezcla de ambiente según el piso, el estado del reactor, el elevador, el rover, el exterior y el traje. */
+  function ambMix() {
+    const m = { reactor: 0, vent: 0, motor: 0, wind: 0, suit: 0, rover: 0, reactorUnstable: 0, motorSpeed: 0 };
+    if (!running || !S || S.ended) return m;
+    const fl = World.floor, p = World.player, outside = World.zone() === 'outside', E = S.ex, suit = !!(E && E.suit.on), rh = S.sys.reactor.h, st = Station.ensure(S), ec = st.elev.crew, er = st.elev.rover;
+    if (!outside) m.vent = 0.3 + (World.roomName(p.x, p.y) === 'life' ? 0.15 : 0);
+    // zumbido del reactor: fuerte en el piso del núcleo y cerca de él, apenas se oye por la estructura en los otros pisos
+    const RC = Layout.REACTOR_C, d = Math.hypot(p.x - RC[0], p.y - RC[1]);
+    m.reactor = fl === 3 ? 0.3 + 0.7 * clamp01(1 - d / 40) : outside ? 0 : 0.07;
+    if (rh <= 20) m.reactor *= 0.12; else if (rh < 35) m.reactorUnstable = clamp01((35 - rh) / 15); // apagado: casi silencio; dañado: zumbido inestable
+    // motor del elevador de tripulación
+    if (ec.st === 'moving') { m.motor = rideOn() ? 0.95 : (fl === ec.at || fl === ec.to ? 0.35 : 0.12); m.motorSpeed = Math.min(1, Math.abs(ec.to - ec.at) * ec.p); } else if (ec.st === 'closing' || ec.st === 'opening') m.motor = rideOn() ? 0.25 : 0;
+    // plataforma del rover (suelo y garaje)
+    if (er.st === 'moving') m.rover = fl === 2 || fl === 4 ? 0.8 : 0.1;
+    // exterior: en Marte hay viento (fuerte con tormenta de polvo); la Luna no tiene atmósfera: solo se oye el traje
+    if (outside) {
+      const storm = S.inc.some((i) => i.type === 'dust_storm' && !i.res && S.t >= i.from);
+      if (S.scen === 'mars') m.wind = storm ? 0.9 : 0.3;
+      m.suit = suit ? 0.8 : 0;
+    }
+    const k = paused || modalOpen() ? 0.45 : 1; for (const key of ['reactor', 'vent', 'motor', 'wind', 'suit', 'rover']) m[key] *= k;
+    return m;
+  }
+  let ambT = 0, ambOn = false;
+  function ambFrame(dt) { ambT += dt; if (ambT < 0.15) return; ambT = 0; ambOn = true; Sfx.setAmbient(ambMix()); }
+  const ambStop = () => { if (ambOn) { ambOn = false; Sfx.setAmbient({}); } };
+  const floorsDebug = { garagePanel, serviceStairs, onPlatform, ambMix, teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };
 /* =================== SUPERVIVENCIA Y GAME OVER ===================
    Efectos progresivos (frío, hambre), avisos, animaciones cortas de derrota y pantalla de GAME OVER con «Reintentar».
    La lógica de cada causa está en Surv / Sim.endings / Rover.update; aquí solo se muestra. */
@@ -10054,8 +10207,8 @@ const Game = (function () {
       } },
       { l: ['Calculando trayectoria', 'Calculating trajectory'], w: 5, run: async (rep) => {
         World.init(settings.scen === 'mars' ? 'mars' : 'moon'); rep(0.2); await frame1();
-        for (let f = 1; f <= World.floors; f++) { World.prewarmFloor(f); rep(0.2 + 0.8 * f / World.floors); await frame1(); }
-        return World.floors + ' pisos';
+        for (let f = 1; f <= World.mainFloors; f++) { World.prewarmFloor(f); rep(0.2 + 0.8 * f / World.mainFloors); await frame1(); } // el garaje se arma al bajar (no pesa en la carga)
+        return World.mainFloors + ' pisos';
       } },
       { l: ['Sistemas listos', 'Systems ready'], w: 1, run: async () => 'ok' }
     ];

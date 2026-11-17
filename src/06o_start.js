@@ -208,8 +208,8 @@
       } },
       { l: ['Calculando trayectoria', 'Calculating trajectory'], w: 5, run: async (rep) => {
         World.init(settings.scen === 'mars' ? 'mars' : 'moon'); rep(0.2); await frame1();
-        for (let f = 1; f <= World.floors; f++) { World.prewarmFloor(f); rep(0.2 + 0.8 * f / World.floors); await frame1(); }
-        return World.floors + ' pisos';
+        for (let f = 1; f <= World.mainFloors; f++) { World.prewarmFloor(f); rep(0.2 + 0.8 * f / World.mainFloors); await frame1(); } // el garaje se arma al bajar (no pesa en la carga)
+        return World.mainFloors + ' pisos';
       } },
       { l: ['Sistemas listos', 'Systems ready'], w: 1, run: async () => 'ok' }
     ];

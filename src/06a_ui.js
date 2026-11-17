@@ -313,6 +313,7 @@ const Game = (function () {
     if (running && S) tickRadio(dt);
     if (running && S && !paused && !S.ended && S.station) Station.step(S, dt); // el elevador sigue su trayecto aunque haya un panel abierto
     if (running && S) rideFrame(dt); // el cambio de piso lo completa este controlador, no el panel
+    if (running && S) ambFrame(dt); else if (!running) ambStop();
     if (running && S) {
       const live = !paused && !modalOpen() && !S.ended && !rideOn();
       if (live) {
