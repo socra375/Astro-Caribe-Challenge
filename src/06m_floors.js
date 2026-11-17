@@ -72,25 +72,28 @@
   const rideOn = () => !!ride;
   const G_LAB = () => lt('Nivel G · Garaje', 'Level G · Garage'), S_LAB = () => lt('Superficie', 'Surface');
   /** kind: 'lift' (elevador de tripulación), 'stairs' (escalera de emergencia), 'rlift' (plataforma del rover, con el jugador a bordo) o 'sstairs' (escalera de servicio entre la superficie y el garaje). */
+  const CORE_A = () => lt('Nivel 3A · Pasarela del núcleo', 'Level 3A · Core catwalk'), CORE_3 = () => lt('Piso 3 · Energía', 'Floor 3 · Energy');
   function startRide(kind, from, to, secs) {
     rideEnd(true);
-    const es = LANG === 'es', up = kind === 'rlift' || kind === 'sstairs' ? to < from : to > from, two = kind === 'rlift' || kind === 'sstairs';
+    const es = LANG === 'es', up = kind === 'rlift' || kind === 'sstairs' ? to < from : to > from, two = kind === 'rlift' || kind === 'sstairs' || kind === 'cstairs';
     const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
     const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
-    const col = h('div', { class: 'elr-col' }, two ? [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')] : Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const col = h('div', { class: 'elr-col' }, two ? (kind === 'cstairs' ? [h('div', { class: 'elr-f', 'data-f': 'A' }, 'A'), h('div', { class: 'elr-f', 'data-f': '3' }, '3')] : [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')]) : Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
     const shaft = h('div', { class: 'elr-shaft' });
     const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
       shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
     document.getElementById('app').append(el);
     ride = { kind, from, to, up, two, t: 0, total: Math.max(1, secs || 1), el, num, arrow, name, msg, doorL, doorR, shaft, col, e: 0, last: '', engine: 0 };
     if (two && (kind === 'rlift' ? to === 2 : to === 4)) setTimeout(() => { try { World.prewarmFloor(4); } catch (e2) { /* se arma al llegar */ } }, 50); // el arte del garaje se prepara mientras dura la animación
-    Sfx.play(kind === 'stairs' || kind === 'sstairs' ? 'step' : 'door'); rideFrame(0);
+    if (kind === 'cstairs' && to === 5) setTimeout(() => { try { World.prewarmFloor(5); } catch (e2) { /* se arma al llegar */ } }, 50);
+    Sfx.play(kind === 'stairs' || kind === 'sstairs' || kind === 'cstairs' ? 'step' : 'door'); rideFrame(0);
   }
   function rideEnd(abort) {
     if (!ride) return; const r = ride; ride = null; r.el.remove();
     if (abort || !S) return;
     if (r.kind === 'lift') Station.leave(S, 'crew', 'player');
     if (r.kind === 'rlift') Station.leave(S, 'rover', 'player');
+    if (r.kind === 'cstairs') { if (r.to === 5) World.placeNear(5, 126.5, 30.9); else World.placeNear(3, 125.5, 30.5); lastRoom = null; Sfx.play('ok'); toast('🪜 ' + (r.to === 5 ? CORE_A() : CORE_3()), '', 'ok'); return; }
     if (r.kind === 'rlift' || r.kind === 'sstairs') {
       const down = r.kind === 'rlift' ? r.to === 2 : r.to === 4;
       if (down) World.placeNear(Station.GARAGE, Station.GDOCK[0], Station.GDOCK[1] + 5.2); else World.placeNear(2, Station.PLAT.x + Station.PLAT.w + 1.8, Station.PLAT.c[1]);
@@ -103,7 +106,7 @@
   function rideFrame(dt) {
     if (!ride || !S) return; const r = ride, es = LANG === 'es', ek = r.kind === 'rlift' ? 'rover' : 'crew', e = Station.ensure(S).elev[ek];
     let lvl, open, state;
-    if (r.kind === 'stairs' || r.kind === 'sstairs') {
+    if (r.kind === 'stairs' || r.kind === 'sstairs' || r.kind === 'cstairs') {
       if (!paused) r.t += dt; const u = Math.min(1, r.t / r.total); lvl = r.from + (r.to - r.from) * u; open = 0; state = 'moving';
       if (u >= 1) return rideEnd();
     } else {
@@ -112,14 +115,15 @@
       if (e.st === 'idle' && e.at !== r.to && r.t > 2) return rideEnd(true); // seguridad: el trayecto no empezó; no se deja la pantalla bloqueada
     }
     let lv, label, nm;
-    if (r.two) { const g = r.kind === 'rlift' ? lvl >= 1 : lvl >= 3; lv = g ? 'G' : 'S'; label = lv; nm = g ? G_LAB() : S_LAB(); }
+    if (r.kind === 'cstairs') { const a = lvl >= 4; lv = a ? 'A' : '3'; label = lv; nm = a ? CORE_A() : CORE_3(); }
+    else if (r.two) { const g = r.kind === 'rlift' ? lvl >= 1 : lvl >= 3; lv = g ? 'G' : 'S'; label = lv; nm = g ? G_LAB() : S_LAB(); }
     else { const n = Math.round(lvl); lv = n; label = String(n); nm = (es ? 'Piso ' : 'Floor ') + n + ' · ' + fname(n).replace(/^[^·]*·\s*/, ''); }
     r.num.textContent = label; r.name.textContent = nm;
     r.doorL.style.transform = 'translateX(' + (-open * 100).toFixed(1) + '%)'; r.doorR.style.transform = 'translateX(' + (open * 100).toFixed(1) + '%)';
     r.shaft.className = 'elr-shaft' + (state === 'moving' ? (r.up ? ' up' : ' down') : '');
     for (const c of r.col.children) c.classList.toggle('on', String(c.dataset.f) === String(lv));
-    const stairs = r.kind === 'stairs' || r.kind === 'sstairs', left = Math.max(0, Math.ceil(r.total - r.t));
-    const txt = r.kind === 'sstairs' ? (es ? 'Escalera de servicio… ' + left + ' s' : 'Service stairs… ' + left + ' s') : r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + left + ' s' : 'Emergency stairs… ' + left + ' s')
+    const stairs = r.kind === 'stairs' || r.kind === 'sstairs' || r.kind === 'cstairs', left = Math.max(0, Math.ceil(r.total - r.t));
+    const txt = r.kind === 'cstairs' ? (es ? (r.to === 5 ? 'Subiendo a la pasarela… ' : 'Bajando al piso 3… ') + left + ' s' : (r.to === 5 ? 'Going up to the catwalk… ' : 'Going down to floor 3… ') + left + ' s') : r.kind === 'sstairs' ? (es ? 'Escalera de servicio… ' + left + ' s' : 'Service stairs… ' + left + ' s') : r.kind === 'stairs' ? (es ? 'Escalera de emergencia… ' + left + ' s' : 'Emergency stairs… ' + left + ' s')
       : { closing: es ? 'Cerrando puertas…' : 'Closing doors…', moving: r.kind === 'rlift' ? (r.to === 2 ? (es ? 'Bajando al garaje…' : 'Going down to the garage…') : (es ? 'Subiendo a la superficie…' : 'Going up to the surface…')) : r.up ? (es ? 'Subiendo…' : 'Going up…') : (es ? 'Bajando…' : 'Going down…'), opening: es ? 'Abriendo puertas…' : 'Opening doors…', idle: es ? 'Puertas abiertas' : 'Doors open' }[state];
     r.msg.textContent = txt;
     if (r.last !== state) { if (r.last && state === 'opening') Sfx.play('door'); r.last = state; }
@@ -177,6 +181,22 @@
     }, 100);
     paint();
   }
+  /** Escalera entre el piso 3 y la pasarela del núcleo (doble altura): 5 s con animación. */
+  function coreStairs(to) { const from = to === 5 ? 3 : 5; if (World.floor === from) startRide('cstairs', from, to, 5); }
+  /** Mirador del núcleo (pasarela): lecturas del reactor desde arriba. Valores simulados y educativos. */
+  function coreOverlookPanel() {
+    const es = LANG === 'es', body = h('div'); const s = push(panel('🔭 ' + lt('Mirador del núcleo', 'Core overlook'), body)); let t = 0;
+    const paint = () => {
+      body.innerHTML = '';
+      const r = S.sys.reactor, out = r.h <= 20, hot = r.h < 35, kw = out ? 0 : 6 * r.lvl * (r.h / 100) * (S.scen === 'mars' ? 10 / 6 : 1), temp = out ? 80 : Math.round(420 + r.lvl * 320 + (100 - r.h) * 2.2), st = out ? lt('Apagado', 'Offline') : hot ? lt('Dañado: vigila las barras', 'Damaged: watch the rods') : lt('Normal', 'Normal');
+      const row = (a, b, c) => h('tr', null, h('th', null, a), h('td', { class: c || '' }, b));
+      body.append(h('p', { class: 'small' }, lt('Desde la pasarela se ve toda la vasija: la gran sala del piso 3 queda debajo de ti.', 'From the catwalk you can see the whole vessel: the big floor 3 hall lies below you.')),
+        h('table', null, h('tbody', null, row(lt('Estado', 'Status'), st, out ? 'crit' : hot ? 'warn' : 'ok'), row(lt('Integridad', 'Integrity'), Math.round(r.h) + ' %', r.h < 35 ? 'warn' : ''), row(lt('Nivel de potencia', 'Power level'), Math.round(r.lvl * 100) + ' %'), row(lt('Producción del reactor', 'Reactor output'), kw.toFixed(1) + ' kW'), row(lt('Temperatura del núcleo', 'Core temperature'), temp + ' °C (' + lt('simulada', 'simulated') + ')'))),
+        h('p', { class: 'small muted' }, lt('Con la integridad por debajo del 20 % el reactor deja de producir energía; si además se agota la batería, la estación se apaga. Repáralo en la consola del reactor.', 'Below 20 % integrity the reactor stops producing power; if the battery also runs out, the station shuts down. Repair it at the reactor console.')),
+        btn('⚛ ' + lt('Abrir el control del reactor', 'Open the reactor control'), () => { pop(); openConsole({ id: 'reactor' }); }, 'primary', { 'data-act': 'overlook-reactor' }));
+    };
+    paint(); const iv = setInterval(() => { if (!s.isConnected) return clearInterval(iv); if (++t % 5 === 0) paint(); }, 200);
+  }
   /** Taller del garaje (consola del nivel G): estado del rover, carga y reparación con materiales. */
   function garagePanel() {
     const es = LANG === 'es', E = S.ex, body = h('div'); let msg = null;
@@ -208,7 +228,7 @@
     if (!outside) m.vent = 0.3 + (World.roomName(p.x, p.y) === 'life' ? 0.15 : 0);
     // zumbido del reactor: fuerte en el piso del núcleo y cerca de él, apenas se oye por la estructura en los otros pisos
     const RC = Layout.REACTOR_C, d = Math.hypot(p.x - RC[0], p.y - RC[1]);
-    m.reactor = fl === 3 ? 0.3 + 0.7 * clamp01(1 - d / 40) : outside ? 0 : 0.07;
+    m.reactor = fl === 3 || fl === 5 ? 0.3 + 0.7 * clamp01(1 - d / 40) : outside ? 0 : 0.07;
     if (rh <= 20) m.reactor *= 0.12; else if (rh < 35) m.reactorUnstable = clamp01((35 - rh) / 15); // apagado: casi silencio; dañado: zumbido inestable
     // motor del elevador de tripulación
     if (ec.st === 'moving') { m.motor = rideOn() ? 0.95 : (fl === ec.at || fl === ec.to ? 0.35 : 0.12); m.motorSpeed = Math.min(1, Math.abs(ec.to - ec.at) * ec.p); } else if (ec.st === 'closing' || ec.st === 'opening') m.motor = rideOn() ? 0.25 : 0;
@@ -226,4 +246,4 @@
   let ambT = 0, ambOn = false;
   function ambFrame(dt) { ambT += dt; if (ambT < 0.15) return; ambT = 0; ambOn = true; Sfx.setAmbient(ambMix()); }
   const ambStop = () => { if (ambOn) { ambOn = false; Sfx.setAmbient({}); } };
-  const floorsDebug = { garagePanel, serviceStairs, onPlatform, ambMix, teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };
+  const floorsDebug = { coreStairs, coreOverlookPanel, garagePanel, serviceStairs, onPlatform, ambMix, teleportPanel, elevatorPanel, floorOfRoom, roverLiftPanel, get ride() { return ride; } };

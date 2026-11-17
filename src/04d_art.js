@@ -177,7 +177,7 @@ const Art = (function () {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
     const rnd = rngOf(mars ? 777 : 313), rk = Object.keys(d.rooms);
     const sdx = mars ? 22 : 36, sdy = mars ? 28 : 46; // sombras: Luna, largas y marcadas; Marte, más suaves
-    if (d.ground === false) voidBg(c, d); else terrain(c, d, rnd);
+    if (d.ground === false) { if (!d.below) voidBg(c, d); } else terrain(c, d, rnd); // un nivel superior deja ver el de abajo
     // sombras de la base y de los elementos exteriores sobre el terreno
     { // sombras en un lienzo auxiliar de menor resolución (se escala suavizado: barato y sin filtros costosos)
       const k = mars ? 0.3 : 0.55, sh = document.createElement('canvas'); sh.width = Math.ceil(w * k); sh.height = Math.ceil(h * k);

@@ -79,7 +79,7 @@ const DATA = (function () {
   const ROOMS = {
     bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
     reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, elc1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc3: { es: 'Elevador de tripulación', en: 'Crew elevator' }, water: { es: 'Soporte vital', en: 'Life support' },
-    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, garage: { es: 'Garaje del rover', en: 'Rover garage' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
+    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, garage: { es: 'Garaje del rover', en: 'Rover garage' }, cat: { es: 'Pasarela del núcleo', en: 'Core catwalk' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
     hall: { es: 'Atrio central', en: 'Central atrium' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {

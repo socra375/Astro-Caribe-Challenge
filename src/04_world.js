@@ -135,7 +135,7 @@ const World = (function () {
     const g = FL.findIndex((o) => o.D.ground); return g >= 0 ? g + 1 : 1;
   }
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
-  function prewarmFloor(f) { withFloor(f, () => { if (!staticCv) buildStatic(); }); }
+  function prewarmFloor(f) { const lo = FL[f - 1] && FL[f - 1].D.below; if (lo) withFloor(lo, () => { if (!staticCv) buildStatic(); }); withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   function prewarm() { for (let f = 1; f <= Math.min(3, FL.length); f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
   function arrive(n, outside) {
@@ -575,7 +575,7 @@ const World = (function () {
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function buildStatic() {
     const g = FL[fidx].D.ground, none = { props: [], tracks: [], craters: [], dunes: [], pad: { c: [0, 0], r: 0 }, lamps: [] };
-    const o = Art.build({ scen, ground: g, W, H, TS, grid, roomAt, doors, furn, props: g ? props : [], scenery: g ? scenery : none, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER: FL[fidx].D.SHELTER || null, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
+    const o = Art.build({ scen, ground: g, below: !!FL[fidx].D.below, W, H, TS, grid, roomAt, doors, furn, props: g ? props : [], scenery: g ? scenery : none, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER: FL[fidx].D.SHELTER || null, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
     staticCv = o.cv; mapCv = o.mapCv;
   }
 
@@ -716,6 +716,7 @@ const World = (function () {
     ctx.setTransform(zoom, 0, 0, zoom, -cam.x * zoom, -cam.y * zoom);
     ctx.imageSmoothingEnabled = false;
     if (FL[fidx].D.ground) Field.drawTerrain(ctx, cam.x, cam.y, vw, vh);
+    if (FL[fidx].D.below) { const lo = FL[FL[fidx].D.below - 1]; if (lo && lo.staticCv) { ctx.globalAlpha = 0.62; ctx.drawImage(lo.staticCv, 0, 0); ctx.globalAlpha = 1; } } // doble altura: se ve el reactor por debajo de la pasarela
     ctx.drawImage(staticCv, 0, 0);
     const t = lastT, rm = reduced;
     // Puertas (hojas que se deslizan; horizontales y verticales)

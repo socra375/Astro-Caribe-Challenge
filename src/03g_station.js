@@ -10,8 +10,8 @@ const Station = (function () {
   const T = (es, en) => ({ es, en });
   const FLOORS = [1, 2, 3];
   /** Garaje del rover: nivel G (suelo 4 del mundo). Dock donde aparca el rover (coordenadas del garaje). */
-  const GARAGE = 4, GDOCK = [96, 74];
-  const FLOOR_T = { 4: T('Nivel G · Garaje', 'Level G · Garage'), 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
+  const GARAGE = 4, CATWALK = 5, GDOCK = [96, 74];
+  const FLOOR_T = { 4: T('Nivel G · Garaje', 'Level G · Garage'), 5: T('Nivel 3A · Pasarela del núcleo', 'Level 3A · Core catwalk'), 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
   const KINDS = {
     crew: { stops: [1, 2, 3], at: 1, name: T('Elevador de tripulación', 'Crew elevator'), secPerFloor: 2.2 },
     rover: { stops: [0, 2], at: 0, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
@@ -116,5 +116,5 @@ const Station = (function () {
   /** ¿Está la cabina del elevador de tripulación en el piso f con las puertas abiertas (o abriéndose)? */
   const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, GARAGE, GDOCK, roverVisible, roverStored, roverInGarage, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, GARAGE, CATWALK, GDOCK, roverVisible, roverStored, roverInGarage, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();

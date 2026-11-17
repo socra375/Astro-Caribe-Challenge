@@ -17,31 +17,31 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
 
   /* ---- Pisos en World ---- */
   const base = await pg.evaluate(() => ({ floors: World.floors, floor: World.floor, player: World.player.floor, rooms: [1, 2, 3].map((f) => Object.keys(World.floorInfo(f).ROOMS).filter((k) => !/^t\d/.test(k)).sort().join(',')), ground: [1, 2, 3].map((f) => !!World.floorInfo(f).ground), elev: [1, 2, 3].map((f) => World.withFloor(f, () => !!World.RECTS['elc' + f])), doors: [1, 2, 3].map((f) => World.withFloor(f, () => World._test.doors.length)) }));
-  ok('La estación tiene tres pisos más el garaje y se empieza en el piso 1 (puente)', base.floors === 4 && base.floor === 1 && base.player === 1, JSON.stringify([base.floors, base.floor, base.player]));
+  ok('La estación tiene tres pisos más el garaje y la pasarela del núcleo, y se empieza en el piso 1 (puente)', base.floors === 5 && base.floor === 1 && base.player === 1, JSON.stringify([base.floors, base.floor, base.player]));
   ok('Reparto de salas: piso 1 operaciones y ciencia, piso 2 esclusa y garaje, piso 3 reactor; cada piso con su elevador', /bridge/.test(base.rooms[0]) && /gh/.test(base.rooms[0]) && /lab/.test(base.rooms[0]) && /lock/.test(base.rooms[1]) && /rad/.test(base.rooms[1]) && /workshop/.test(base.rooms[1]) && /^elc3,reactor$/.test(base.rooms[2]) && base.elev.every(Boolean), JSON.stringify(base.rooms));
   ok('Solo la planta baja (piso 2) tiene exterior; los pisos superiores tienen puertas propias', JSON.stringify(base.ground) === '[false,true,false]' && base.doors[0] >= 10 && base.doors[1] >= 4 && base.doors[2] >= 1, JSON.stringify([base.ground, base.doors]));
   const vd = await pg.evaluate(() => ({ f1: World.withFloor(1, () => World._test.canStand(68.5, 90.5, 0.3)), f2: World.withFloor(2, () => World._test.canStand(68.5, 90.5, 0.3)), f3: World.withFloor(3, () => World._test.canStand(68.5, 90.5, 0.3)), reactorF2: World.withFloor(2, () => World._test.canStand(95.5, 28.5, 0.3)) }));
   ok('Los pisos 1 y 3 no tienen exterior (el vacío es sólido) y en la planta baja sí se puede caminar fuera', vd.f1 === false && vd.f3 === false && vd.f2 === true, JSON.stringify(vd));
   const sw = await pg.evaluate(() => {
-    const tiny = { id: 5, name: { es: 'Prueba', en: 'Test' }, ROOMS: { tst: { s: [Layout.R(2, 2, 12, 8)], g: 'tec', floor: 'plate', col: ['#222', '#333'] } }, LINKS: [], FURN: [['crate', 6, 5, 2, 2]], CONSOLES: [] };
+    const tiny = { id: 6, name: { es: 'Prueba', en: 'Test' }, ROOMS: { tst: { s: [Layout.R(2, 2, 12, 8)], g: 'tec', floor: 'plate', col: ['#222', '#333'] } }, LINKS: [], FURN: [['crate', 6, 5, 2, 2]], CONSOLES: [] };
     World._test.setExtraFloors([tiny]); World.init('moon');
     const out = { floors: World.floors, f1: World.floor };
     const g1 = World._test.grid, s1 = World._test.solid, d1 = World._test.doors.length;
-    const r1 = World.setFloor(5); out.went = r1; out.f4 = World.floor; out.pf = World.player.floor;
+    const r1 = World.setFloor(6); out.went = r1; out.f4 = World.floor; out.pf = World.player.floor;
     const g2 = World._test.grid; out.diffGrid = g2 !== g1; out.floorCell = g2[4][4]; out.wallCell = g2[1][1]; out.crate = World._test.solid[6][6]; out.noDoors = World._test.doors.length === 0;
     out.stand = World._test.canStand(4.5, 4.5, 0.3); out.standOutside = World._test.canStand(20.5, 20.5, 0.3);
     const p = World._test.findPath(3.5, 3.5, 11.5, 3.5); out.path = !!p && p.length >= 2;
     out.saved = World.state().fl; out.bad = World.setFloor(9); out.bad0 = World.setFloor(0);
     World.setFloor(1); out.back = World.floor; out.sameGrid = World._test.grid === g1 && World._test.solid === s1 && World._test.doors.length === d1;
-    World.setFloor(5); World.init('moon'); out.afterInit = World.floor;
+    World.setFloor(6); World.init('moon'); out.afterInit = World.floor;
     World._test.setExtraFloors([]); World.init('moon'); out.cleaned = World.floors;
     return out;
   });
-  ok('Cada piso es una ranura independiente (probado con un quinto nivel de prueba): cuadrícula, mobiliario y colisiones propias', sw.floors === 5 && sw.diffGrid && sw.floorCell === 2 && sw.wallCell === 1 && sw.crate === true && sw.noDoors, JSON.stringify(sw));
-  ok('setFloor cambia de piso, rechaza pisos inexistentes y el jugador conserva su piso', sw.went && sw.f4 === 5 && sw.pf === 5 && sw.bad === false && sw.bad0 === false);
+  ok('Cada piso es una ranura independiente (probado con un sexto nivel de prueba): cuadrícula, mobiliario y colisiones propias', sw.floors === 6 && sw.diffGrid && sw.floorCell === 2 && sw.wallCell === 1 && sw.crate === true && sw.noDoors, JSON.stringify(sw));
+  ok('setFloor cambia de piso, rechaza pisos inexistentes y el jugador conserva su piso', sw.went && sw.f4 === 6 && sw.pf === 6 && sw.bad === false && sw.bad0 === false);
   ok('Colisiones y rutas del piso de prueba no se mezclan con las del piso 1', sw.stand === true && sw.standOutside === false && sw.path);
   ok('Volver al piso 1 restaura exactamente su cuadrícula, solidez y puertas', sw.back === 1 && sw.sameGrid);
-  ok('El piso actual se guarda en el estado del mundo y reiniciar el mundo vuelve al piso 1', sw.saved === 5 && sw.afterInit === 1 && sw.cleaned === 4);
+  ok('El piso actual se guarda en el estado del mundo y reiniciar el mundo vuelve al piso 1', sw.saved === 6 && sw.afterInit === 1 && sw.cleaned === 5);
   const fx = await pg.evaluate(() => { const o = {}; const r = Layout.FLOORS[2].ROOMS; const rc = World.roomCenterOn('reactor'); World.player.x = rc[0]; World.player.y = rc[1]; World.update(0.016, Game.S, { x: 0, y: 0 }); o.reactor = World.floor; World.arrive(1); World.player.x = 68.5; World.player.y = 90.5; World.update(0.016, Game.S, { x: 0, y: 0 }); o.outside = World.floor; World.arrive(1); return o; });
   ok('Red de seguridad: si algo coloca al jugador en el reactor pasa al piso 3, y en el exterior, a la planta baja', fx.reactor === 3 && fx.outside === 2, JSON.stringify(fx));
 
@@ -234,7 +234,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
     return { w: R[2] - R[0] + 1, h: R[3] - R[1] + 1, reactor: rc && rc[3], catwalk: cnt('catwalk'), coolant: cnt('coolant'), transformer: cnt('transformer'), turbine: cnt('turbine'), warn: cnt('warn'), unreachable, solidBig: T.solid.flat().filter(Boolean).length > 400 };
   }));
   ok('El núcleo energético es una cámara enorme (≥ 36×45 casillas, más de 2,5 veces la sala anterior) con un reactor de 14×14 como elemento dominante', core.w >= 36 && core.h >= 45 && core.reactor === 14, JSON.stringify([core.w, core.h, core.reactor]));
-  ok('Tiene pasarelas, torres de refrigeración, turbinas, transformadores y una zona restringida señalizada', core.catwalk >= 4 && core.coolant >= 4 && core.turbine >= 4 && core.transformer >= 6 && core.warn >= 1, JSON.stringify(core));
+  ok('Tiene torres de refrigeración, turbinas, transformadores y una zona restringida señalizada; la pasarela ya no está a ras de suelo sino en el nivel superior', core.catwalk === 0 && core.coolant >= 4 && core.turbine >= 4 && core.transformer >= 6 && core.warn >= 1, JSON.stringify(core));
   ok('Todas las consolas del núcleo son alcanzables a pie desde el elevador', core.unreachable.length === 0, JSON.stringify(core.unreachable));
   const cs = await pg.evaluate(() => {
     const S = Sim.create({ scen: 'moon', diff: 'engineer', mode: 'junior', seed: 6 }); S.inc = []; S.mods = {}; Station.ensure(S);
@@ -369,7 +369,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
     const R = S.ex.rover; R.x = P.c[0]; R.y = P.c[1]; R.a = 0; R.v = 0; World.setFloor(2); World.player.x = P.x + 1.2; World.player.y = P.y + 1.0; o.on = Game._debug.floors.onPlatform(); o.ok = Station.roverOnPlatform(R);
     return o;
   });
-  ok('El mundo tiene cuatro niveles: los tres pisos de la estación y el garaje (G), que solo tiene una sala, sin exterior', gl.floors === 4 && gl.main === 3 && gl.garageInfo && gl.garageInfo.ground === false && gl.garageInfo.rooms === 'garage' && gl.roomFloor === 4, JSON.stringify(gl));
+  ok('El mundo tiene cinco niveles: los tres pisos, el garaje (G) y la pasarela del núcleo (3A); el garaje solo tiene una sala, sin exterior', gl.floors === 5 && gl.main === 3 && gl.garageInfo && gl.garageInfo.ground === false && gl.garageInfo.rooms === 'garage' && gl.roomFloor === 4, JSON.stringify(gl));
   ok('El elevador de tripulación sigue sirviendo a los tres pisos (el garaje no es una parada)', gl.crewFloors === '1,2,3');
   ok('El garaje tiene la plataforma del rover, el taller y la escalera de servicio', ['glift', 'gcon', 'gstairs'].every((k) => gl.consoles.includes(k)), gl.consoles);
   ok('El rover de la superficie no se dibuja en el garaje, ni el del garaje arriba', gl.visSurface === true && gl.visGarageEmpty === false, JSON.stringify([gl.visSurface, gl.visGarageEmpty]));
@@ -418,6 +418,44 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   ok('Y vuelve a subir a la superficie por la misma escalera', await pg.evaluate(() => World.floor === 2 && World.zone() === 'outside'));
   const svG = await pg.evaluate(() => { const S = Game.S; World.placeNear(4, 112, 74); const st = World.state(); World.setFloor(1); World.restore(st); const r = { floor: World.floor, fl: st.fl }; World.setFloor(2); World.player.x = Layout.START[0]; World.player.y = Layout.START[1]; World.setFloor(1); return r; });
   ok('El estado del mundo guarda y recupera al jugador en el garaje (nivel G)', svG.floor === 4 && svG.fl === 4, JSON.stringify(svG));
+  await pg.evaluate(() => { World.setFloor(1); World.player.x = Layout.START[0]; World.player.y = Layout.START[1]; });
+
+  /* ---- Doble altura del núcleo: nivel 3A (pasarela caminable sobre el reactor) ---- */
+  const dh = await pg.evaluate(() => {
+    const S = Game.S, o = {}; World._test.freeze(true);
+    const U = World.floorInfo(5), L3 = World.floorInfo(3);
+    o.upper = U && { ground: U.ground, below: U.below, rooms: Object.keys(U.ROOMS).join(','), catwalk: U.FURN.filter((f) => f[0] === 'catwalk').length, consoles: U.CONSOLES.map((c) => c[0]).join(',') };
+    o.low = { catwalk: L3.FURN.filter((f) => f[0] === 'catwalk').length, cup: L3.CONSOLES.some((c) => c[0] === 'cup') };
+    World.placeNear(5, 126.5, 30.9); o.f5 = World.floor; o.room = World.roomName(World.player.x, World.player.y);
+    o.ring = World._test.canStand(116.5, 17.6, 0.25); o.hole = World._test.canStand(116.5, 28.5, 0.25); o.void = World._test.canStand(60.5, 30.5, 0.25);
+    const pa = World._test.findPath(126.5, 30.9, 116.5, 17.6); o.path = !!pa && pa.length >= 3;
+    o.amb = Game._debug.floors.ambMix().reactor; World.placeNear(3, 125.5, 30.5); World._test.freeze(true); return o;
+  });
+  ok('El núcleo tiene doble altura real: un nivel superior (3A) sin exterior, con la pasarela en anillo y su mirador; el piso 3 conserva la escalera y ya no dibuja la pasarela a ras de suelo', dh.upper && dh.upper.ground === false && dh.upper.below === 3 && dh.upper.rooms === 'cat' && dh.upper.catwalk === 4 && /cinsp/.test(dh.upper.consoles) && /cdn/.test(dh.upper.consoles) && dh.low.catwalk === 0 && dh.low.cup, JSON.stringify(dh));
+  ok('La pasarela es caminable en anillo, no se puede pisar el hueco sobre el reactor ni el vacío, y hay ruta desde la escalera al mirador', dh.f5 === 5 && dh.room === 'cat' && dh.ring && !dh.hole && !dh.void && dh.path, JSON.stringify([dh.f5, dh.room, dh.ring, dh.hole, dh.void, dh.path]));
+  ok('El zumbido del reactor también se oye fuerte en la pasarela', dh.amb > 0.6, String(dh.amb));
+  // escalera: sube con animación y se llega a la pasarela junto a la escalera de bajada
+  await pg.evaluate(() => { Game._debug.floors.coreStairs(5); }); await sleep(pg, 700);
+  const c1 = await pg.evaluate(() => ({ fx: !!document.getElementById('elride'), kind: document.getElementById('elride') && document.getElementById('elride').dataset.kind, arrow: (document.querySelector('.elr-arrow') || {}).textContent, msg: document.querySelector('.elr-msg').textContent, floor: World.floor }));
+  await pg.waitForFunction(() => World.floor === 5 && !document.getElementById('elride'), null, { timeout: 20000 }); await sleep(pg, 500);
+  const c2 = await pg.evaluate(() => { const p = World.player, cam = World.cam, TS = World.TS, cv = document.getElementById('game'), g = cv.getContext('2d'), z = cam.z || 1, dpr = cv.width / innerWidth; const sx = Math.round(((116.5 * TS - cam.x) * z) * 1), sy = Math.round(((28.5 * TS - cam.y) * z)); let lum = -1; try { const px = g.getImageData(Math.max(0, Math.min(cv.width - 1, sx)), Math.max(0, Math.min(cv.height - 1, sy)), 1, 1).data; lum = px[0] + px[1] + px[2]; } catch (e) { /* sin lectura */ } return { floor: World.floor, room: World.roomName(p.x, p.y), near: (World.nearest() || {}).id, stand: World._test.canStand(p.x, p.y, 0.2), lum, hole: World.floorInfo(5).below }; });
+  ok('La escalera sube a la pasarela con animación (▲, «Subiendo a la pasarela», unos 5 s) y se llega junto a la escalera de bajada', c1.fx && c1.kind === 'cstairs' && c1.arrow === '▲' && /pasarela/.test(c1.msg) && c1.floor === 3 && c2.floor === 5 && c2.room === 'cat' && c2.near === 'cdn' && c2.stand, JSON.stringify([c1, c2]));
+  // mirador
+  await pg.evaluate(() => { Game.S.sys.reactor.h = 10; Game._debug.floors.coreOverlookPanel(); }); await sleep(pg, 250);
+  const ov = await pg.locator('.panel').innerText();
+  await pg.evaluate(() => { Game.S.sys.reactor.h = 100; });
+  await pg.click('[data-act="overlook-reactor"]'); await sleep(pg, 300);
+  const ov2 = await pg.locator('.panel').first().innerText();
+  await pg.keyboard.press('Escape'); await sleep(pg, 100);
+  ok('El mirador muestra las lecturas del reactor (estado, integridad, potencia, producción y temperatura simulada) y avisa si está apagado', /Mirador del núcleo/.test(ov) && /Apagado/.test(ov) && /Integridad/.test(ov) && /Producción/.test(ov) && /simulada/.test(ov), ov.slice(0, 160).replace(/\n/g, ' '));
+  ok('Desde el mirador se abre el control del reactor', /eactor/.test(ov2) && !/Mirador del núcleo/.test(ov2), ov2.slice(0, 80).replace(/\n/g, ' '));
+  const st5 = await pg.evaluate(() => { World.placeNear(5, 126.5, 30.9); const st = World.state(); World.setFloor(1); World.restore(st); return { floor: World.floor, fl: st.fl }; });
+  ok('El estado del mundo guarda y recupera al jugador en la pasarela (nivel 3A)', st5.floor === 5 && st5.fl === 5, JSON.stringify(st5));
+  await pg.evaluate(() => { Game._debug.floors.coreStairs(3); }); await pg.waitForFunction(() => World.floor === 3 && !document.getElementById('elride'), null, { timeout: 20000 }); await sleep(pg, 300);
+  const c3 = await pg.evaluate(() => ({ floor: World.floor, room: World.roomName(World.player.x, World.player.y), near: (World.nearest() || {}).id }));
+  ok('Y se baja al piso 3 por la misma escalera, junto a ella', c3.floor === 3 && c3.room === 'reactor' && c3.near === 'cup', JSON.stringify(c3));
+  const mp = await pg.evaluate(() => { Game._debug.openConsole('cmd'); return 1; });
+  await pg.keyboard.press('Escape'); await sleep(pg, 100);
   await pg.evaluate(() => { World.setFloor(1); World.player.x = Layout.START[0]; World.player.y = Layout.START[1]; });
 
   /* ---- Migración de partidas anteriores a los pisos, con copia de seguridad ---- */
