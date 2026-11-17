@@ -5,7 +5,7 @@
      ===================================================================== */
   function applyAudio() {
     const c = Voice.cfg;
-    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music);
+    Sfx.setSfx(c.sfx); Sfx.setRadioVol(c.vRadio); Sfx.setAlertVol(c.vAlert); Sfx.setMusicVol(c.vMusic); Sfx.setMusic(c.music); Sfx.setAmbVol(c.vAmb == null ? 0.6 : c.vAmb);
   }
   let subEl = null, subT = 0;
   const ROLEN = { commander: { es: 'Comandante', en: 'Commander' }, engineer: { es: 'Ingeniera', en: 'Engineer' }, medic: { es: 'Médica', en: 'Medic' }, scientist: { es: 'Científico', en: 'Scientist' }, agronomist: { es: 'Agrónomo', en: 'Agronomist' }, narrator: { es: 'Narrador', en: 'Narrator' }, earth_control: { es: 'Control Tierra', en: 'Earth Control' } };
@@ -64,6 +64,7 @@
         h('h3', null, es ? 'Volúmenes' : 'Volumes'),
         sld(es ? 'General' : 'Master', () => settings.vol, (v) => { settings.vol = v; applySettings(); }, 0, 1, 0.05, pc),
         sld(es ? 'Voces' : 'Voices', () => c.vVoice, (v) => { c.vVoice = v; Voice.persist(); }, 0, 1, 0.05, pc),
+        sld(es ? 'Ambiente (reactor, elevador, viento)' : 'Ambience (reactor, elevator, wind)', () => (c.vAmb == null ? 0.6 : c.vAmb), (v) => { c.vAmb = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Música' : 'Music', () => c.vMusic, (v) => { c.vMusic = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Radio EarthLink' : 'EarthLink radio', () => c.vRadio, (v) => { c.vRadio = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),
         sld(es ? 'Alertas' : 'Alerts', () => c.vAlert, (v) => { c.vAlert = v; Voice.persist(); applyAudio(); }, 0, 1, 0.05, pc),

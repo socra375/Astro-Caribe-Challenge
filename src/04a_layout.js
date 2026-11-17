@@ -211,15 +211,31 @@ const Layout = (function () {
   const fl = (r) => FLOOR_OF[r] || 1;
   const roomOfPt = (x, y) => { for (const k in ROOMS) for (const sp of ROOMS[k].s) if (has(sp, x, y)) return k; return null; };
   const FNAME = { 1: { es: 'Piso 1 · Operaciones', en: 'Floor 1 · Operations' }, 2: { es: 'Piso 2 · Exploración', en: 'Floor 2 · Exploration' }, 3: { es: 'Piso 3 · Energía', en: 'Floor 3 · Energy' } };
-  const FLOORS = [1, 2, 3].map((id) => {
+  // Nivel G · Garaje del rover (suelo 4): sala transitable bajo la plataforma exterior. No tiene elevador de tripulación: se llega con la plataforma del rover o por la escalera de servicio.
+  FLOOR_OF.garage = 4;
+  ROOMS.garage = { s: [RR(82, 62, 119, 85, 3)], g: 'tec', floor: 'bay', col: ['#23283a', '#2a3044'] };
+  ROOMCOL.garage = '#c9ced8'; FNAME[4] = { es: 'Nivel G · Garaje', en: 'Level G · Garage' };
+  FURN.push(['dock', 92, 71, 9, 7], ['pipe', 84, 64, 33, 1], ['tools', 84, 66, 4, 2], ['benchs', 104, 66, 6, 2], ['rack', 114, 66, 2, 3], ['battery', 85, 81, 2, 2], ['battery', 88, 81, 2, 2], ['battery', 91, 81, 2, 2], ['crate', 110, 79, 2, 2], ['crate', 113, 79, 2, 2], ['crate', 110, 82, 2, 2], ['vent', 84, 72, 2, 2], ['vent', 116, 72, 2, 2], ['lockers', 84, 76, 2, 3], ['holo', 98, 80, 5, 2]);
+  CONSOLES.push(['glift', 'garage', 91, 69, 'use', '🛗'], ['gcon', 'garage', 100, 66, 'manage', '🔧'], ['gstairs', 'garage', 112, 69, 'use', '🪜']);
+  SPOTS.garage = [[112, 72], [96, 80]];
+  // Nivel 3A · Pasarela del núcleo (suelo 5): la doble altura del reactor. Es un nivel superior real y caminable (anillo de pasarela sobre el reactor); el piso 3 deja de tener la pasarela dibujada a ras de suelo.
+  for (let i = FURN.length - 1; i >= 0; i--) if (FURN[i][0] === 'catwalk') FURN.splice(i, 1);
+  FLOOR_OF.cat = 5;
+  ROOMS.cat = { s: [R(104, 17, 127, 18), R(104, 38, 127, 39), R(104, 19, 105, 37), R(126, 19, 127, 37)], g: 'tec', floor: 'grate', col: ['#2c2f3a', '#33374a'] };
+  ROOMCOL.cat = '#ff9a3d'; FNAME[5] = { es: 'Nivel 3A · Pasarela del núcleo', en: 'Level 3A · Core catwalk' };
+  const upper = (...a) => { a.fl = 5; return a; };
+  FURN.push(upper('catwalk', 104, 17, 24, 2), upper('catwalk', 104, 38, 24, 2), upper('catwalk', 104, 19, 2, 19), upper('catwalk', 126, 19, 2, 19));
+  CONSOLES.push(['cinsp', 'cat', 116, 18, 'investigate', '🔭'], ['cdn', 'cat', 126, 29, 'use', '🪜'], ['cup', 'reactor', 125, 29, 'use', '🪜']);
+  SPOTS.cat = [[126, 31]];
+  const FLOORS = [1, 2, 3, 4, 5].map((id) => {
     const rooms = {}; for (const k in ROOMS) if (fl(k) === id) rooms[k] = ROOMS[k];
     const real = (r) => r === 'pad' || rooms[r];
     return {
       id, name: FNAME[id], ground: id === 2, ROOMS: rooms,
       LINKS: LINKS.filter((l) => real(l[0]) && real(l[1]) && (l[0] === 'pad' || l[1] === 'pad' || (fl(l[0]) === id && fl(l[1]) === id))),
-      FURN: FURN.filter((f) => fl(roomOfPt(f[1] + f[3] / 2, f[2] + f[4] / 2) || 'bridge') === id),
+      FURN: FURN.filter((f) => (f.fl || fl(roomOfPt(f[1] + f[3] / 2, f[2] + f[4] / 2) || 'bridge')) === id),
       CONSOLES: CONSOLES.filter((c) => fl(c[1]) === id), PLANTERS: id === 1 ? PLANTERS : [], SHELTER: id === 2 ? SHELTER : null,
-      elev: SPOTS['elc' + id][0]
+      elev: (SPOTS['elc' + id] || (id === 5 ? SPOTS.cat : SPOTS.garage))[0], elevRoom: id === 4 ? 'garage' : id === 5 ? 'cat' : 'elc' + id, below: id === 5 ? 3 : 0
     };
   });
   const roomFloor = (r) => fl(r);

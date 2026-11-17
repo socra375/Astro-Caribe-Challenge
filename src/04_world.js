@@ -70,7 +70,7 @@ const World = (function () {
     }
     // Solidez
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) solid[y][x] = grid[y][x] === WALL || (!D.ground && grid[y][x] === OUT); // solo la planta baja tiene exterior
-    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug', 'catwalk', 'warn'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
+    for (const f of furn) if (!['window', 'pipe', 'vent', 'rug', 'catwalk', 'warn', 'dock'].includes(f.kind)) for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) solid[y][x] = true;
     if (D.ground) for (const p of props) if (p.solid) for (let y = Math.floor(p.y); y < Math.ceil(p.y + p.h); y++) for (let x = Math.floor(p.x); x < Math.ceil(p.x + p.w); x++) if (y > 0 && x > 0 && y < H - 1 && x < W - 1 && grid[y][x] === OUT) solid[y][x] = true;
     roomCache = {};
     if (D.ground) {
@@ -104,13 +104,30 @@ const World = (function () {
     const was = fidx; fidx = n - 1; loadSlot(FL[fidx]);
     try { return fn(); } finally { const o = FL[fidx]; o.staticCv = staticCv; o.mapCv = mapCv; o.pathCache = pathCache; o.roomCache = roomCache; fidx = was; loadSlot(FL[fidx]); }
   }
-  /** Trayecto de un NPC en el elevador: entra en la cabina, tarda según los pisos y sale junto al elevador de destino (no se teletransporta). */
-  function startRide(b, to) { b.ride = { to, t: 0, dur: Station.DOOR_S * 2 + Station.travelS('crew', b.floor || 1, to) }; b.moving = false; b.path = []; }
-  function stepRide(b, dt) {
-    b.ride.t += dt; if (b.ride.t < b.ride.dur) return;
+  /** ¿Se ve el rover en el piso actual? En la planta baja (exterior) cuando está arriba; en el nivel G cuando está aparcado en el dock. */
+  const rvis = () => !!curS && (FL[fidx].D.id === 4 ? Station.roverInGarage(curS) : !!FL[fidx].D.ground && Station.roverVisible(curS));
+  /** Coloca al jugador junto a un punto de un piso (garaje o superficie) tras usar la plataforma o la escalera de servicio. */
+  function placeNear(f, x, y) { if (!setFloor(f)) return false; const p = standAt(x, y, null); player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true; }
+  let npcFrozen = false; // solo para pruebas: los NPC no se mueven
+  /** Trayecto de un NPC en el elevador. mode 'in': ya subió a la cabina real (Station) y espera a que llegue; 'timed': respaldo con el mismo tiempo cuando la cabina no sirve (avería o espera larga), así no se queda atrapado. */
+  function startRide(b, to, mode) { b.ride = { to, t: 0, st: mode || 'timed', dur: Station.DOOR_S * 2 + Station.travelS('crew', b.floor || 1, to) }; b.moving = false; b.path = []; }
+  function finishRide(b) {
     const to = b.ride.to, p = withFloor(to, () => spot('elc' + to, 0));
-    b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.path = []; b.wait = 1.5; b.dir = 2;
+    b.floor = to; b.x = p[0]; b.y = p[1]; b.ride = null; b.viaTo = null; b.rw = 0; b.path = []; b.wait = 1.5; b.dir = 2;
   }
+  function stepRide(b, dt) {
+    const r = b.ride, S = curS; r.t += dt;
+    if (r.st === 'in' && S && S.station) {
+      const e = Station.ensure(S).elev.crew;
+      if (e.st === 'idle' && e.at === r.to) { Station.leave(S, 'crew', 'npc:' + b.role); return finishRide(b); }
+      if (r.t < r.dur + 30) return; // espera a que la cabina real termine el trayecto
+      Station.leave(S, 'crew', 'npc:' + b.role); return finishRide(b); // seguridad: nunca queda atrapado
+    }
+    if (r.t < r.dur) return;
+    finishRide(b);
+  }
+  /** ¿Va el jugador dentro de la cabina (en el piso donde está ahora)? Entonces los NPC no la llaman: se llevaría al jugador. */
+  const playerInCabin = (st) => player.floor === st.at && withFloor(st.at, () => room(player.x, player.y)) === 'elc' + st.at;
   /** Piso al que pertenece un punto (coordenadas originales de la base): el piso donde esa celda es sala o puerta; si no, la planta baja (exterior). */
   function floorOfPoint(x, y) {
     const tx = Math.floor(x), ty = Math.floor(y);
@@ -118,13 +135,13 @@ const World = (function () {
     const g = FL.findIndex((o) => o.D.ground); return g >= 0 ? g + 1 : 1;
   }
   /** Dibuja de antemano el arte de todos los pisos (cada uno tarda 0,3-0,5 s): así cambiar de piso no produce tirones. */
-  function prewarmFloor(f) { withFloor(f, () => { if (!staticCv) buildStatic(); }); }
-  function prewarm() { for (let f = 1; f <= FL.length; f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
+  function prewarmFloor(f) { const lo = FL[f - 1] && FL[f - 1].D.below; if (lo) withFloor(lo, () => { if (!staticCv) buildStatic(); }); withFloor(f, () => { if (!staticCv) buildStatic(); }); }
+  function prewarm() { for (let f = 1; f <= Math.min(3, FL.length); f++) withFloor(f, () => { if (!staticCv) buildStatic(); }); }
   /** Llegada a un piso: cambia de piso y deja al jugador dentro del elevador de ese piso. */
   function arrive(n, outside) {
     if (!setFloor(n)) return false; const D = FL[fidx].D; let p = null;
     if (outside) { const d = doors.find((q) => q.elev === n); if (d) p = standAt(d.x + 0.5 + (Math.sign(d.x + 0.5 - D.elev[0]) || -1) * 2.4, d.y + d.h / 2, null); } // delante de la puerta del elevador
-    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, 'elc' + n);
+    if (!p) p = standAt(D.elev[0] + 0.5, D.elev[1] + 0.5, D.elevRoom || 'elc' + n);
     player.x = p[0]; player.y = p[1]; player.dir = 2; player.moving = false; player.act = null; camInit = false; return true;
   }
   /** Cambia de piso: guarda el arte y las cachés del piso actual y carga el de destino. No mueve al jugador. */
@@ -209,7 +226,7 @@ const World = (function () {
 
   /* ---------- Colisión ---------- */
   function roverBlocks(x, y) {
-    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !Station.roverVisible(curS)) return false;
+    const E = curS && curS.ex; if (!E || E.rover.occ || boardAnim || noRov || !rvis()) return false;
     for (const b of Rover.body(E.rover.x, E.rover.y, E.rover.a)) if (Math.hypot(b[0] - x, b[1] - y) < b[2] * 0.95) return true;
     return false;
   }
@@ -217,7 +234,7 @@ const World = (function () {
     const tx = Math.floor(x), ty = Math.floor(y);
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) { const B = Field.B; return x < B.x0 || y < B.y0 || x > B.x1 || y > B.y1 || Field.hit(x, y, 0, false) || roverBlocks(x, y); }
     if (grid[ty][tx] === DOOR) { const d = doorAt(tx, ty); return !d || d.open < 0.6; }
-    return solid[ty][tx] || (grid[ty][tx] === OUT && roverBlocks(x, y));
+    return solid[ty][tx] || ((grid[ty][tx] === OUT || FL[fidx].D.id === 4) && roverBlocks(x, y)); // el rover aparcado en el dock del garaje también es un obstáculo
   }
   function doorAt(x, y) { return doors.find((d) => x >= d.x && x < d.x + d.w && y >= d.y && y < d.y + d.h); }
   function canStand(x, y, r) { return !blocked(x - r, y - r) && !blocked(x + r, y - r) && !blocked(x - r, y + r) && !blocked(x + r, y + r); }
@@ -260,7 +277,7 @@ const World = (function () {
     if (!player.moving) player.anim += dt * 8;
     if (player.actT > 0) { player.actT -= dt; if (player.actT <= 0) player.act = null; }
     for (const b of bots) if (b.actT > 0) { b.actT -= dt; if (b.actT <= 0) b.act = null; }
-    for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
+    for (let i = 0; i < bots.length; i++) { const b = bots[i]; if (npcFrozen) continue; if (b.ride) stepRide(b, dt); else if (onF(b)) updateBot(b, dt, S); else withFloor(b.floor || 1, () => updateBot(b, dt, S)); }
     // las puertas de los otros pisos también se abren para los NPC que las cruzan (si no, quedarían atrapados dentro de una puerta cerrada)
     const other = {}; for (const bt of bots) if (!bt.ride && !onF(bt)) (other[bt.floor || 1] = other[bt.floor || 1] || []).push(bt);
     for (const f in other) withFloor(+f, () => { for (const d of doors) { const cx = d.x + d.w / 2, cy = d.y + d.h / 2, want = d.kind === 'auto' && other[f].some((e) => Math.abs(e.x - cx) < 2.0 && Math.abs(e.y - cy) < 2.0); d.open = clampN(d.open + (want ? 3 : -3) * dt, 0, 1); if (!want) for (const e of other[f]) if (Math.floor(e.x) >= d.x && Math.floor(e.x) < d.x + d.w && Math.floor(e.y) >= d.y && Math.floor(e.y) < d.y + d.h) d.open = Math.max(d.open, 0.7); } });
@@ -324,8 +341,29 @@ const World = (function () {
     b.anim += dt * 7;
     if (!S) return;
     const myF = b.floor || 1, fl = (room) => Layout.roomFloor(room), elev = () => spot('elc' + myF, 0);
-    // ¿está en la puerta del elevador y necesita otro piso? → sube a la cabina
-    if (b.viaTo && b.viaTo !== myF) { const e = elev(); if (Math.hypot(e[0] - b.x, e[1] - b.y) < 1.4 && !b.path.length) { startRide(b, b.viaTo); return; } } else b.viaTo = null;
+    function follow() {
+      if (b.path.length) {
+        const n = b.path[0], dx = n[0] - b.x, dy = n[1] - b.y, d = Math.hypot(dx, dy), sp = 2.6 * dt;
+        if (d <= sp) { b.x = n[0]; b.y = n[1]; b.path.shift(); }
+        else { b.x += (dx / d) * sp; b.y += (dy / d) * sp; b.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); }
+        b.moving = true;
+      } else b.moving = false;
+    }
+    // ¿necesita otro piso? → espera fuera de la puerta, llama a la cabina real y sube cuando llega (sin cabina utilizable, trayecto propio)
+    if (b.viaTo && b.viaTo !== myF) {
+      const st = Station.ensure(S).elev.crew, here = st.at === myF && st.st === 'idle' && !st.broken, ec = elev(), near = Math.hypot(ec[0] - b.x, ec[1] - b.y) < 1.4;
+      b.rw = (b.rw || 0) + dt;
+      const walk = (t) => { if (!b.path.length && Math.hypot(t[0] - b.x, t[1] - b.y) > 0.9) b.path = (findPath(b.x, b.y, t[0], t[1]) || []).slice(1); };
+      if (st.broken || b.rw > 45) { if (near && !b.path.length) { startRide(b, b.viaTo, 'timed'); return; } walk(ec); }
+      else if (here) {
+        if (near && !b.path.length) { if (st.occ.length === 0 && Station.board(S, 'crew', 'npc:' + b.role).ok && Station.call(S, 'crew', b.viaTo).ok) { startRide(b, b.viaTo, 'in'); return; } }
+        else walk(ec);
+      } else {
+        const d0 = doors.find((q) => q.elev === myF), D0 = FL[fidx].D, ws = d0 ? standAt(d0.x + 0.5 + (Math.sign(d0.x + 0.5 - D0.elev[0]) || -1) * 2.4, d0.y + d0.h / 2, null) : ec;
+        walk(ws); if (st.st === 'idle' && !playerInCabin(st) && Math.hypot(ws[0] - b.x, ws[1] - b.y) < 1.5) Station.call(S, 'crew', myF);
+      }
+      follow(); return;
+    } else { b.viaTo = null; b.rw = 0; }
     const c = S.crew.find((x) => x.role === b.role);
     let goal = null, goalF = myF;
     if (c && c.zone === 'shelter' && !locked('rad')) { goalF = 2; goal = myF === 2 ? (b.role === 'medic' || b.role === 'agri' ? [SHELTER[0] + 6.5, SHELTER[1] + 3.5] : [SHELTER[0] + 9.5, SHELTER[1] + 6.5]) : elev(); b.task = 'shelter'; }
@@ -350,12 +388,7 @@ const World = (function () {
         }
       }
     }
-    if (b.path.length) {
-      const n = b.path[0], dx = n[0] - b.x, dy = n[1] - b.y, d = Math.hypot(dx, dy), sp = 2.6 * dt;
-      if (d <= sp) { b.x = n[0]; b.y = n[1]; b.path.shift(); }
-      else { b.x += (dx / d) * sp; b.y += (dy / d) * sp; b.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); }
-      b.moving = true;
-    } else b.moving = false;
+    follow();
   }
 
   /* ---------- Interacción ---------- */
@@ -397,7 +430,7 @@ const World = (function () {
   function roverFree(x, y, a) { for (const b of Rover.body(x, y, a)) if (!circleFree(b[0], b[1], b[2])) return false; return true; }
   const standOK = (x, y) => { noRov = true; const v = canStand(x, y, 0.3); noRov = false; return v; };
   function boardRover() {
-    const E = curS && curS.ex; if (!E) return 'err'; if (!Station.roverVisible(curS)) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
+    const E = curS && curS.ex; if (!E) return 'err'; if (!rvis() || !FL[fidx].D.ground) return 'busy'; if (!E.suit.on) return 'nosuit'; if (E.rover.occ || boardAnim) return 'busy'; if (shelIn) return 'busy';
     const sd = Rover.sides(), dl = Math.hypot(player.x - sd.left[0], player.y - sd.left[1]), dr = Math.hypot(player.x - sd.right[0], player.y - sd.right[1]), side = dl < dr ? sd.left : sd.right;
     boardAnim = { kind: 'in', t: 0, dur: 0.7, fx: player.x, fy: player.y, sx: side[0], sy: side[1] }; player.act = null; collect = null; Sfx.play('door'); return null;
   }
@@ -437,7 +470,7 @@ const World = (function () {
     if (shelIn) return { id: 'x:shelx', verb: 'leave', icon: '🚪', d: 0, q: Field.G.shel.find((z) => z.id === shelIn) };
     let best = null, bd = 9; const px = player.x, py = player.y, R = E.rover, sd = Rover.sides();
     const cons = (d, it) => { if (d < bd) { bd = d; best = Object.assign(it, { d }); } };
-    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = Station.roverVisible(curS);
+    const dh = Math.hypot(px - sd.hatchPt[0], py - sd.hatchPt[1]), dr = Math.hypot(px - R.x, py - R.y), rv = rvis();
     if (dh < 1.6 && rv) cons(dh * 0.7, { id: 'x:store', verb: 'open', icon: '📦' });
     if (dr < 3.3 && rv) cons(dr * 0.8, { id: 'x:board', verb: 'board', icon: '🚙' });
     { const P = Station.PLAT, dp = Math.hypot(px - P.panel[0], py - (P.panel[1] + 0.9)); if (dp < 2.2) cons(dp * 0.9, { id: 'x:rplat', verb: 'use', icon: '🛗' }); }
@@ -460,8 +493,8 @@ const World = (function () {
     const R = E.rover, ev = Ex.env(S, R.x, R.y), nightF = (1 - ev.sun) * (S.scen === 'mars' ? 0.7 : 1);
     const seated = R.occ || (boardAnim && boardAnim.kind === 'in' && boardAnim.t / boardAnim.dur > 0.9);
     const bd = boardAnim ? Math.sin(Math.min(1, boardAnim.t / boardAnim.dur) * Math.PI) : 0;
-    ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
-    if (Station.roverVisible(S)) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
+    if (FL[fidx].D.ground) ents.push({ y: Station.PLAT.y + 0.5, f: () => Rover.drawPlatform(c, S, t) });
+    if (rvis()) ents.push({ y: R.y, f: () => Rover.draw(c, S, t, { occ: seated, role: player.role, boarding: bd, night: nightF > 0.45 && !shelIn && Math.hypot(player.x - R.x, player.y - R.y) < 40, storeOpen: !!E.storeOpen, rm }) });
     ents.push({ y: 1e6, f: () => {
       Rover.drawParts(c);
       if (collect) { const x = collect.x * TS, y = collect.y * TS, u = collect.t / collect.dur; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y - 6, 20, 0, 7); c.stroke(); c.strokeStyle = '#6fffa0'; c.lineWidth = 4; c.beginPath(); c.arc(x, y - 6, 20, -Math.PI / 2, -Math.PI / 2 + u * 6.283); c.stroke(); }
@@ -504,7 +537,7 @@ const World = (function () {
     for (const q of Field.G.rep) { c.fillStyle = E.rep[q.id] ? '#6fffa0' : '#ff5a5a'; c.beginPath(); c.arc(X(q.x), Y(q.y), 4, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke(); }
     for (const q of Field.G.shel) { c.fillStyle = '#ffc24a'; c.fillRect(X(q.x) - 4, Y(q.y) - 4, 8, 8); c.fillStyle = '#000'; c.font = 'bold 8px system-ui'; c.textAlign = 'center'; c.fillText('R', X(q.x), Y(q.y) + 3); }
     const gl = Ex.goal(S), tg = target || (gl ? [gl.x, gl.y] : null); if (tg) { c.strokeStyle = '#ff6b6b'; c.lineWidth = 2.5; c.beginPath(); c.arc(X(tg[0]), Y(tg[1]), 7 + 2 * Math.sin(lastT * 5), 0, 7); c.stroke(); }
-    const R = E.rover; if (Station.roverVisible(curS)) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
+    const R = E.rover; if (rvis()) { c.fillStyle = '#38d6ff'; c.save(); c.translate(X(R.x), Y(R.y)); c.rotate(R.a); c.fillRect(-4, -3, 8, 6); c.fillStyle = '#fff'; c.fillRect(2, -1.5, 3, 3); c.restore(); }
     c.fillStyle = '#ffffff'; c.beginPath(); c.arc(X(player.x), Y(player.y), 4.5, 0, 7); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 2; c.stroke();
     return true;
   }
@@ -542,7 +575,7 @@ const World = (function () {
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function buildStatic() {
     const g = FL[fidx].D.ground, none = { props: [], tracks: [], craters: [], dunes: [], pad: { c: [0, 0], r: 0 }, lamps: [] };
-    const o = Art.build({ scen, ground: g, W, H, TS, grid, roomAt, doors, furn, props: g ? props : [], scenery: g ? scenery : none, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER: FL[fidx].D.SHELTER || null, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
+    const o = Art.build({ scen, ground: g, below: !!FL[fidx].D.below, W, H, TS, grid, roomAt, doors, furn, props: g ? props : [], scenery: g ? scenery : none, rooms: FL[fidx].D.ROOMS, ROOMCOL, SHELTER: FL[fidx].D.SHELTER || null, LOCK, drawFurn, rr, REACTOR_C: Layout.REACTOR_C, samples });
     staticCv = o.cv; mapCv = o.mapCv;
   }
 
@@ -601,6 +634,11 @@ const World = (function () {
         c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
         break;
       }
+      case 'dock': { // plataforma de aparcamiento del rover en el garaje: placa con franjas, luces y rieles
+        c.fillStyle = '#10141f'; rr(c, x, y, w, h, 8); c.fill(); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([14, 10]); rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.stroke(); c.setLineDash([]);
+        c.fillStyle = '#2b3347'; rr(c, x + 14, y + 14, w - 28, h - 28, 6); c.fill(); c.strokeStyle = 'rgba(160,180,230,.35)'; c.lineWidth = 2; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x + 14 + (w - 28) * i / 4, y + 14); c.lineTo(x + 14 + (w - 28) * i / 4, y + h - 14); c.stroke(); }
+        const on = curS && Station.roverInGarage(curS), a2 = 0.5 + 0.5 * Math.sin(lastT * 4); for (const [lx, ly] of [[x + 10, y + 10], [x + w - 10, y + 10], [x + 10, y + h - 10], [x + w - 10, y + h - 10]]) { c.fillStyle = on ? '#6fffa0' : 'rgba(255,170,60,' + (0.5 + 0.5 * a2) + ')'; c.beginPath(); c.arc(lx, ly, 4, 0, 6.2832); c.fill(); }
+        break; }
       case 'warn': { // zona restringida: borde de franjas de advertencia
         c.strokeStyle = 'rgba(255,194,74,.55)'; c.lineWidth = 6; c.setLineDash([22, 16]); c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]);
         c.strokeStyle = 'rgba(20,20,26,.6)'; c.lineWidth = 6; c.setLineDash([16, 22]); c.lineDashOffset = -22; c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]); c.lineDashOffset = 0; break;
@@ -678,6 +716,7 @@ const World = (function () {
     ctx.setTransform(zoom, 0, 0, zoom, -cam.x * zoom, -cam.y * zoom);
     ctx.imageSmoothingEnabled = false;
     if (FL[fidx].D.ground) Field.drawTerrain(ctx, cam.x, cam.y, vw, vh);
+    if (FL[fidx].D.below) { const lo = FL[FL[fidx].D.below - 1]; if (lo && lo.staticCv) { ctx.globalAlpha = 0.62; ctx.drawImage(lo.staticCv, 0, 0); ctx.globalAlpha = 1; } } // doble altura: se ve el reactor por debajo de la pasarela
     ctx.drawImage(staticCv, 0, 0);
     const t = lastT, rm = reduced;
     // Puertas (hojas que se deslizan; horizontales y verticales)
@@ -777,6 +816,7 @@ const World = (function () {
     const eva = !!(S && S.ex && S.ex.suit.on), inRov = !!(S && S.ex && S.ex.rover.occ) && !boardAnim, cargo = !!(S && S.ex && S.ex.hand.length);
     if (!inRov && !shelIn) ents.push({ y: player.y, f: () => drawChar(ctx, player.role, player.x * TS, player.y * TS + 6, player.dir, player.anim / 8, player.moving && !player.act ? (cargo ? 'carry' : 'walk') : (cargo && !player.act && pPose === 'idle' ? 'carry' : pPose), player.moving, o.youLabel || '', eva) });
     if (FL[fidx].D.ground) exRender(ctx, S, ents, t, rm, vw, vh, o);
+    else if (rvis() && S && S.ex) { const R = S.ex.rover; ents.push({ y: R.y, f: () => Rover.draw(ctx, S, t, { occ: false, role: player.role, boarding: 0, night: false, storeOpen: false, rm }) }); } // el rover aparcado en el dock del garaje
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.f());
     roomVeil(ctx);
     // Secciones bloqueadas: velo con la forma real de cada sala
@@ -888,7 +928,7 @@ const World = (function () {
   function snapCamera() { camInit = false; }
   function overview(on) { fitAll = on == null ? !fitAll : !!on; if (!fitAll) zoomMul = 1; }
 
-  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, prewarmFloor, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
+  return { snapCamera, get floor() { return fidx + 1; }, get floors() { return FL.length; }, get mainFloors() { return Math.min(3, FL.length); }, placeNear, rvis, floorInfo: (n) => (FL[(n || fidx + 1) - 1] || {}).D || null, setFloor, arrive, withFloor, prewarm, prewarmFloor, secureNear, floorOfPoint, roomCenterOn, consoleFloor, get cam() { return cam; }, get needSuit() { return lastT - needSuitT < 0.4; }, standOKp: (x, y) => standOK(x, y), exNear: () => exNear(), boardRover, exitRover, enterShelter, leaveShelter, get inShelter() { return shelIn; }, beginCollect, cancelCollect: () => (collect = null), get collecting() { return collect; }, exCtx, fx, roverFree, scanFx, photoFx, get boarding() { return !!boardAnim; }, teleportHome, standOK, route, crew, doorList: () => doors.map((d) => ({ x: d.x, y: d.y, w: d.w, h: d.h, v: d.v, kind: d.kind })), roomLocked: locked, ROOMCOL, DIM: { W, H }, setPlayerRole, plantPos, lockedNear, pick, setMarker, get marker() { return marker; }, setAct, init, update, render, minimap, nearest, zone, roomName, roomCenter, consolePos, cycleLock, airlock: () => airlock, state, restore, respawnSamples, setReduced, invalidate, player, get RECTS() { return RECTS; }, TS, roomPath, zoom, overview, get fit() { return fitAll; }, get camZoom() { return cam.z; }, vehicleArrival,
     get staticCanvas() { if (!staticCv) buildStatic(); return mapCv; }, roomAtPoint: (x, y) => { const r = room(x, y); return isTube(r) ? 'hall' : r; }, shelterCenter: () => [(SHELTER[0] + SHELTER[2] + 1) / 2, (SHELTER[1] + SHELTER[3] + 1) / 2], lockPos: () => LOCK,
-    _test: { setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
+    _test: { freeze: (v) => { npcFrozen = !!v; }, setExtraFloors: (l) => { extraFloors = l || []; }, get boardAnim() { return boardAnim; }, blocked, canStand, get doors() { return doors; }, get bots() { return bots; }, findPath, standAt, spot, get grid() { return grid; }, get solid() { return solid; }, get roomAt() { return roomAt; }, get props() { return props; }, get samples() { return Field.G ? Field.G.sites.filter((q) => q.near) : []; }, get scenery() { return scenery; }, get furn() { return furn; } } };
 })();

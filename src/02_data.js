@@ -79,7 +79,7 @@ const DATA = (function () {
   const ROOMS = {
     bridge: { es: 'Puente de mando', en: 'Command bridge' }, life: { es: 'Dormitorios', en: 'Crew quarters' }, kitchen: { es: 'Cocina y comedor', en: 'Kitchen & mess' }, med: { es: 'Enfermería', en: 'Sick bay' }, food: { es: 'Almacén de alimentos', en: 'Food storage' }, samples: { es: 'Almacén de muestras', en: 'Sample storage' }, waste: { es: 'Gestión de residuos', en: 'Waste management' }, workshop: { es: 'Taller de mantenimiento', en: 'Maintenance workshop' }, gh: { es: 'Invernadero', en: 'Greenhouse' },
     reactor: { es: 'Reactor y energía', en: 'Reactor & power' }, elc1: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc2: { es: 'Elevador de tripulación', en: 'Crew elevator' }, elc3: { es: 'Elevador de tripulación', en: 'Crew elevator' }, water: { es: 'Soporte vital', en: 'Life support' },
-    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
+    rad: { es: 'Bahía del rover y esclusa', en: 'Rover bay & airlock' }, garage: { es: 'Garaje del rover', en: 'Rover garage' }, cat: { es: 'Pasarela del núcleo', en: 'Core catwalk' }, lab: { es: 'Laboratorio científico', en: 'Science lab' },
     hall: { es: 'Atrio central', en: 'Central atrium' }, lock: { es: 'Esclusa', en: 'Airlock' }, pad: { es: 'Superficie exterior', en: 'Outside surface' }
   };
   const ROLE_T = {
@@ -424,12 +424,12 @@ const Store = (function () {
 
 /* ---------- Audio (Web Audio API, sonidos originales sintetizados) ---------- */
 const Sfx = (function () {
-  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null;
+  let ctx = null, master = null, vol = 0.6, muted = false, sfxOn = true, alertVol = 1, radioVol = 1, curMul = 1, musicOn = false, musicVol = 0.35, mus = null, amb = null, ambVol = 0.6, ambMix = {};
   function init() {
     if (ctx) return;
-    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); } catch (e) { ctx = null; }
+    try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); apply(); startMusic(); startAmb(); } catch (e) { ctx = null; }
   }
-  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; }
+  function apply() { if (master) master.gain.value = muted ? 0 : vol * 0.5; if (mus) mus.bus.gain.value = musicVol * 0.5; applyAmb(); }
   // Música ambiental generativa (acordes lentos). Solo arranca si el jugador la activa y tras su primera interacción.
   const CH = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 207.7, 246.9]];
   function startMusic() {
@@ -442,6 +442,31 @@ const Sfx = (function () {
     } catch (e) { mus = null; }
   }
   function stopMusic() { if (!mus) return; try { clearInterval(mus.iv); mus.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.3); const m = mus; setTimeout(() => m.os.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 1200); } catch (e) { /* ignore */ } mus = null; }
+  // Ambiente por capas (zumbido del reactor, ventilación, motor del elevador, viento y respiración del traje). Cada capa tiene su volumen 0–1.
+  function noiseBuf(sec) { const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); let p = 0; for (let i = 0; i < n; i++) { p = p * 0.2 + (Math.random() * 2 - 1) * 0.8; d[i] = p; } return b; }
+  function startAmb() {
+    if (!ctx || amb) return;
+    try {
+      const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(master);
+      const nb = noiseBuf(2), layer = (src, filt, ftype, fq) => { const f = ctx.createBiquadFilter(), g = ctx.createGain(); f.type = ftype; f.frequency.value = fq; g.gain.value = 0; src.connect(f); f.connect(g); g.connect(bus); return { f, g }; };
+      const hum = [55, 110.6, 165.3].map((fr, i) => { const o = ctx.createOscillator(); o.type = i ? 'triangle' : 'sine'; o.frequency.value = fr; o.start(); return o; }), humL = layer(hum[0], null, 'lowpass', 420); hum[1].connect(humL.f); hum[2].connect(humL.f);
+      const noise = (fq, ftype) => { const s2 = ctx.createBufferSource(); s2.buffer = nb; s2.loop = true; s2.start(); return layer(s2, null, ftype, fq); };
+      const vent = noise(520, 'bandpass'), wind = noise(700, 'lowpass'), suit = noise(2600, 'highpass');
+      const mo = ctx.createOscillator(); mo.type = 'sawtooth'; mo.frequency.value = 58; mo.start(); const motor = layer(mo, null, 'lowpass', 380);
+      const ro = ctx.createOscillator(); ro.type = 'square'; ro.frequency.value = 38; ro.start(); const rover = layer(ro, null, 'lowpass', 220);
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.22; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(suit.g.gain); lfo.start(); // respiración
+      amb = { bus, hum, humL, vent, wind, suit, motor, mo, rover };
+      applyAmb();
+    } catch (e) { amb = null; }
+  }
+  const AMBG = { reactor: 0.16, vent: 0.05, wind: 0.14, suit: 0.035, motor: 0.12, rover: 0.14 };
+  function applyAmb() {
+    if (!ctx || !amb) return; const t = ctx.currentTime, on = sfxOn && !muted, m = ambMix, k = on ? ambVol : 0, set = (L, key) => L.g.gain.setTargetAtTime((m[key] || 0) * AMBG[key] * k, t, 0.35);
+    set(amb.humL, 'reactor'); set(amb.vent, 'vent'); set(amb.wind, 'wind'); set(amb.motor, 'motor'); set(amb.rover, 'rover');
+    amb.suit.g.gain.setTargetAtTime((m.suit || 0) * AMBG.suit * k, t, 0.35);
+    const un = m.reactorUnstable || 0; amb.hum[0].detune.setTargetAtTime(un * 60, t, 0.5); amb.hum[1].detune.setTargetAtTime(-un * 90, t, 0.5);
+    amb.mo.frequency.setTargetAtTime(52 + (m.motorSpeed || 0) * 30, t, 0.3);
+  }
   function tone(f, d, type, when, g) {
     if (!ctx || muted) return;
     try {
@@ -477,7 +502,7 @@ const Sfx = (function () {
   };
   const RADIO_SND = { rcon: 1, rtx: 1, rrx: 1, rnoise: 1, rend: 1 };
   return { init, play: (k) => { init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); if (!sfxOn) return; curMul = (k === 'info' || k === 'warn' || k === 'crit') ? alertVol : RADIO_SND[k] ? radioVol : 1; (P[k] || P.click)(); curMul = 1; startMusic(); },
-    setSfx: (v) => { sfxOn = !!v; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
+    setSfx: (v) => { sfxOn = !!v; applyAmb(); }, setAmbVol: (v) => { ambVol = clampN(+v, 0, 1); applyAmb(); }, setAmbient: (m) => { ambMix = m || {}; applyAmb(); }, get amb() { return ambMix; }, get ambReady() { return !!amb; }, setRadioVol: (v) => { radioVol = clampN(+v, 0, 1); }, setAlertVol: (v) => { alertVol = clampN(+v, 0, 1); }, setMusicVol: (v) => { musicVol = clampN(+v, 0, 1); apply(); },
     setMusic: (on) => { musicOn = !!on; if (!musicOn) stopMusic(); else if (ctx) startMusic(); }, get musicPlaying() { return !!mus; },
     setVol: (v) => { vol = clampN(+v, 0, 1); apply(); }, setMuted: (m) => { muted = !!m; apply(); }, get muted() { return muted; }, get vol() { return vol; } };
 })();

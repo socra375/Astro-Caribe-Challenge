@@ -18,7 +18,7 @@ const Voice = (function () {
     profiles[id] = { profileId: id, characterRole: role, language: lang, preferredVoiceURI: null, preferredVoiceName: null, fallbackLanguage: lang === 'es' ? 'en' : 'es', rate: BASE[role][0], pitch: BASE[role][1], volume: 1 };
   }
   // Preferencias guardables (si localStorage está bloqueado, Store las mantiene en memoria)
-  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
+  const cfg = Object.assign({ tts: true, subs: true, music: false, sfx: true, vVoice: 1, vMusic: 0.35, vAmb: 0.6, vAlert: 1, vRadio: 1, rate: 1, saved: {} }, Store.get('audio', {}));
   for (const id in cfg.saved) if (profiles[id]) { profiles[id].preferredVoiceURI = cfg.saved[id].uri || null; profiles[id].preferredVoiceName = cfg.saved[id].name || null; }
   function persist() { Store.set('audio', cfg); }
 

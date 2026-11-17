@@ -9,7 +9,9 @@
 const Station = (function () {
   const T = (es, en) => ({ es, en });
   const FLOORS = [1, 2, 3];
-  const FLOOR_T = { 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
+  /** Garaje del rover: nivel G (suelo 4 del mundo). Dock donde aparca el rover (coordenadas del garaje). */
+  const GARAGE = 4, CATWALK = 5, GDOCK = [96, 74];
+  const FLOOR_T = { 4: T('Nivel G · Garaje', 'Level G · Garage'), 5: T('Nivel 3A · Pasarela del núcleo', 'Level 3A · Core catwalk'), 0: T('Exterior', 'Outside'), 1: T('Piso 1 · Operaciones', 'Floor 1 · Operations'), 2: T('Piso 2 · Exploración', 'Floor 2 · Exploration'), 3: T('Piso 3 · Energía', 'Floor 3 · Energy') };
   const KINDS = {
     crew: { stops: [1, 2, 3], at: 1, name: T('Elevador de tripulación', 'Crew elevator'), secPerFloor: 2.2 },
     rover: { stops: [0, 2], at: 0, name: T('Elevador del rover', 'Rover elevator'), secPerFloor: 2.6 }
@@ -70,12 +72,13 @@ const Station = (function () {
   function step(S, dt) {
     let arrived = false;
     for (const kind of Object.keys(KINDS)) {
-      const e = E(S, kind); if (e.st === 'idle') continue;
+      const e = E(S, kind); if (kind === 'rover' && e.st === 'idle' && S.station.roverAt === 'garage' && S.sys && S.sys.rover) S.sys.rover.batt = Math.min(100, S.sys.rover.batt + dt * 0.9); // se carga en el dock
+      if (e.st === 'idle') continue;
       e.t += dt;
       if (e.st === 'closing' && e.t >= DOOR_S) { e.st = 'moving'; e.t = 0; e.p = 0; }
       else if (e.st === 'moving') {
         const dur = Math.max(0.01, travelS(kind, e.at, e.to)); e.p = Math.min(1, e.t / dur);
-        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; }
+        if (e.p >= 1) { e.at = e.to; e.st = 'opening'; e.t = 0; e.trips++; if (kind === 'rover') { S.station.roverAt = e.at === 2 ? 'garage' : 'surface'; if (S.ex) { const R0 = S.ex.rover, c0 = e.at === 2 ? GDOCK : PLAT.c; R0.x = c0[0]; R0.y = c0[1]; R0.a = 0; R0.v = 0; } } }
       } else if (e.st === 'opening' && e.t >= DOOR_S) { e.st = 'idle'; e.t = 0; arrived = true; }
     }
     return arrived;
@@ -87,6 +90,8 @@ const Station = (function () {
   /** ¿Se ve el rover en la superficie? No si está guardado en el garaje ni mientras la plataforma baja con él. */
   const roverVisible = (S) => { const st = ensure(S); return st.roverAt !== 'garage' && st.elev.rover.st !== 'moving'; };
   const roverStored = (S) => ensure(S).roverAt === 'garage';
+  /** ¿Está el rover aparcado en el dock del garaje (plataforma abajo y quieta)? */
+  const roverInGarage = (S) => { const st = ensure(S); return st.roverAt === 'garage' && st.elev.rover.st !== 'moving'; };
   /** Plataforma del rover (coordenadas del mundo exterior): el rover aparca en su centro. */
   const PLAT = { x: 70.5, y: 86.4, w: 7, h: 6.4, c: [74, 89.6], panel: [74, 93.4] };
   /** ¿Está el rover bien colocado sobre la plataforma? (centrado, alineado, quieto y sin conductor) */
@@ -111,5 +116,5 @@ const Station = (function () {
   /** ¿Está la cabina del elevador de tripulación en el piso f con las puertas abiertas (o abriéndose)? */
   const cabinHere = (S, f) => { const e = ensure(S).elev.crew; return e.at === f && (e.st === 'idle' || e.st === 'opening'); };
   const floorName = (f, lang) => FLOOR_T[f] ? FLOOR_T[f][lang === 'en' ? 'en' : 'es'] : String(f);
-  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, roverVisible, roverStored, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
+  return { cabinHere, CORE_WHY, coreStatus, authorizeCore, PLAT, GARAGE, CATWALK, GDOCK, roverVisible, roverStored, roverInGarage, roverOnPlatform, FLOORS, FLOOR_T, KINDS, WHY, DOOR_S, STAIRS_S, fresh, ensure, call, board, leave, step, door, level, setBroken, stairs, travelS, floorName };
 })();
