@@ -634,10 +634,24 @@ const World = (function () {
         c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
         break;
       }
-      case 'dock': { // plataforma de aparcamiento del rover en el garaje: placa con franjas, luces y rieles
-        c.fillStyle = '#10141f'; rr(c, x, y, w, h, 8); c.fill(); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([14, 10]); rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.stroke(); c.setLineDash([]);
-        c.fillStyle = '#2b3347'; rr(c, x + 14, y + 14, w - 28, h - 28, 6); c.fill(); c.strokeStyle = 'rgba(160,180,230,.35)'; c.lineWidth = 2; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x + 14 + (w - 28) * i / 4, y + 14); c.lineTo(x + 14 + (w - 28) * i / 4, y + h - 14); c.stroke(); }
-        const on = curS && Station.roverInGarage(curS), a2 = 0.5 + 0.5 * Math.sin(lastT * 4); for (const [lx, ly] of [[x + 10, y + 10], [x + w - 10, y + 10], [x + 10, y + h - 10], [x + w - 10, y + h - 10]]) { c.fillStyle = on ? '#6fffa0' : 'rgba(255,170,60,' + (0.5 + 0.5 * a2) + ')'; c.beginPath(); c.arc(lx, ly, 4, 0, 6.2832); c.fill(); }
+      case 'dock': { // plataforma-elevador del rover vista desde el garaje: pozo con la placa que baja y sube, rieles, luces y rótulo
+        const lv = curS && curS.station ? Station.level(curS, 'rover') : 0, mv = curS && curS.station && curS.station.elev.rover.st !== 'idle';
+        const pr = Math.max(0, Math.min(1, lv / 2)), here = Station.roverInGarage && curS && Station.roverInGarage(curS);
+        c.fillStyle = '#05070d'; rr(c, x, y, w, h, 8); c.fill(); // el pozo (techo abierto)
+        const gg = c.createRadialGradient(x + w / 2, y + h / 2, 6, x + w / 2, y + h / 2, Math.max(w, h) * 0.62); gg.addColorStop(0, 'rgba(120,170,255,' + (0.18 + 0.5 * (1 - pr)) + ')'); gg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gg; rr(c, x + 3, y + 3, w - 6, h - 6, 6); c.fill(); // luz que baja del pozo cuando la placa está arriba
+        c.strokeStyle = 'rgba(120,150,255,.28)'; c.lineWidth = 2; for (let i = 1; i < 6; i++) { const q = i / 6, ix = (w / 2) * (1 - q * 0.0); c.strokeRect(x + 12 + (w / 2 - 12) * q * 0.55, y + 12 + (h / 2 - 12) * q * 0.55, w - 24 - (w - 24) * q * 0.55, h - 24 - (h - 24) * q * 0.55); } // perspectiva del pozo
+        // rieles laterales
+        c.fillStyle = '#7a839c'; c.fillRect(x + 4, y + 8, 6, h - 16); c.fillRect(x + w - 10, y + 8, 6, h - 16); c.fillStyle = '#c9ced8'; for (let k = 0; k < 7; k++) { c.fillRect(x + 5, y + 12 + k * ((h - 28) / 6), 4, 3); c.fillRect(x + w - 9, y + 12 + k * ((h - 28) / 6), 4, 3); }
+        // la placa llega desde arriba: crece y se aclara al acercarse al garaje
+        if (pr > 0.02) { const k = 0.62 + 0.38 * pr, pw = (w - 28) * k, ph = (h - 28) * k, px = x + (w - pw) / 2, py = y + (h - ph) / 2; c.globalAlpha = Math.min(1, 0.25 + pr);
+          const g = c.createLinearGradient(px, py, px, py + ph); g.addColorStop(0, '#767d94'); g.addColorStop(1, '#434859'); c.fillStyle = g; rr(c, px, py, pw, ph, 6); c.fill();
+          c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([12, 9]); rr(c, px + 5, py + 5, pw - 10, ph - 10, 4); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+        // esquinas con luces de estado: verde en reposo, ámbar al operar, rojo en movimiento
+        const a2 = Math.sin(lastT * 8) > 0, lc = !mv ? (here ? '#6fffa0' : '#ffb347') : (curS.station.elev.rover.st === 'moving' ? '#ff6b6b' : '#ffc24a');
+        for (const [lx, ly] of [[x + 6, y + 6], [x + w - 6, y + 6], [x + 6, y + h - 6], [x + w - 6, y + h - 6]]) { c.fillStyle = (!mv || a2) ? lc : '#2a2f40'; c.beginPath(); c.arc(lx, ly, 5, 0, 6.2832); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke(); }
+        // rótulo
+        c.fillStyle = 'rgba(8,12,28,.85)'; rr(c, x + w / 2 - 74, y + h - 25, 148, 20, 6); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 1.5; c.stroke();
+        c.fillStyle = '#7fe6ff'; c.font = 'bold 12px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText((mv ? (curS.station.elev.rover.to === 2 ? '▼ ' : '▲ ') : '▲ ') + (LANG === 'es' ? 'ELEVADOR DEL ROVER' : 'ROVER LIFT'), x + w / 2, y + h - 15);
         break; }
       case 'warn': { // zona restringida: borde de franjas de advertencia
         c.strokeStyle = 'rgba(255,194,74,.55)'; c.lineWidth = 6; c.setLineDash([22, 16]); c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]);

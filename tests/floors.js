@@ -127,9 +127,9 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   await pg.evaluate(() => { const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 400);
   await pg.keyboard.press('e'); await sleep(pg, 300); await pg.click('[data-act="elev-3"]'); await sleep(pg, 300);
   const r1 = await pg.evaluate(() => ({ fx: !!document.getElementById('elride'), panel: !!document.querySelector('[data-act="elev-3"]'), arrow: (document.querySelector('.elr-arrow') || {}).textContent, msg: (document.querySelector('.elr-msg') || {}).textContent, floor: World.floor }));
-  ok('Al elegir piso el panel se cierra y empieza la animación del trayecto (flecha ▲ al subir)', r1.fx && !r1.panel && r1.arrow === '▲' && r1.floor === 1, JSON.stringify(r1));
+  ok('Al elegir piso el panel se cierra y empieza la animación del trayecto (flecha ▼ al ir a un piso de número mayor: el 1 es el de arriba)', r1.fx && !r1.panel && r1.arrow === '▼' && r1.floor === 1, JSON.stringify(r1));
   const seen = new Set(); let sawClosed = false, sawUp = false;
-  for (let i = 0; i < 9; i++) { await sleep(pg, 600); const q = await pg.evaluate(() => (document.getElementById('elride') ? { n: document.querySelector('.elr-num').textContent, sh: document.querySelector('.elr-shaft').className, door: document.querySelector('.elr-door.l').style.transform, msg: document.querySelector('.elr-msg').textContent } : null)); if (!q) break; seen.add(q.n); if (/Subiendo/.test(q.msg) && /^translateX\(-?0(\.0+)?%\)$/.test(q.door)) sawClosed = true; if (/up/.test(q.sh)) sawUp = true; if (seen.size >= 2 && sawClosed && sawUp) break; }
+  for (let i = 0; i < 9; i++) { await sleep(pg, 600); const q = await pg.evaluate(() => (document.getElementById('elride') ? { n: document.querySelector('.elr-num').textContent, sh: document.querySelector('.elr-shaft').className, door: document.querySelector('.elr-door.l').style.transform, msg: document.querySelector('.elr-msg').textContent } : null)); if (!q) break; seen.add(q.n); if (/Bajando/.test(q.msg) && /^translateX\(-?0(\.0+)?%\)$/.test(q.door)) sawClosed = true; if (/down/.test(q.sh)) sawUp = true; if (seen.size >= 2 && sawClosed && sawUp) break; }
   ok('Durante el trayecto las puertas están cerradas, las líneas del hueco se desplazan y el número de piso cambia', sawClosed && sawUp && seen.size >= 2, JSON.stringify([...seen, sawClosed, sawUp]));
   // pausar a mitad de camino y reanudar: el cambio de piso se completa igualmente y el elevador coincide con el piso del jugador
   await pg.keyboard.press('Escape'); await sleep(pg, 400);
@@ -144,7 +144,7 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   const down = await pg.evaluate(() => (document.querySelector('.elr-arrow') || {}).textContent);
   await pg.waitForFunction(() => World.floor === 2 && !document.getElementById('elride'), null, { timeout: 20000 });
   const r5 = await pg.evaluate(() => { const e = Game.S.station.elev.crew; return { floor: World.floor, at: e.at, occ: e.occ.length }; });
-  ok('Piso 1 → 2: flecha ▲ (el número sube) y la cabina termina en el piso del jugador', down === '▲' && r5.floor === 2 && r5.at === 2 && r5.occ === 0, JSON.stringify([down, r5]));
+  ok('Piso 1 → 2: flecha ▼ (el número sube: se baja) y la cabina termina en el piso del jugador', down === '▼' && r5.floor === 2 && r5.at === 2 && r5.occ === 0, JSON.stringify([down, r5]));
   await pg.evaluate(() => { World.arrive(1); const e = Game.S.station.elev.crew; e.at = 1; e.st = 'idle'; e.occ = []; });
   await pg.evaluate(() => { Station.setBroken(Game.S, 'crew', true); const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 500);
   await pg.keyboard.press('e'); await sleep(pg, 300);
@@ -457,6 +457,16 @@ const sleep = (pg, ms) => pg.waitForTimeout(ms);
   const mp = await pg.evaluate(() => { Game._debug.openConsole('cmd'); return 1; });
   await pg.keyboard.press('Escape'); await sleep(pg, 100);
   await pg.evaluate(() => { World.setFloor(1); World.player.x = Layout.START[0]; World.player.y = Layout.START[1]; });
+
+  /* ---- El botón de piso responde al primer clic aunque el panel se actualice (antes se repintaba cada 100 ms y se perdía el clic) ---- */
+  await pg.evaluate(() => { World._test.freeze(true); Game.S.station.elev.crew.st = 'idle'; Game.S.station.elev.crew.at = 1; Game.S.station.elev.crew.occ = []; World.setFloor(1); const c = Layout.CONSOLES.find((q) => q[0] === 'elev1'); World.player.x = c[2] + 0.5; World.player.y = c[3] + 1.4; }); await sleep(pg, 400);
+  await pg.keyboard.press('e'); await sleep(pg, 300);
+  const bx = await pg.locator('[data-act="elev-2"]').boundingBox();
+  await pg.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2); await pg.mouse.down(); await sleep(pg, 350); await pg.mouse.up(); await sleep(pg, 400);
+  const ck = await pg.evaluate(() => ({ fx: !!document.getElementById('elride'), panel: !!document.querySelector('[data-act="elev-2"]') }));
+  ok('El botón de piso del ascensor funciona al primer clic aunque el panel se actualice mientras se mantiene pulsado', ck.fx && !ck.panel, JSON.stringify(ck));
+  await pg.waitForFunction(() => World.floor === 2 && !document.getElementById('elride'), null, { timeout: 20000 }); await sleep(pg, 300);
+  await pg.evaluate(() => { const e = Game.S.station.elev.crew; Station.call(Game.S, 'crew', 1); for (let i = 0; i < 400; i++) Station.step(Game.S, 0.05); World.arrive(1); });
 
   /* ---- Migración de partidas anteriores a los pisos, con copia de seguridad ---- */
   const legacy = await pg.evaluate(() => {
