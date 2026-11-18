@@ -22,6 +22,11 @@
       h('p', { class: 'small muted' }, lt('Atajo directo a otro piso: llegas junto al elevador de ese piso. Para ir andando, usa el elevador.', 'A direct shortcut to another floor: you arrive next to that floor elevator. To go on foot, use the elevator.')),
       ...Station.FLOORS.map((f) => h('div', { style: { margin: '6px 0' } }, btn((f === cur ? '📍 ' : '➡ ') + fname(f), () => { pop(); if (f !== cur) teleportTo(f); }, f === cur ? 'ghost' : 'primary', { 'data-act': 'tele-' + f, disabled: f === cur ? true : null }), h('div', { class: 'small muted' }, tr(FLOOR_D[f])))))));
   }
+  /** Repintado estable de un panel que se actualiza con un temporizador: dibuja en un contenedor auxiliar y solo sustituye lo visible si el contenido cambió.
+      Así los botones no se recrean entre pulsar y soltar (antes cada repintado cada 100 ms se «comía» el clic). */
+  function stablePaint(raw, scratch, live) {
+    return () => { raw(); const sig = scratch.innerHTML; if (live.dataset.sig !== sig) { live.dataset.sig = sig; live.replaceChildren(...scratch.childNodes); } else scratch.textContent = ''; };
+  }
   /** Llegada al piso de destino (elevador o escalera): cambia de piso y deja al jugador junto al elevador. */
   function arriveFloor(n, outside) { World.arrive(n, !!outside); lastRoom = null; }
   /** Estado de seguridad del núcleo energético (se muestra en el panel del elevador del piso 3). */
@@ -36,22 +41,23 @@
   function elevatorPanel(f) {
     const st = Station.ensure(S), e = st.elev.crew, es = LANG === 'es';
     let timer = 0, stairsT = 0, dest = 0, mode = null;
-    const body = h('div');
-    const s = push(panel('🛗 ' + tr(Station.KINDS.crew.name), body), { sticky: true, onclose: () => { clearInterval(timer); } });
-    const paint = () => {
+    const body = h('div'), live = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.crew.name), live), { sticky: true, onclose: () => { clearInterval(timer); } });
+    const paintRaw = () => {
       body.innerHTML = '';
       const here = World.floor, d = Station.door(S, 'crew'), lvl = Station.level(S, 'crew');
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
       body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-lvl': Math.round(lvl) }, Math.round(lvl)), h('div', null, h('div', null, mode === 'stairs' ? lt('Escalera de emergencia', 'Emergency stairs') : stN), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round((d) * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
         World.floor === 3 ? coreBlock() : null,
         e.broken && mode !== 'stairs' ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null].filter(Boolean));
-      if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Subiendo por la escalera… ', 'Taking the stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
+      if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Por la escalera de emergencia… ', 'Taking the emergency stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
       if (e.st !== 'idle') return body.append(h('p', { class: 'small muted' }, lt('Espera a que el elevador termine el trayecto.', 'Wait for the elevator to finish the trip.')));
       const inside = World.roomName(World.player.x, World.player.y) === 'elc' + here;
       if (!inside && e.at === here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está aquí con las puertas abiertas: entra para elegir el piso.', 'The elevator is here with its doors open: step in to choose the floor.')));
       if (e.at !== here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está en el piso ' + e.at + '.', 'The elevator is on floor ' + e.at + '.')), btn('🔔 ' + lt('Llamar al elevador', 'Call the elevator'), () => { Station.call(S, 'crew', here); Sfx.play('door'); paint(); }, 'primary', { 'data-act': 'elev-call' }));
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
+    const paint = stablePaint(paintRaw, body, live);
     const go = (to) => {
       const from = World.floor; if (to === from) return;
       if (e.broken) { const r = Station.stairs(S, from, to); pop(); startRide('stairs', from, to, r.s); return; }
@@ -75,10 +81,11 @@
   const CORE_A = () => lt('Nivel 3A · Pasarela del núcleo', 'Level 3A · Core catwalk'), CORE_3 = () => lt('Piso 3 · Energía', 'Floor 3 · Energy');
   function startRide(kind, from, to, secs) {
     rideEnd(true);
-    const es = LANG === 'es', up = kind === 'rlift' || kind === 'sstairs' ? to < from : to > from, two = kind === 'rlift' || kind === 'sstairs' || kind === 'cstairs';
+    // el piso 1 es el de arriba: ir a un número mayor es bajar (la pasarela 3A, en cambio, está sobre el piso 3)
+    const es = LANG === 'es', up = kind === 'cstairs' ? to > from : to < from, two = kind === 'rlift' || kind === 'sstairs' || kind === 'cstairs';
     const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
     const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
-    const col = h('div', { class: 'elr-col' }, two ? (kind === 'cstairs' ? [h('div', { class: 'elr-f', 'data-f': 'A' }, 'A'), h('div', { class: 'elr-f', 'data-f': '3' }, '3')] : [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')]) : Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const col = h('div', { class: 'elr-col' }, two ? (kind === 'cstairs' ? [h('div', { class: 'elr-f', 'data-f': 'A' }, 'A'), h('div', { class: 'elr-f', 'data-f': '3' }, '3')] : [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')]) : Station.FLOORS.slice().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
     const shaft = h('div', { class: 'elr-shaft' });
     const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
       shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
@@ -144,9 +151,9 @@
   function serviceStairs(to) { const from = to === 4 ? 2 : 4; World.floor === (from === 4 ? 4 : 2) && startRide('sstairs', from, to, 6); }
   function roverLiftPanel() {
     const st0 = Station.ensure(S), e = st0.elev.rover, es = LANG === 'es';
-    let timer = 0, msg = null; const body = h('div');
-    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), body), { sticky: true, onclose: () => clearInterval(timer) });
-    const paint = () => {
+    let timer = 0, msg = null; const body = h('div'), live = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), live), { sticky: true, onclose: () => clearInterval(timer) });
+    const paintRaw = () => {
       body.innerHTML = '';
       const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle', inG = World.floor === 4, plat = onPlatform();
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
@@ -164,6 +171,7 @@
         msg ? h('p', { class: 'small tag warn', 'data-msg': 'warn' }, '⚠ ' + msg) : null,
         btns.length ? h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, btns) : (idle ? null : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.')))].filter(Boolean));
     };
+    const paint = stablePaint(paintRaw, body, live);
     const go = (to, rider) => {
       const from = e.at;
       if (rider) { const b = Station.board(S, 'rover', 'player'); if (!b.ok) { msg = tr(Station.WHY[b.why] || Station.WHY.closed); Sfx.play('bad'); return paint(); } }
@@ -185,8 +193,8 @@
   function coreStairs(to) { const from = to === 5 ? 3 : 5; if (World.floor === from) startRide('cstairs', from, to, 5); }
   /** Mirador del núcleo (pasarela): lecturas del reactor desde arriba. Valores simulados y educativos. */
   function coreOverlookPanel() {
-    const es = LANG === 'es', body = h('div'); const s = push(panel('🔭 ' + lt('Mirador del núcleo', 'Core overlook'), body)); let t = 0;
-    const paint = () => {
+    const es = LANG === 'es', body = h('div'), live = h('div'); const s = push(panel('🔭 ' + lt('Mirador del núcleo', 'Core overlook'), live)); let t = 0;
+    const paintRaw = () => {
       body.innerHTML = '';
       const r = S.sys.reactor, out = r.h <= 20, hot = r.h < 35, kw = out ? 0 : 6 * r.lvl * (r.h / 100) * (S.scen === 'mars' ? 10 / 6 : 1), temp = out ? 80 : Math.round(420 + r.lvl * 320 + (100 - r.h) * 2.2), st = out ? lt('Apagado', 'Offline') : hot ? lt('Dañado: vigila las barras', 'Damaged: watch the rods') : lt('Normal', 'Normal');
       const row = (a, b, c) => h('tr', null, h('th', null, a), h('td', { class: c || '' }, b));
@@ -195,6 +203,7 @@
         h('p', { class: 'small muted' }, lt('Con la integridad por debajo del 20 % el reactor deja de producir energía; si además se agota la batería, la estación se apaga. Repáralo en la consola del reactor.', 'Below 20 % integrity the reactor stops producing power; if the battery also runs out, the station shuts down. Repair it at the reactor console.')),
         btn('⚛ ' + lt('Abrir el control del reactor', 'Open the reactor control'), () => { pop(); openConsole({ id: 'reactor' }); }, 'primary', { 'data-act': 'overlook-reactor' }));
     };
+    const paint = stablePaint(paintRaw, body, live);
     paint(); const iv = setInterval(() => { if (!s.isConnected) return clearInterval(iv); if (++t % 5 === 0) paint(); }, 200);
   }
   /** Taller del garaje (consola del nivel G): estado del rover, carga y reparación con materiales. */

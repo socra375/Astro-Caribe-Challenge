@@ -6298,10 +6298,24 @@ const World = (function () {
         c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7); c.stroke(); }
         break;
       }
-      case 'dock': { // plataforma de aparcamiento del rover en el garaje: placa con franjas, luces y rieles
-        c.fillStyle = '#10141f'; rr(c, x, y, w, h, 8); c.fill(); c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([14, 10]); rr(c, x + 6, y + 6, w - 12, h - 12, 6); c.stroke(); c.setLineDash([]);
-        c.fillStyle = '#2b3347'; rr(c, x + 14, y + 14, w - 28, h - 28, 6); c.fill(); c.strokeStyle = 'rgba(160,180,230,.35)'; c.lineWidth = 2; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x + 14 + (w - 28) * i / 4, y + 14); c.lineTo(x + 14 + (w - 28) * i / 4, y + h - 14); c.stroke(); }
-        const on = curS && Station.roverInGarage(curS), a2 = 0.5 + 0.5 * Math.sin(lastT * 4); for (const [lx, ly] of [[x + 10, y + 10], [x + w - 10, y + 10], [x + 10, y + h - 10], [x + w - 10, y + h - 10]]) { c.fillStyle = on ? '#6fffa0' : 'rgba(255,170,60,' + (0.5 + 0.5 * a2) + ')'; c.beginPath(); c.arc(lx, ly, 4, 0, 6.2832); c.fill(); }
+      case 'dock': { // plataforma-elevador del rover vista desde el garaje: pozo con la placa que baja y sube, rieles, luces y rótulo
+        const lv = curS && curS.station ? Station.level(curS, 'rover') : 0, mv = curS && curS.station && curS.station.elev.rover.st !== 'idle';
+        const pr = Math.max(0, Math.min(1, lv / 2)), here = Station.roverInGarage && curS && Station.roverInGarage(curS);
+        c.fillStyle = '#05070d'; rr(c, x, y, w, h, 8); c.fill(); // el pozo (techo abierto)
+        const gg = c.createRadialGradient(x + w / 2, y + h / 2, 6, x + w / 2, y + h / 2, Math.max(w, h) * 0.62); gg.addColorStop(0, 'rgba(120,170,255,' + (0.18 + 0.5 * (1 - pr)) + ')'); gg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gg; rr(c, x + 3, y + 3, w - 6, h - 6, 6); c.fill(); // luz que baja del pozo cuando la placa está arriba
+        c.strokeStyle = 'rgba(120,150,255,.28)'; c.lineWidth = 2; for (let i = 1; i < 6; i++) { const q = i / 6, ix = (w / 2) * (1 - q * 0.0); c.strokeRect(x + 12 + (w / 2 - 12) * q * 0.55, y + 12 + (h / 2 - 12) * q * 0.55, w - 24 - (w - 24) * q * 0.55, h - 24 - (h - 24) * q * 0.55); } // perspectiva del pozo
+        // rieles laterales
+        c.fillStyle = '#7a839c'; c.fillRect(x + 4, y + 8, 6, h - 16); c.fillRect(x + w - 10, y + 8, 6, h - 16); c.fillStyle = '#c9ced8'; for (let k = 0; k < 7; k++) { c.fillRect(x + 5, y + 12 + k * ((h - 28) / 6), 4, 3); c.fillRect(x + w - 9, y + 12 + k * ((h - 28) / 6), 4, 3); }
+        // la placa llega desde arriba: crece y se aclara al acercarse al garaje
+        if (pr > 0.02) { const k = 0.62 + 0.38 * pr, pw = (w - 28) * k, ph = (h - 28) * k, px = x + (w - pw) / 2, py = y + (h - ph) / 2; c.globalAlpha = Math.min(1, 0.25 + pr);
+          const g = c.createLinearGradient(px, py, px, py + ph); g.addColorStop(0, '#767d94'); g.addColorStop(1, '#434859'); c.fillStyle = g; rr(c, px, py, pw, ph, 6); c.fill();
+          c.strokeStyle = '#ffc24a'; c.lineWidth = 3; c.setLineDash([12, 9]); rr(c, px + 5, py + 5, pw - 10, ph - 10, 4); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+        // esquinas con luces de estado: verde en reposo, ámbar al operar, rojo en movimiento
+        const a2 = Math.sin(lastT * 8) > 0, lc = !mv ? (here ? '#6fffa0' : '#ffb347') : (curS.station.elev.rover.st === 'moving' ? '#ff6b6b' : '#ffc24a');
+        for (const [lx, ly] of [[x + 6, y + 6], [x + w - 6, y + 6], [x + 6, y + h - 6], [x + w - 6, y + h - 6]]) { c.fillStyle = (!mv || a2) ? lc : '#2a2f40'; c.beginPath(); c.arc(lx, ly, 5, 0, 6.2832); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke(); }
+        // rótulo
+        c.fillStyle = 'rgba(8,12,28,.85)'; rr(c, x + w / 2 - 74, y + h - 25, 148, 20, 6); c.fill(); c.strokeStyle = '#38d6ff'; c.lineWidth = 1.5; c.stroke();
+        c.fillStyle = '#7fe6ff'; c.font = 'bold 12px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText((mv ? (curS.station.elev.rover.to === 2 ? '▼ ' : '▲ ') : '▲ ') + (LANG === 'es' ? 'ELEVADOR DEL ROVER' : 'ROVER LIFT'), x + w / 2, y + h - 15);
         break; }
       case 'warn': { // zona restringida: borde de franjas de advertencia
         c.strokeStyle = 'rgba(255,194,74,.55)'; c.lineWidth = 6; c.setLineDash([22, 16]); c.strokeRect(x + 3, y + 3, w - 6, h - 6); c.setLineDash([]);
@@ -9614,6 +9628,11 @@ const Game = (function () {
       h('p', { class: 'small muted' }, lt('Atajo directo a otro piso: llegas junto al elevador de ese piso. Para ir andando, usa el elevador.', 'A direct shortcut to another floor: you arrive next to that floor elevator. To go on foot, use the elevator.')),
       ...Station.FLOORS.map((f) => h('div', { style: { margin: '6px 0' } }, btn((f === cur ? '📍 ' : '➡ ') + fname(f), () => { pop(); if (f !== cur) teleportTo(f); }, f === cur ? 'ghost' : 'primary', { 'data-act': 'tele-' + f, disabled: f === cur ? true : null }), h('div', { class: 'small muted' }, tr(FLOOR_D[f])))))));
   }
+  /** Repintado estable de un panel que se actualiza con un temporizador: dibuja en un contenedor auxiliar y solo sustituye lo visible si el contenido cambió.
+      Así los botones no se recrean entre pulsar y soltar (antes cada repintado cada 100 ms se «comía» el clic). */
+  function stablePaint(raw, scratch, live) {
+    return () => { raw(); const sig = scratch.innerHTML; if (live.dataset.sig !== sig) { live.dataset.sig = sig; live.replaceChildren(...scratch.childNodes); } else scratch.textContent = ''; };
+  }
   /** Llegada al piso de destino (elevador o escalera): cambia de piso y deja al jugador junto al elevador. */
   function arriveFloor(n, outside) { World.arrive(n, !!outside); lastRoom = null; }
   /** Estado de seguridad del núcleo energético (se muestra en el panel del elevador del piso 3). */
@@ -9628,22 +9647,23 @@ const Game = (function () {
   function elevatorPanel(f) {
     const st = Station.ensure(S), e = st.elev.crew, es = LANG === 'es';
     let timer = 0, stairsT = 0, dest = 0, mode = null;
-    const body = h('div');
-    const s = push(panel('🛗 ' + tr(Station.KINDS.crew.name), body), { sticky: true, onclose: () => { clearInterval(timer); } });
-    const paint = () => {
+    const body = h('div'), live = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.crew.name), live), { sticky: true, onclose: () => { clearInterval(timer); } });
+    const paintRaw = () => {
       body.innerHTML = '';
       const here = World.floor, d = Station.door(S, 'crew'), lvl = Station.level(S, 'crew');
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
       body.append(...[h('div', { class: 'row', style: { gap: '12px', alignItems: 'center' } }, h('b', { style: { fontSize: '28px' }, 'data-lvl': Math.round(lvl) }, Math.round(lvl)), h('div', null, h('div', null, mode === 'stairs' ? lt('Escalera de emergencia', 'Emergency stairs') : stN), h('div', { class: 'pbar' }, h('i', { style: { width: Math.round((d) * 100) + '%' } })), h('div', { class: 'small muted' }, lt('Puertas', 'Doors') + ' ' + Math.round(d * 100) + ' %'))),
         World.floor === 3 ? coreBlock() : null,
         e.broken && mode !== 'stairs' ? h('p', { class: 'small tag warn' }, '⚠ ' + tr(Station.WHY.broken)) : null].filter(Boolean));
-      if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Subiendo por la escalera… ', 'Taking the stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
+      if (mode === 'stairs') return body.append(h('div', { class: 'small' }, lt('Por la escalera de emergencia… ', 'Taking the emergency stairs… ') + Math.max(0, Math.ceil(stairsT)) + ' s'));
       if (e.st !== 'idle') return body.append(h('p', { class: 'small muted' }, lt('Espera a que el elevador termine el trayecto.', 'Wait for the elevator to finish the trip.')));
       const inside = World.roomName(World.player.x, World.player.y) === 'elc' + here;
       if (!inside && e.at === here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está aquí con las puertas abiertas: entra para elegir el piso.', 'The elevator is here with its doors open: step in to choose the floor.')));
       if (e.at !== here && !e.broken) return body.append(h('p', { class: 'small' }, lt('El elevador está en el piso ' + e.at + '.', 'The elevator is on floor ' + e.at + '.')), btn('🔔 ' + lt('Llamar al elevador', 'Call the elevator'), () => { Station.call(S, 'crew', here); Sfx.play('door'); paint(); }, 'primary', { 'data-act': 'elev-call' }));
       body.append(h('div', { class: 'small muted' }, lt('Elige el piso de destino:', 'Choose the destination floor:')), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '6px 0' } }, Station.FLOORS.map((fl) => btn((fl === here ? '📍 ' : '') + fname(fl), () => go(fl), fl === here ? 'ghost' : 'primary', { 'data-act': 'elev-' + fl, disabled: fl === here ? true : null }))));
     };
+    const paint = stablePaint(paintRaw, body, live);
     const go = (to) => {
       const from = World.floor; if (to === from) return;
       if (e.broken) { const r = Station.stairs(S, from, to); pop(); startRide('stairs', from, to, r.s); return; }
@@ -9667,10 +9687,11 @@ const Game = (function () {
   const CORE_A = () => lt('Nivel 3A · Pasarela del núcleo', 'Level 3A · Core catwalk'), CORE_3 = () => lt('Piso 3 · Energía', 'Floor 3 · Energy');
   function startRide(kind, from, to, secs) {
     rideEnd(true);
-    const es = LANG === 'es', up = kind === 'rlift' || kind === 'sstairs' ? to < from : to > from, two = kind === 'rlift' || kind === 'sstairs' || kind === 'cstairs';
+    // el piso 1 es el de arriba: ir a un número mayor es bajar (la pasarela 3A, en cambio, está sobre el piso 3)
+    const es = LANG === 'es', up = kind === 'cstairs' ? to > from : to < from, two = kind === 'rlift' || kind === 'sstairs' || kind === 'cstairs';
     const doorL = h('div', { class: 'elr-door l' }), doorR = h('div', { class: 'elr-door r' });
     const num = h('div', { class: 'elr-num' }), arrow = h('div', { class: 'elr-arrow' }, up ? '▲' : '▼'), name = h('div', { class: 'elr-name' }), msg = h('div', { class: 'elr-msg' });
-    const col = h('div', { class: 'elr-col' }, two ? (kind === 'cstairs' ? [h('div', { class: 'elr-f', 'data-f': 'A' }, 'A'), h('div', { class: 'elr-f', 'data-f': '3' }, '3')] : [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')]) : Station.FLOORS.slice().reverse().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
+    const col = h('div', { class: 'elr-col' }, two ? (kind === 'cstairs' ? [h('div', { class: 'elr-f', 'data-f': 'A' }, 'A'), h('div', { class: 'elr-f', 'data-f': '3' }, '3')] : [h('div', { class: 'elr-f', 'data-f': 'S' }, 'S'), h('div', { class: 'elr-f', 'data-f': 'G' }, 'G')]) : Station.FLOORS.slice().map((f) => h('div', { class: 'elr-f', 'data-f': f }, String(f))));
     const shaft = h('div', { class: 'elr-shaft' });
     const el = h('div', { id: 'elride', role: 'status', 'aria-live': 'polite', 'data-kind': kind },
       shaft, h('div', { class: 'elr-cab' }, doorL, doorR, h('div', { class: 'elr-disp' }, arrow, num), name), col, msg);
@@ -9736,9 +9757,9 @@ const Game = (function () {
   function serviceStairs(to) { const from = to === 4 ? 2 : 4; World.floor === (from === 4 ? 4 : 2) && startRide('sstairs', from, to, 6); }
   function roverLiftPanel() {
     const st0 = Station.ensure(S), e = st0.elev.rover, es = LANG === 'es';
-    let timer = 0, msg = null; const body = h('div');
-    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), body), { sticky: true, onclose: () => clearInterval(timer) });
-    const paint = () => {
+    let timer = 0, msg = null; const body = h('div'), live = h('div');
+    const s = push(panel('🛗 ' + tr(Station.KINDS.rover.name), live), { sticky: true, onclose: () => clearInterval(timer) });
+    const paintRaw = () => {
       body.innerHTML = '';
       const d = Station.door(S, 'rover'), lvl = Station.level(S, 'rover'), stored = Station.roverStored(S), idle = e.st === 'idle', inG = World.floor === 4, plat = onPlatform();
       const stN = { idle: lt('Puertas abiertas', 'Doors open'), closing: lt('Cerrando puertas…', 'Closing doors…'), moving: lt('En movimiento', 'Moving'), opening: lt('Abriendo puertas…', 'Opening doors…') }[e.st];
@@ -9756,6 +9777,7 @@ const Game = (function () {
         msg ? h('p', { class: 'small tag warn', 'data-msg': 'warn' }, '⚠ ' + msg) : null,
         btns.length ? h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } }, btns) : (idle ? null : h('p', { class: 'small muted' }, lt('Espera a que la plataforma termine el trayecto.', 'Wait for the platform to finish the trip.')))].filter(Boolean));
     };
+    const paint = stablePaint(paintRaw, body, live);
     const go = (to, rider) => {
       const from = e.at;
       if (rider) { const b = Station.board(S, 'rover', 'player'); if (!b.ok) { msg = tr(Station.WHY[b.why] || Station.WHY.closed); Sfx.play('bad'); return paint(); } }
@@ -9777,8 +9799,8 @@ const Game = (function () {
   function coreStairs(to) { const from = to === 5 ? 3 : 5; if (World.floor === from) startRide('cstairs', from, to, 5); }
   /** Mirador del núcleo (pasarela): lecturas del reactor desde arriba. Valores simulados y educativos. */
   function coreOverlookPanel() {
-    const es = LANG === 'es', body = h('div'); const s = push(panel('🔭 ' + lt('Mirador del núcleo', 'Core overlook'), body)); let t = 0;
-    const paint = () => {
+    const es = LANG === 'es', body = h('div'), live = h('div'); const s = push(panel('🔭 ' + lt('Mirador del núcleo', 'Core overlook'), live)); let t = 0;
+    const paintRaw = () => {
       body.innerHTML = '';
       const r = S.sys.reactor, out = r.h <= 20, hot = r.h < 35, kw = out ? 0 : 6 * r.lvl * (r.h / 100) * (S.scen === 'mars' ? 10 / 6 : 1), temp = out ? 80 : Math.round(420 + r.lvl * 320 + (100 - r.h) * 2.2), st = out ? lt('Apagado', 'Offline') : hot ? lt('Dañado: vigila las barras', 'Damaged: watch the rods') : lt('Normal', 'Normal');
       const row = (a, b, c) => h('tr', null, h('th', null, a), h('td', { class: c || '' }, b));
@@ -9787,6 +9809,7 @@ const Game = (function () {
         h('p', { class: 'small muted' }, lt('Con la integridad por debajo del 20 % el reactor deja de producir energía; si además se agota la batería, la estación se apaga. Repáralo en la consola del reactor.', 'Below 20 % integrity the reactor stops producing power; if the battery also runs out, the station shuts down. Repair it at the reactor console.')),
         btn('⚛ ' + lt('Abrir el control del reactor', 'Open the reactor control'), () => { pop(); openConsole({ id: 'reactor' }); }, 'primary', { 'data-act': 'overlook-reactor' }));
     };
+    const paint = stablePaint(paintRaw, body, live);
     paint(); const iv = setInterval(() => { if (!s.isConnected) return clearInterval(iv); if (++t % 5 === 0) paint(); }, 200);
   }
   /** Taller del garaje (consola del nivel G): estado del rover, carga y reparación con materiales. */
