@@ -82,15 +82,28 @@ Cada fase termina con una prueba en Studio que lo demuestra. No se avanza si la 
 - **Prueba:** cerrar y reabrir en Studio y recuperar la partida.
 - **Dependencias:** todas.
 
-## 4. Decisiones que necesito de ti antes de la fase 1
+## 4. Decisiones
 
-1. **Progreso:** ¿guardar por jugador (`DataStoreService`) o por servidor?
-2. **Voz:** el juego usa voz del navegador. ¿Lo sustituimos por texto, por grabaciones o no lo portamos?
-3. **Escenario:** ¿Luna y Marte como dos mapas o un solo mapa con dos zonas?
-4. **Público:** el juego original es para niños de 5 a 17+. ¿La versión Roblox es para la misma franja? Si se publica en Roblox, hay que revisar normas de contenido para menores.
+| Tema | Decisión | Quién la tomó |
+|---|---|---|
+| **Progreso** | Por jugador, con `DataStoreService`. | Tú |
+| **Escenario** | Dos mapas separados: Luna y Marte. | Tú |
+| **Voz** | Sin voz sintetizada en la primera versión. Los diálogos de NPC y de la radio se muestran como texto, con efectos de sonido de Roblox. Una voz real (grabada o `TextToSpeech`) queda como mejora posterior. | Yo, revocable |
+| **Público** | Misma franja que el original, de 5 a 17+. Antes de publicar hay que revisar las normas de Roblox para contenido dirigido a menores. | Yo, revocable |
+
+**Consecuencias de dos mapas:**
+- Cada mapa tiene su propio Studio place. El motor (`Sim`, `Surv`, `Station`) es común; lo que cambia es el escenario, la gravedad, la luz, el clima y el ajuste de riesgos de `Sim.DIFFS` por escenario (`SC`).
+- El progreso por jugador tiene que incluir el mapa elegido: una partida en Luna y otra en Marte son registros separados.
+- Se mantienen dos escenas en la fase 5 (exterior, rover y viaje). Las fases 1 a 4 se hacen una vez y se reutilizan.
+
+**Consecuencias de guardar por jugador:**
+- `DataStoreService` solo desde el servidor, con una clave por `UserId` y mapa.
+- Hay que guardar al salir, al cambiar de piso importante y cada cierto tiempo. El mapa y la hora se guardan siempre.
+- Se necesita manejo de errores de DataStore: si falla, la partida sigue en memoria y se avisa al jugador.
 
 ## 5. Lo que no sé todavía
 
 - [Suposición] Que el MCP de Studio permita crear los modelos del piso 1 sin trabajo manual extra. Lo confirmaremos al comienzo de la fase 2.
 - [Suposición] Que la traducción de `03_sim.js` a Luau sea de unos días, no de semanas. Depende de cuántas diferencias de comportamiento aparezcan en la fase 1.
+- [Suposición] Que dos mapas no dupliquen el trabajo de las fases 2 a 4. Si el sistema de pisos resulta difícil de reutilizar entre escenarios, el coste sube.
 - No he medido el rendimiento en Roblox. El juego actual se mide en Chromium sin GPU; esa cifra no sirve como referencia.
